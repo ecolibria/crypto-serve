@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
 from app.config import get_settings
-from app.database import init_db, close_db, async_session_maker
+from app.database import init_db, close_db, get_session_maker
 from app.auth import github_oauth_router
 from app.api import (
     identities_router,
@@ -17,6 +17,7 @@ from app.api import (
     audit_router,
 )
 from app.api.sdk import router as sdk_router
+from app.api.admin import router as admin_router
 from app.models import Context
 
 settings = get_settings()
@@ -67,7 +68,7 @@ async def seed_default_contexts():
         },
     ]
 
-    async with async_session_maker() as db:
+    async with get_session_maker()() as db:
         for ctx_data in default_contexts:
             result = await db.execute(
                 select(Context).where(Context.name == ctx_data["name"])
@@ -116,6 +117,7 @@ app.include_router(contexts_router)
 app.include_router(crypto_router)
 app.include_router(audit_router)
 app.include_router(sdk_router)
+app.include_router(admin_router)
 
 
 @app.get("/")

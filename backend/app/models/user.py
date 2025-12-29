@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import String, DateTime, BigInteger
+from sqlalchemy import String, DateTime, BigInteger, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,6 +32,7 @@ class User(Base):
         DateTime(timezone=True),
         nullable=True
     )
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships
     identities: Mapped[list["Identity"]] = relationship(

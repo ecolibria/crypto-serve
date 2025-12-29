@@ -17,6 +17,7 @@ class UserResponse(BaseModel):
     github_username: str
     email: str | None
     avatar_url: str | None
+    is_admin: bool = False
 
     class Config:
         from_attributes = True
