@@ -1,0 +1,104 @@
+"""JWT token handling for user sessions."""
+
+from datetime import datetime, timedelta
+from typing import Annotated
+
+import jwt
+from fastapi import Depends, HTTPException, status, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import get_settings
+from app.database import get_db
+from app.models import User
+
+settings = get_settings()
+security = HTTPBearer(auto_error=False)
+
+
+def create_access_token(user_id: str, github_username: str) -> str:
+    """Create JWT access token for user session."""
+    expires = datetime.utcnow() + timedelta(days=settings.jwt_expiration_days)
+    payload = {
+        "sub": user_id,
+        "username": github_username,
+        "exp": expires,
+        "iat": datetime.utcnow(),
+    }
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+
+
+def verify_token(token: str) -> dict | None:
+    """Verify and decode JWT token."""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm]
+        )
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+
+
+async def get_current_user(
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> User:
+    """Get current authenticated user from JWT token."""
+    token = None
+
+    # Try Authorization header first
+    if credentials:
+        token = credentials.credentials
+
+    # Fall back to cookie
+    if not token:
+        token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    return user
+
+
+async def get_current_user_optional(
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> User | None:
+    """Get current user if authenticated, None otherwise."""
+    try:
+        return await get_current_user(request, credentials, db)
+    except HTTPException:
+        return None
