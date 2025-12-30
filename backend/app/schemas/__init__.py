@@ -11,8 +11,21 @@ from app.schemas.context import (
     ContextResponse,
     ContextUpdate,
 )
+from app.schemas.policy import (
+    PolicySeverity,
+    PolicyCreate,
+    PolicyUpdate,
+    PolicyResponse,
+    PolicyListResponse,
+    EvaluationRequest,
+    EvaluationResponse,
+    PolicyEvaluationResult,
+    ViolationLogResponse,
+    ViolationSummary,
+)
 
 __all__ = [
+    # Context schemas
     "DataIdentity",
     "RegulatoryMapping",
     "ThreatModel",
@@ -22,4 +35,15 @@ __all__ = [
     "ContextCreate",
     "ContextResponse",
     "ContextUpdate",
+    # Policy schemas
+    "PolicySeverity",
+    "PolicyCreate",
+    "PolicyUpdate",
+    "PolicyResponse",
+    "PolicyListResponse",
+    "EvaluationRequest",
+    "EvaluationResponse",
+    "PolicyEvaluationResult",
+    "ViolationLogResponse",
+    "ViolationSummary",
 ]
