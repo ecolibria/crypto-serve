@@ -158,6 +158,49 @@ export interface HealthStatus {
   avg_latency_last_hour: number;
 }
 
+// Policy Types
+export interface Policy {
+  name: string;
+  description: string;
+  rule: string;
+  severity: "block" | "warn" | "info";
+  message: string;
+  enabled: boolean;
+  contexts: string[];
+  operations: string[];
+}
+
+export interface PolicyEvaluationRequest {
+  algorithm: string;
+  context_name: string;
+  sensitivity: "low" | "medium" | "high" | "critical";
+  pii?: boolean;
+  phi?: boolean;
+  pci?: boolean;
+  frameworks?: string[];
+  protection_lifetime_years?: number;
+  team?: string;
+  operation?: "encrypt" | "decrypt";
+}
+
+export interface PolicyEvaluationResult {
+  policy_name: string;
+  passed: boolean;
+  severity: string;
+  message: string;
+  rule: string;
+}
+
+export interface PolicyEvaluationResponse {
+  algorithm: string;
+  context: string;
+  allowed: boolean;
+  blocking_violations: number;
+  warning_violations: number;
+  info_violations: number;
+  results: PolicyEvaluationResult[];
+}
+
 export const api = {
   // User
   getCurrentUser: () => fetchApi("/api/users/me") as Promise<User>,
@@ -282,4 +325,19 @@ export const api = {
 
   // Admin - Health
   getSystemHealth: () => fetchApi("/api/admin/health") as Promise<HealthStatus>,
+
+  // Policies
+  listPolicies: (params?: { enabled_only?: boolean; severity?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.enabled_only) query.set("enabled_only", "true");
+    if (params?.severity) query.set("severity", params.severity);
+    return fetchApi(`/api/policies?${query}`) as Promise<Policy[]>;
+  },
+  getDefaultPolicies: () => fetchApi("/api/policies/defaults") as Promise<Policy[]>,
+  getPolicy: (name: string) => fetchApi(`/api/policies/${name}`) as Promise<Policy>,
+  evaluatePolicies: (data: PolicyEvaluationRequest) =>
+    fetchApi("/api/policies/evaluate", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }) as Promise<PolicyEvaluationResponse>,
 };

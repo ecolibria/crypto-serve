@@ -50,7 +50,7 @@ export default function AuditPage() {
     return date.toLocaleDateString();
   };
 
-  const uniqueContexts = [...new Set(logs.map((l) => l.context))];
+  const uniqueContexts = Array.from(new Set(logs.map((l) => l.context)));
 
   return (
     <DashboardLayout>

@@ -6,7 +6,7 @@ For development/testing, you can modify these values.
 """
 
 IDENTITY = {
-    "server_url": "http://localhost:8000",
+    "server_url": "http://localhost:8001",
     "token": "development-token",
     "identity_id": "dev_test_identity",
     "identity_type": "developer",

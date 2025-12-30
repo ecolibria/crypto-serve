@@ -7,6 +7,9 @@ from functools import lru_cache
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
+    # Development mode (bypasses OAuth)
+    dev_mode: bool = True
+
     # Database
     database_url: str = "postgresql+asyncpg://cryptoserve:localdev@localhost:5432/cryptoserve"
 
@@ -21,8 +24,8 @@ class Settings(BaseSettings):
     jwt_expiration_days: int = 7
 
     # URLs
-    frontend_url: str = "http://localhost:3000"
-    backend_url: str = "http://localhost:8000"
+    frontend_url: str = "http://localhost:3003"
+    backend_url: str = "http://localhost:8003"
 
     # Identity defaults
     default_identity_expiration_days: int = 90

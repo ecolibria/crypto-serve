@@ -60,11 +60,14 @@ class SDKGenerator:
         """Copy SDK template files to target directory."""
         template_src = self.templates_dir / "python" / "cryptoserve"
 
-        if template_src.exists():
+        # Check if templates exist AND have actual Python files
+        template_files = list(template_src.glob("*.py")) if template_src.exists() else []
+        template_files = [f for f in template_files if f.name != "_identity.py"]
+
+        if template_files:
             # Copy from template
-            for file in template_src.glob("*.py"):
-                if file.name != "_identity.py":  # Skip identity template
-                    shutil.copy2(file, target_dir / file.name)
+            for file in template_files:
+                shutil.copy2(file, target_dir / file.name)
         else:
             # Generate minimal SDK inline
             self._generate_minimal_sdk(target_dir)
@@ -245,33 +248,37 @@ IDENTITY = {{
         (target_dir / "_identity.py").write_text(content)
 
     def _generate_setup_py(self, temp_path: Path, identity_hash: str):
-        """Generate setup.py for the package."""
-        content = f'''"""CryptoServe SDK setup."""
+        """Generate pyproject.toml and setup.py for the package."""
+        # Create pyproject.toml (required for modern pip)
+        # Use + for local version identifier per PEP 440
+        pyproject_content = f'''[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
+[project]
+name = "cryptoserve"
+version = "0.1.0+{identity_hash}"
+description = "CryptoServe SDK - Zero-config cryptographic operations"
+requires-python = ">=3.9"
+dependencies = ["requests>=2.28.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+'''
+        (temp_path / "pyproject.toml").write_text(pyproject_content)
+
+        # Also create setup.py for compatibility
+        setup_content = f'''"""CryptoServe SDK setup."""
 from setuptools import setup, find_packages
-
 setup(
     name="cryptoserve",
-    version="0.1.0.{identity_hash}",
+    version="0.1.0+{identity_hash}",
     packages=find_packages(),
-    install_requires=[
-        "requests>=2.28.0",
-    ],
+    install_requires=["requests>=2.28.0"],
     python_requires=">=3.9",
-    description="CryptoServe SDK - Zero-config cryptographic operations",
-    author="CryptoServe",
-    classifiers=[
-        "Development Status :: 4 - Beta",
-        "Intended Audience :: Developers",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12",
-    ],
 )
 '''
-        (temp_path / "setup.py").write_text(content)
+        (temp_path / "setup.py").write_text(setup_content)
 
     def _build_wheel(self, temp_path: Path) -> Path:
         """Build wheel package."""

@@ -13,8 +13,8 @@ This guide walks you through setting up CryptoServe and using the SDK.
 2. Click "New OAuth App"
 3. Fill in:
    - Application name: `CryptoServe Local`
-   - Homepage URL: `http://localhost:3000`
-   - Authorization callback URL: `http://localhost:8000/auth/github/callback`
+   - Homepage URL: `http://localhost:3001`
+   - Authorization callback URL: `http://localhost:8001/auth/github/callback`
 4. Click "Register application"
 5. Copy the Client ID
 6. Generate a Client Secret and copy it
@@ -48,7 +48,7 @@ This starts:
 - Backend API (port 8000)
 - Frontend dashboard (port 3000)
 
-Wait a minute for services to initialize, then open http://localhost:3000
+Wait a minute for services to initialize, then open http://localhost:3001
 
 ## Step 4: Create Your First Identity
 
@@ -67,7 +67,7 @@ Wait a minute for services to initialize, then open http://localhost:3000
 ## Step 5: Install the SDK
 
 ```bash
-pip install http://localhost:8000/sdk/download/YOUR_TOKEN/python
+pip install http://localhost:8001/sdk/download/YOUR_TOKEN/python
 ```
 
 ## Step 6: Use the SDK
@@ -93,7 +93,7 @@ print(f"Decrypted: {decrypted}")
 
 ## Step 7: View Audit Logs
 
-Go to http://localhost:3000/audit to see your operations logged.
+Go to http://localhost:3001/audit to see your operations logged.
 
 ## Next Steps
 

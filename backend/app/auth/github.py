@@ -22,6 +22,67 @@ GITHUB_USER_URL = "https://api.github.com/user"
 GITHUB_EMAILS_URL = "https://api.github.com/user/emails"
 
 
+@router.get("/dev-login")
+async def dev_login(db: AsyncSession = Depends(get_db)):
+    """Development mode login - bypasses OAuth for testing."""
+    if not settings.dev_mode:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Dev login only available in dev mode",
+        )
+
+    # Find or create dev user
+    dev_github_id = 1
+    result = await db.execute(select(User).where(User.github_id == dev_github_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        user = User(
+            github_id=dev_github_id,
+            github_username="devuser",
+            email="dev@localhost",
+            avatar_url=None,
+            last_login_at=datetime.utcnow(),
+            is_admin=True,  # Dev user is admin in dev mode
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    else:
+        user.last_login_at = datetime.utcnow()
+        # Ensure dev user always has admin in dev mode
+        if not user.is_admin:
+            user.is_admin = True
+        await db.commit()
+
+    # Create JWT token
+    jwt_token = create_access_token(user.id, user.github_username)
+
+    # Redirect to frontend with token in cookie
+    response = RedirectResponse(
+        url=f"{settings.frontend_url}/dashboard",
+        status_code=status.HTTP_302_FOUND,
+    )
+    response.set_cookie(
+        key="access_token",
+        value=jwt_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=settings.jwt_expiration_days * 24 * 60 * 60,
+    )
+    return response
+
+
+@router.get("/status")
+async def auth_status():
+    """Check auth configuration status."""
+    return {
+        "devMode": settings.dev_mode,
+        "githubConfigured": bool(settings.github_client_id),
+    }
+
+
 @router.get("/github")
 async def github_login():
     """Redirect to GitHub OAuth authorization."""

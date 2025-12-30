@@ -1,10 +1,20 @@
 "use client";
 
-import { Shield, Key, Zap, Github } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Shield, Key, Zap, Github, Code } from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 
 export default function Home() {
+  const [devMode, setDevMode] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_URL}/auth/status`)
+      .then((res) => res.json())
+      .then((data) => setDevMode(data.devMode))
+      .catch(() => setDevMode(true)); // Default to dev mode on error
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
       {/* Header */}
@@ -14,13 +24,23 @@ export default function Home() {
             <Shield className="h-8 w-8 text-blue-400" />
             <span className="text-xl font-bold text-white">CryptoServe</span>
           </div>
-          <a
-            href={`${API_URL}/auth/github`}
-            className="inline-flex items-center px-4 py-2 bg-white text-slate-900 rounded-lg font-medium hover:bg-slate-100 transition-colors"
-          >
-            <Github className="h-5 w-5 mr-2" />
-            Sign in with GitHub
-          </a>
+          {devMode ? (
+            <a
+              href={`${API_URL}/auth/dev-login`}
+              className="inline-flex items-center px-4 py-2 bg-yellow-500 text-slate-900 rounded-lg font-medium hover:bg-yellow-400 transition-colors"
+            >
+              <Code className="h-5 w-5 mr-2" />
+              Dev Login
+            </a>
+          ) : (
+            <a
+              href={`${API_URL}/auth/github`}
+              className="inline-flex items-center px-4 py-2 bg-white text-slate-900 rounded-lg font-medium hover:bg-slate-100 transition-colors"
+            >
+              <Github className="h-5 w-5 mr-2" />
+              Sign in with GitHub
+            </a>
+          )}
         </nav>
       </header>
 
@@ -45,13 +65,23 @@ plaintext = crypto.decrypt(ciphertext, context="user-pii")`}</code>
             </pre>
           </div>
 
-          <a
-            href={`${API_URL}/auth/github`}
-            className="inline-flex items-center px-6 py-3 bg-blue-500 text-white rounded-lg font-medium text-lg hover:bg-blue-600 transition-colors"
-          >
-            <Github className="h-5 w-5 mr-2" />
-            Get Started with GitHub
-          </a>
+          {devMode ? (
+            <a
+              href={`${API_URL}/auth/dev-login`}
+              className="inline-flex items-center px-6 py-3 bg-yellow-500 text-slate-900 rounded-lg font-medium text-lg hover:bg-yellow-400 transition-colors"
+            >
+              <Code className="h-5 w-5 mr-2" />
+              Get Started (Dev Mode)
+            </a>
+          ) : (
+            <a
+              href={`${API_URL}/auth/github`}
+              className="inline-flex items-center px-6 py-3 bg-blue-500 text-white rounded-lg font-medium text-lg hover:bg-blue-600 transition-colors"
+            >
+              <Github className="h-5 w-5 mr-2" />
+              Get Started with GitHub
+            </a>
+          )}
         </div>
 
         {/* Features */}

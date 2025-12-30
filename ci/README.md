@@ -7,10 +7,9 @@
 Unlike traditional crypto libraries that fail silently or crash at runtime, CryptoServe lets you:
 
 1. **Catch issues before commit** - Pre-commit hooks block deprecated algorithms
-2. **Simulate policy changes** - See exactly what would break before deploying
-3. **Analyze blast radius** - Understand how many operations would be affected
-4. **Run shadow mode** - Test new policies against production traffic without blocking
-5. **Compare policy versions** - Diff current vs proposed policies side-by-side
+2. **Validate policies in CI** - Every PR is checked for cryptographic policy violations
+3. **Test before deploying** - Evaluate policies against test scenarios
+4. **Enforce compliance** - Automatic checks for HIPAA, PCI-DSS, GDPR requirements
 
 This is game-changing - you get **confidence before deployment**.
 
@@ -83,50 +82,7 @@ cryptoserve-policy simulate --context payment-data --pci
 - `2` - File/parse error
 - `3` - Invalid arguments
 
-### 2. Policy Simulator (`policy-simulator.py`)
-
-The game-changing tool for testing policies before deployment.
-
-```bash
-# Simulate policy against all test scenarios
-python ci/policy-simulator.py simulate --policy new-policy.yaml
-
-# Analyze impact - see exactly what would break
-python ci/policy-simulator.py impact --policy strict-crypto.yaml
-
-# Compare current vs proposed policies
-python ci/policy-simulator.py diff --current v1.yaml --proposed v2.yaml
-
-# Shadow mode - replay historical operations
-python ci/policy-simulator.py shadow --policy new-policy.yaml --hours 24
-```
-
-**Sample Impact Analysis Output:**
-
-```
-============================================================
-IMPACT ANALYSIS: require-quantum-resistant
-============================================================
-
-Total test scenarios: 1,200
-
-Projected Impact:
-  Would BLOCK: 340 operations (28.3%)
-  Would WARN:  0 operations (0.0%)
-  Would PASS:  860 operations (71.7%)
-
-Affected Contexts: quantum-ready, payment-data, health-data
-Affected Teams: platform, security, payments
-Affected Algorithms: AES-256-GCM, ChaCha20-Poly1305
-
-Recommendations:
-  - MODERATE IMPACT: This policy would block 28.3% of operations.
-    Review affected contexts before enabling.
-  - TIP: Consider deploying in shadow mode first to validate impact
-    with real production traffic.
-```
-
-### 3. Pre-Commit Hook
+### 2. Pre-Commit Hook
 
 Catches issues before code is committed:
 
@@ -141,7 +97,7 @@ ln -sf ../../ci/pre-commit-hook.sh .git/hooks/pre-commit
 # 4. Direct crypto API usage (should use CryptoServe SDK)
 ```
 
-### 4. CI Scripts
+### 3. CI Scripts
 
 **`check-crypto-policies.sh`** - Universal CI script
 
@@ -278,12 +234,19 @@ Don't block immediately. Use `severity: warn` first to understand impact:
   # Later change to: severity: block
 ```
 
-### 2. Use Impact Analysis
+### 2. Test Policies Before Deploying
 
-Before enabling any blocking policy:
+Use the `/api/policies/evaluate` endpoint to test how policies behave:
 
 ```bash
-python ci/policy-simulator.py impact --policy new-policy.yaml
+curl -X POST http://localhost:8000/api/policies/evaluate \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "algorithm": "AES-256-GCM",
+    "context_name": "user-pii",
+    "sensitivity": "critical",
+    "pii": true
+  }'
 ```
 
 ### 3. Deploy in Stages
@@ -292,24 +255,9 @@ python ci/policy-simulator.py impact --policy new-policy.yaml
 2. **Staging** - `severity: warn` (alerts but doesn't block)
 3. **Production** - `severity: block` (enforced)
 
-### 4. Run Shadow Mode
+### 4. Version Your Policies
 
-Test new policies against production traffic without blocking:
-
-```bash
-# Replay last 24 hours of operations
-python ci/policy-simulator.py shadow --policy new-policy.yaml --hours 24
-```
-
-### 5. Version Your Policies
-
-Keep policies in version control and use diff analysis:
-
-```bash
-python ci/policy-simulator.py diff \
-  --current policies/v1.0.yaml \
-  --proposed policies/v1.1.yaml
-```
+Keep policies in version control and review changes in PRs.
 
 ---
 

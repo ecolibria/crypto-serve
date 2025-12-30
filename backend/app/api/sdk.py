@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.database import async_session_maker
+from app.database import get_session_maker
 from app.models import Identity
 from app.core.identity_manager import identity_manager
 from app.sdk_generator.generator import sdk_generator
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/sdk", tags=["sdk"])
 @router.get("/download/{token}/python")
 async def download_python_sdk(token: str):
     """Download personalized Python SDK."""
-    async with async_session_maker() as db:
+    async with get_session_maker()() as db:
         # Validate token and get identity
         identity = await identity_manager.get_identity_by_token(db, token)
 
@@ -45,7 +45,7 @@ async def download_python_sdk(token: str):
 @router.get("/info/{token}")
 async def get_sdk_info(token: str):
     """Get identity info for a token (for SDK refresh)."""
-    async with async_session_maker() as db:
+    async with get_session_maker()() as db:
         identity = await identity_manager.get_identity_by_token(db, token)
 
         if not identity:
