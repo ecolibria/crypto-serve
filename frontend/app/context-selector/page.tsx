@@ -92,6 +92,13 @@ const DATA_TYPES: DataType[] = [
     icon: <Server className="h-6 w-6" />,
     examples: ["error logs", "access logs", "audit trails", "metrics"],
   },
+  {
+    id: "backup",
+    name: "Backups & Archives",
+    description: "Database backups, disaster recovery",
+    icon: <Server className="h-6 w-6" />,
+    examples: ["database backups", "file archives", "snapshots"],
+  },
 ];
 
 const CONTEXT_MAPPING: Record<string, ContextRecommendation> = {
@@ -135,6 +142,46 @@ const CONTEXT_MAPPING: Record<string, ContextRecommendation> = {
     matchScore: 0,
     reasons: [],
   },
+  "internal-logs": {
+    context: "internal-logs",
+    displayName: "Application Logs",
+    description: "For system logs, audit trails, and application metrics",
+    algorithm: "ChaCha20-Poly1305",
+    compliance: ["SOC2"],
+    icon: <Server className="h-5 w-5" />,
+    matchScore: 0,
+    reasons: [],
+  },
+  "api-secrets": {
+    context: "api-secrets",
+    displayName: "API & Service Secrets",
+    description: "For API keys, service credentials, and integration secrets",
+    algorithm: "AES-256-GCM",
+    compliance: ["SOC2", "OWASP"],
+    icon: <Key className="h-5 w-5" />,
+    matchScore: 0,
+    reasons: [],
+  },
+  "business-documents": {
+    context: "business-documents",
+    displayName: "Business Confidential",
+    description: "For contracts, reports, IP, and business-sensitive documents",
+    algorithm: "AES-256-GCM",
+    compliance: ["SOX", "SOC2"],
+    icon: <FileText className="h-5 w-5" />,
+    matchScore: 0,
+    reasons: [],
+  },
+  "backup-data": {
+    context: "backup-data",
+    displayName: "Backup & Archives",
+    description: "For database backups, file archives, and disaster recovery",
+    algorithm: "AES-256-GCM",
+    compliance: ["GDPR", "HIPAA", "PCI-DSS", "SOC2"],
+    icon: <Server className="h-5 w-5" />,
+    matchScore: 0,
+    reasons: [],
+  },
   "quantum-ready": {
     context: "quantum-ready",
     displayName: "Quantum-Ready Secrets",
@@ -155,10 +202,19 @@ function getRecommendations(selectedTypes: string[]): ContextRecommendation[] {
     personal: [{ context: "user-pii", reason: "Best for PII protection with GDPR/CCPA compliance" }],
     payment: [{ context: "payment-data", reason: "PCI-DSS compliant encryption for card data" }],
     health: [{ context: "health-data", reason: "HIPAA-compliant PHI protection" }],
-    auth: [{ context: "session-tokens", reason: "High-performance encryption for tokens" }],
-    secrets: [{ context: "quantum-ready", reason: "Post-quantum protection for long-term secrets" }],
-    business: [{ context: "user-pii", reason: "Strong encryption for confidential documents" }],
-    logs: [{ context: "session-tokens", reason: "Fast encryption for high-volume log data" }],
+    auth: [
+      { context: "session-tokens", reason: "High-performance encryption for short-lived tokens" },
+      { context: "api-secrets", reason: "Strong protection for long-lived API credentials" },
+    ],
+    secrets: [
+      { context: "api-secrets", reason: "Secure storage for service credentials" },
+      { context: "quantum-ready", reason: "Post-quantum protection for long-term secrets" },
+    ],
+    business: [
+      { context: "business-documents", reason: "SOX/SOC2 compliant for business-sensitive data" },
+    ],
+    logs: [{ context: "internal-logs", reason: "High-throughput encryption for log data with SOC2 compliance" }],
+    backup: [{ context: "backup-data", reason: "Multi-compliance encryption for backup archives" }],
   };
 
   const contextScores: Record<string, { score: number; reasons: string[] }> = {};
@@ -207,11 +263,12 @@ export default function ContextSelectorPage() {
   };
 
   const copyCode = () => {
+    const contextName = CONTEXT_MAPPING[selectedContext || ""]?.displayName || selectedContext;
     const code = `from cryptoserve import CryptoClient
 
 client = CryptoClient()
 
-# Encrypt using the recommended context
+# Encrypt using the ${contextName} context
 encrypted = client.encrypt(
     data="your sensitive data",
     context="${selectedContext}"
@@ -429,24 +486,26 @@ decrypted = client.decrypt(encrypted)`;
               <CardHeader>
                 <CardTitle className="text-lg">Quick Start Code</CardTitle>
                 <CardDescription>
-                  Copy this code to start encrypting with the {selectedContext} context
+                  Copy this code to start encrypting with the <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">{selectedContext}</code> context
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="relative">
                   <pre className="bg-slate-950 text-slate-50 p-4 rounded-lg overflow-x-auto text-sm">
-                    <code>{`from cryptoserve import CryptoClient
+                    <code>
+{`from cryptoserve import CryptoClient
 
 client = CryptoClient()
 
-# Encrypt using the recommended context
+# Encrypt using the ${CONTEXT_MAPPING[selectedContext]?.displayName || selectedContext} context
 encrypted = client.encrypt(
     data="your sensitive data",
     context="${selectedContext}"
 )
 
 # Decrypt when needed
-decrypted = client.decrypt(encrypted)`}</code>
+decrypted = client.decrypt(encrypted)`}
+                    </code>
                   </pre>
                   <Button
                     size="sm"

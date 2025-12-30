@@ -222,7 +222,165 @@ def build_default_contexts() -> list[dict]:
         "compliance_tags": general_config.regulatory.frameworks,
     })
 
-    # 6. Quantum-Ready Context (new!)
+    # 6. Internal Logs Context (SOC2)
+    logs_config = ContextConfig(
+        data_identity=DataIdentity(
+            category=DataCategory.GENERAL,
+            subcategory="audit_logs",
+            sensitivity=Sensitivity.MEDIUM,
+            pii=False,
+            notification_required=False,
+            examples=["error logs", "access logs", "audit trails", "metrics", "debug logs"],
+        ),
+        regulatory=RegulatoryMapping(
+            frameworks=["SOC2"],
+            retention=RetentionPolicy(
+                minimum_days=365,  # 1 year for SOC2
+                maximum_days=730,
+            ),
+        ),
+        threat_model=ThreatModel(
+            adversaries=[Adversary.INSIDER, Adversary.OPPORTUNISTIC],
+            protection_lifetime_years=2,
+        ),
+        access_patterns=AccessPatterns(
+            frequency=AccessFrequency.HIGH,
+            operations_per_second=10000,
+            latency_requirement_ms=5,
+            batch_operations=True,
+        ),
+    )
+    logs_derived = resolve_algorithm(logs_config)
+    contexts.append({
+        "name": "internal-logs",
+        "display_name": "Application Logs",
+        "description": "System logs, audit trails, and application metrics",
+        "config": logs_config.model_dump(),
+        "derived": logs_derived.model_dump(),
+        "algorithm": logs_derived.resolved_algorithm,
+        "data_examples": logs_config.data_identity.examples,
+        "compliance_tags": logs_config.regulatory.frameworks,
+    })
+
+    # 7. API Secrets Context
+    api_secrets_config = ContextConfig(
+        data_identity=DataIdentity(
+            category=DataCategory.AUTHENTICATION,
+            subcategory="service_credentials",
+            sensitivity=Sensitivity.CRITICAL,
+            pii=False,
+            notification_required=True,
+            examples=["API keys", "service tokens", "database credentials", "webhook secrets", "OAuth client secrets"],
+        ),
+        regulatory=RegulatoryMapping(
+            frameworks=["SOC2", "OWASP"],
+            retention=RetentionPolicy(
+                maximum_days=365,
+                deletion_method="crypto_shred",
+            ),
+        ),
+        threat_model=ThreatModel(
+            adversaries=[Adversary.NATION_STATE, Adversary.ORGANIZED_CRIME, Adversary.INSIDER],
+            protection_lifetime_years=1,
+        ),
+        access_patterns=AccessPatterns(
+            frequency=AccessFrequency.LOW,
+            latency_requirement_ms=100,
+        ),
+    )
+    api_secrets_derived = resolve_algorithm(api_secrets_config)
+    contexts.append({
+        "name": "api-secrets",
+        "display_name": "API & Service Secrets",
+        "description": "API keys, service credentials, and integration secrets",
+        "config": api_secrets_config.model_dump(),
+        "derived": api_secrets_derived.model_dump(),
+        "algorithm": api_secrets_derived.resolved_algorithm,
+        "data_examples": api_secrets_config.data_identity.examples,
+        "compliance_tags": api_secrets_config.regulatory.frameworks,
+    })
+
+    # 8. Business Documents Context
+    business_config = ContextConfig(
+        data_identity=DataIdentity(
+            category=DataCategory.BUSINESS_CONFIDENTIAL,
+            sensitivity=Sensitivity.HIGH,
+            pii=False,
+            notification_required=False,
+            examples=["contracts", "financial reports", "HR documents", "IP", "board materials", "M&A documents"],
+        ),
+        regulatory=RegulatoryMapping(
+            frameworks=["SOX", "SOC2"],
+            retention=RetentionPolicy(
+                minimum_days=2555,  # 7 years for SOX
+                maximum_days=3650,
+            ),
+        ),
+        threat_model=ThreatModel(
+            adversaries=[Adversary.ORGANIZED_CRIME, Adversary.INSIDER, Adversary.NATION_STATE],
+            protection_lifetime_years=10,
+        ),
+        access_patterns=AccessPatterns(
+            frequency=AccessFrequency.LOW,
+            latency_requirement_ms=200,
+        ),
+    )
+    business_derived = resolve_algorithm(business_config)
+    contexts.append({
+        "name": "business-documents",
+        "display_name": "Business Confidential",
+        "description": "Contracts, reports, IP, and other business-sensitive documents",
+        "config": business_config.model_dump(),
+        "derived": business_derived.model_dump(),
+        "algorithm": business_derived.resolved_algorithm,
+        "data_examples": business_config.data_identity.examples,
+        "compliance_tags": business_config.regulatory.frameworks,
+    })
+
+    # 9. Backup Data Context
+    backup_config = ContextConfig(
+        data_identity=DataIdentity(
+            category=DataCategory.GENERAL,
+            subcategory="backup_archive",
+            sensitivity=Sensitivity.HIGH,
+            pii=True,  # Backups may contain PII
+            phi=True,  # Backups may contain PHI
+            pci=True,  # Backups may contain PCI
+            notification_required=True,
+            examples=["database backups", "file archives", "disaster recovery", "snapshots"],
+        ),
+        regulatory=RegulatoryMapping(
+            frameworks=["GDPR", "HIPAA", "PCI-DSS", "SOC2"],
+            retention=RetentionPolicy(
+                minimum_days=30,
+                maximum_days=2555,  # 7 years
+                deletion_method="crypto_shred",
+            ),
+        ),
+        threat_model=ThreatModel(
+            adversaries=[Adversary.NATION_STATE, Adversary.ORGANIZED_CRIME],
+            attack_vectors=["offline_attack", "media_theft"],
+            protection_lifetime_years=10,
+        ),
+        access_patterns=AccessPatterns(
+            frequency=AccessFrequency.RARE,
+            batch_operations=True,
+            latency_requirement_ms=1000,  # Backups can be slower
+        ),
+    )
+    backup_derived = resolve_algorithm(backup_config)
+    contexts.append({
+        "name": "backup-data",
+        "display_name": "Backup & Archives",
+        "description": "Database backups, file archives, and disaster recovery data",
+        "config": backup_config.model_dump(),
+        "derived": backup_derived.model_dump(),
+        "algorithm": backup_derived.resolved_algorithm,
+        "data_examples": backup_config.data_identity.examples,
+        "compliance_tags": backup_config.regulatory.frameworks,
+    })
+
+    # 10. Quantum-Ready Context
     quantum_config = ContextConfig(
         data_identity=DataIdentity(
             category=DataCategory.BUSINESS_CONFIDENTIAL,
