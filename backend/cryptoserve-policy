@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""CryptoServe Policy CLI entry point."""
+
+import sys
+from pathlib import Path
+
+# Add the backend directory to the path
+sys.path.insert(0, str(Path(__file__).parent))
+
+from app.cli.policy_cli import main
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -97,17 +97,20 @@ class PolicyEngine:
     """Evaluates operations against cryptographic policies."""
 
     # Supported comparison operators
-    OPERATORS = {
-        "==": operator.eq,
-        "!=": operator.ne,
-        ">": operator.gt,
-        ">=": operator.ge,
-        "<": operator.lt,
-        "<=": operator.le,
-        "in": lambda a, b: a in b,
-        "not in": lambda a, b: a not in b,
-        "contains": lambda a, b: b in a,
-    }
+    # IMPORTANT: "not in" must come before "in" to avoid incorrect matching
+    # Using a list of tuples to preserve order (Python 3.7+ dicts preserve order,
+    # but explicit ordering is safer for this critical logic)
+    OPERATORS = [
+        ("not in", lambda a, b: a not in b),
+        ("contains", lambda a, b: b in a),
+        ("in", lambda a, b: a in b),
+        (">=", operator.ge),
+        ("<=", operator.le),
+        ("!=", operator.ne),
+        ("==", operator.eq),
+        (">", operator.gt),
+        ("<", operator.lt),
+    ]
 
     def __init__(self):
         self.policies: list[Policy] = []
@@ -270,6 +273,25 @@ class PolicyEngine:
             "False": False,
         }
 
+    def _find_top_level_operator(self, rule: str, op: str) -> int | None:
+        """Find the position of an operator at the top level (outside parentheses).
+
+        Returns the index where the operator starts, or None if not found at top level.
+        """
+        depth = 0
+        op_with_spaces = f" {op} "
+        i = 0
+        while i <= len(rule) - len(op_with_spaces):
+            char = rule[i]
+            if char == '(':
+                depth += 1
+            elif char == ')':
+                depth -= 1
+            elif depth == 0 and rule[i:i + len(op_with_spaces)] == op_with_spaces:
+                return i
+            i += 1
+        return None
+
     def _parse_and_eval(self, rule: str, namespace: dict) -> bool:
         """Parse and evaluate a rule expression.
 
@@ -279,37 +301,64 @@ class PolicyEngine:
         - Boolean: and, or, not
         - Parentheses for grouping
         - Dot notation for nested access
+
+        Operator precedence (lowest to highest):
+        1. or
+        2. and
+        3. not
+        4. comparison operators
         """
-        # Handle 'or' expressions
-        if " or " in rule:
-            parts = rule.split(" or ", 1)
-            return self._parse_and_eval(parts[0].strip(), namespace) or \
-                   self._parse_and_eval(parts[1].strip(), namespace)
+        stripped = rule.strip()
 
-        # Handle 'and' expressions
-        if " and " in rule:
-            parts = rule.split(" and ", 1)
-            return self._parse_and_eval(parts[0].strip(), namespace) and \
-                   self._parse_and_eval(parts[1].strip(), namespace)
+        # Handle parentheses wrapping the entire expression first
+        if stripped.startswith("(") and stripped.endswith(")"):
+            # Check if these are matching parentheses (not separate groups)
+            depth = 0
+            matched = True
+            for i, char in enumerate(stripped):
+                if char == '(':
+                    depth += 1
+                elif char == ')':
+                    depth -= 1
+                    if depth == 0 and i < len(stripped) - 1:
+                        # Closing paren before end means these aren't wrapping parens
+                        matched = False
+                        break
+            if matched and depth == 0:
+                return self._parse_and_eval(stripped[1:-1], namespace)
 
-        # Handle 'not' prefix
-        if rule.strip().startswith("not "):
-            return not self._parse_and_eval(rule.strip()[4:], namespace)
+        # Handle 'or' at top level (lowest precedence)
+        or_pos = self._find_top_level_operator(stripped, "or")
+        if or_pos is not None:
+            left = stripped[:or_pos]
+            right = stripped[or_pos + 4:]  # len(" or ") = 4
+            return self._parse_and_eval(left, namespace) or \
+                   self._parse_and_eval(right, namespace)
 
-        # Handle parentheses
-        if rule.strip().startswith("(") and rule.strip().endswith(")"):
-            return self._parse_and_eval(rule.strip()[1:-1], namespace)
+        # Handle 'and' at top level
+        and_pos = self._find_top_level_operator(stripped, "and")
+        if and_pos is not None:
+            left = stripped[:and_pos]
+            right = stripped[and_pos + 5:]  # len(" and ") = 5
+            return self._parse_and_eval(left, namespace) and \
+                   self._parse_and_eval(right, namespace)
 
-        # Parse comparison expression
-        for op_str, op_func in self.OPERATORS.items():
-            if f" {op_str} " in rule:
-                parts = rule.split(f" {op_str} ", 1)
+        # Handle 'not' prefix (after checking for 'not in' operator below)
+        # Parse comparison expression - check operators BEFORE 'not' prefix
+        # This ensures "not in" is treated as a single operator
+        for op_str, op_func in self.OPERATORS:
+            if f" {op_str} " in stripped:
+                parts = stripped.split(f" {op_str} ", 1)
                 left = self._resolve_value(parts[0].strip(), namespace)
                 right = self._resolve_value(parts[1].strip(), namespace)
                 return op_func(left, right)
 
+        # Handle 'not' prefix (only after checking for 'not in' operator above)
+        if stripped.startswith("not "):
+            return not self._parse_and_eval(stripped[4:], namespace)
+
         # If no operator, evaluate as boolean
-        return bool(self._resolve_value(rule.strip(), namespace))
+        return bool(self._resolve_value(stripped, namespace))
 
     def _resolve_value(self, expr: str, namespace: dict) -> Any:
         """Resolve a value expression to its actual value."""
