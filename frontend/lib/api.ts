@@ -15,7 +15,19 @@ async function fetchApi(endpoint: string, options: RequestInit = {}) {
     throw new Error(error.detail || "Request failed");
   }
 
-  return response.json();
+  // Handle empty responses (204 No Content, etc.)
+  const contentLength = response.headers.get("content-length");
+  if (response.status === 204 || contentLength === "0") {
+    return null;
+  }
+
+  // Try to parse JSON, return null if empty
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
+
+  return JSON.parse(text);
 }
 
 export interface User {
