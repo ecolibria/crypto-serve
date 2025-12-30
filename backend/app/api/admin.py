@@ -107,6 +107,43 @@ class HealthStatus(BaseModel):
     avg_latency_last_hour: float
 
 
+class RiskScoreResponse(BaseModel):
+    """Crypto risk score response."""
+    score: int  # 0-100, higher is better
+    grade: str  # A, B, C, D, F
+    trend: str  # improving, stable, declining
+    factors: list[dict]  # Individual risk factors
+    premium_required: bool  # True to see detailed breakdown
+
+
+class QuantumReadinessResponse(BaseModel):
+    """Quantum readiness assessment."""
+    readiness_percent: int  # 0-100
+    classical_contexts: int
+    quantum_ready_contexts: int
+    hybrid_contexts: int
+    migration_status: str  # not_started, in_progress, complete
+    estimated_completion: Optional[str]  # Date estimate
+    premium_required: bool  # True for migration tools
+
+
+class ComplianceFramework(BaseModel):
+    """Compliance framework status."""
+    name: str
+    status: str  # compliant, partial, non_compliant, not_applicable
+    coverage_percent: int
+    issues: int
+    last_audit: Optional[datetime]
+
+
+class ComplianceStatusResponse(BaseModel):
+    """Overall compliance status."""
+    frameworks: list[ComplianceFramework]
+    overall_score: int
+    export_available: bool  # Always False for OSS (premium feature)
+    premium_required: bool
+
+
 # --- Auth Dependency ---
 
 async def require_admin(
@@ -787,4 +824,292 @@ async def get_system_health(
         expiring_identities=expiring,
         failed_operations_last_hour=failed_last_hour,
         avg_latency_last_hour=round(avg_latency, 2),
+    )
+
+
+# --- Premium Feature Previews (OSS shows value, gates details) ---
+
+@router.get("/risk-score", response_model=RiskScoreResponse)
+async def get_risk_score(
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Get crypto risk score for the organization.
+
+    OSS: Shows overall score and grade
+    Premium: Shows detailed breakdown by factor
+    """
+    # Calculate risk factors based on actual data
+    now = datetime.utcnow()
+
+    # Factor 1: Algorithm strength (check for deprecated algorithms)
+    contexts_result = await db.execute(select(Context))
+    contexts = contexts_result.scalars().all()
+
+    deprecated_algos = {"DES", "3DES", "RC4", "MD5", "SHA-1", "RSA-1024"}
+    weak_count = sum(1 for c in contexts if any(d in c.algorithm for d in deprecated_algos))
+    total_contexts = len(contexts)
+    algo_score = max(0, 100 - (weak_count * 20)) if total_contexts > 0 else 100
+
+    # Factor 2: Key rotation frequency
+    thirty_days_ago = now - timedelta(days=30)
+    recent_rotations = await db.scalar(
+        select(func.count(Key.id)).where(Key.created_at >= thirty_days_ago)
+    ) or 0
+    rotation_score = min(100, recent_rotations * 25)  # 4 rotations = 100
+
+    # Factor 3: Identity hygiene (expired/revoked cleanup)
+    total_identities = await db.scalar(select(func.count(Identity.id))) or 0
+    active_identities = await db.scalar(
+        select(func.count(Identity.id)).where(
+            and_(
+                Identity.status == IdentityStatus.ACTIVE,
+                Identity.expires_at > now
+            )
+        )
+    ) or 0
+    identity_score = (active_identities / total_identities * 100) if total_identities > 0 else 100
+
+    # Factor 4: Operation success rate
+    total_ops = await db.scalar(select(func.count(AuditLog.id))) or 0
+    successful_ops = await db.scalar(
+        select(func.count(AuditLog.id)).where(AuditLog.success == True)
+    ) or 0
+    success_rate = (successful_ops / total_ops * 100) if total_ops > 0 else 100
+
+    # Factor 5: Quantum readiness (contexts using PQC)
+    pqc_algos = {"ML-KEM", "ML-DSA", "SLH-DSA", "Kyber", "Dilithium", "SPHINCS"}
+    quantum_ready = sum(1 for c in contexts if any(p in c.algorithm for p in pqc_algos))
+    quantum_score = (quantum_ready / total_contexts * 100) if total_contexts > 0 else 0
+
+    # Calculate overall score (weighted average)
+    overall_score = int(
+        algo_score * 0.30 +
+        rotation_score * 0.15 +
+        identity_score * 0.20 +
+        success_rate * 0.20 +
+        quantum_score * 0.15
+    )
+
+    # Determine grade
+    if overall_score >= 90:
+        grade = "A"
+    elif overall_score >= 80:
+        grade = "B"
+    elif overall_score >= 70:
+        grade = "C"
+    elif overall_score >= 60:
+        grade = "D"
+    else:
+        grade = "F"
+
+    # Determine trend (compare to 7 days ago - simplified)
+    week_ago = now - timedelta(days=7)
+    old_failed = await db.scalar(
+        select(func.count(AuditLog.id)).where(
+            and_(
+                AuditLog.timestamp < week_ago,
+                AuditLog.success == False
+            )
+        )
+    ) or 0
+    recent_failed = await db.scalar(
+        select(func.count(AuditLog.id)).where(
+            and_(
+                AuditLog.timestamp >= week_ago,
+                AuditLog.success == False
+            )
+        )
+    ) or 0
+
+    if recent_failed < old_failed:
+        trend = "improving"
+    elif recent_failed > old_failed:
+        trend = "declining"
+    else:
+        trend = "stable"
+
+    # Factors - OSS shows names only, premium shows details
+    factors = [
+        {"name": "Algorithm Strength", "category": "crypto"},
+        {"name": "Key Rotation", "category": "keys"},
+        {"name": "Identity Hygiene", "category": "access"},
+        {"name": "Operation Success", "category": "ops"},
+        {"name": "Quantum Readiness", "category": "quantum"},
+    ]
+
+    return RiskScoreResponse(
+        score=overall_score,
+        grade=grade,
+        trend=trend,
+        factors=factors,
+        premium_required=True,  # Detailed scores require premium
+    )
+
+
+@router.get("/quantum-readiness", response_model=QuantumReadinessResponse)
+async def get_quantum_readiness(
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Get quantum readiness assessment.
+
+    OSS: Shows readiness percentage and counts
+    Premium: Access to migration tools and detailed planning
+    """
+    # Get all contexts
+    result = await db.execute(select(Context))
+    contexts = result.scalars().all()
+
+    # Categorize by quantum readiness
+    pqc_algos = {"ML-KEM", "ML-DSA", "SLH-DSA", "Kyber", "Dilithium", "SPHINCS", "BIKE", "HQC"}
+    hybrid_algos = {"AES-256-GCM+ML-KEM", "ChaCha20-Poly1305+ML-KEM", "Hybrid"}
+
+    classical_contexts = 0
+    quantum_ready_contexts = 0
+    hybrid_contexts = 0
+
+    for ctx in contexts:
+        algo = ctx.algorithm
+        if any(h in algo for h in hybrid_algos):
+            hybrid_contexts += 1
+        elif any(p in algo for p in pqc_algos):
+            quantum_ready_contexts += 1
+        else:
+            classical_contexts += 1
+
+    total = len(contexts)
+
+    # Calculate readiness percentage
+    # Hybrid and quantum-ready both count as "ready"
+    ready_count = quantum_ready_contexts + hybrid_contexts
+    readiness_percent = int((ready_count / total * 100)) if total > 0 else 0
+
+    # Determine migration status
+    if readiness_percent == 0:
+        migration_status = "not_started"
+        estimated_completion = None
+    elif readiness_percent >= 100:
+        migration_status = "complete"
+        estimated_completion = None
+    else:
+        migration_status = "in_progress"
+        # Estimate completion based on remaining contexts
+        remaining = classical_contexts
+        estimated_completion = (datetime.utcnow() + timedelta(days=remaining * 30)).strftime("%Y-%m-%d")
+
+    return QuantumReadinessResponse(
+        readiness_percent=readiness_percent,
+        classical_contexts=classical_contexts,
+        quantum_ready_contexts=quantum_ready_contexts,
+        hybrid_contexts=hybrid_contexts,
+        migration_status=migration_status,
+        estimated_completion=estimated_completion,
+        premium_required=True,  # Migration tools require premium
+    )
+
+
+@router.get("/compliance-status", response_model=ComplianceStatusResponse)
+async def get_compliance_status(
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Get compliance status across frameworks.
+
+    OSS: Shows framework status and coverage
+    Premium: Export compliance reports, detailed remediation
+    """
+    # Get all contexts with their compliance tags
+    result = await db.execute(select(Context))
+    contexts = result.scalars().all()
+
+    # Analyze compliance by framework
+    framework_requirements = {
+        "SOC2": {"encryption": True, "audit_logging": True, "key_rotation": True, "access_control": True},
+        "HIPAA": {"encryption": True, "audit_logging": True, "phi_protection": True},
+        "PCI-DSS": {"encryption": True, "key_management": True, "strong_crypto": True},
+        "GDPR": {"encryption": True, "data_minimization": True, "right_to_erasure": True},
+    }
+
+    # Check what we have
+    has_encryption = len(contexts) > 0  # Any contexts means encryption is used
+    has_audit = await db.scalar(select(func.count(AuditLog.id))) > 0
+    has_key_rotation = await db.scalar(
+        select(func.count(Key.id)).where(
+            Key.created_at >= datetime.utcnow() - timedelta(days=90)
+        )
+    ) > 0
+
+    # Check for specific context types
+    context_tags = set()
+    for ctx in contexts:
+        context_tags.update(ctx.compliance_tags or [])
+
+    frameworks = []
+
+    # SOC2
+    soc2_met = sum([has_encryption, has_audit, has_key_rotation, len(contexts) > 0])
+    soc2_total = 4
+    soc2_coverage = int(soc2_met / soc2_total * 100)
+    frameworks.append(ComplianceFramework(
+        name="SOC2",
+        status="compliant" if soc2_coverage >= 80 else "partial" if soc2_coverage >= 50 else "non_compliant",
+        coverage_percent=soc2_coverage,
+        issues=soc2_total - soc2_met,
+        last_audit=None,
+    ))
+
+    # HIPAA
+    has_phi = "HIPAA" in context_tags or any("health" in (ctx.name or "").lower() for ctx in contexts)
+    hipaa_met = sum([has_encryption, has_audit, has_phi])
+    hipaa_total = 3
+    hipaa_coverage = int(hipaa_met / hipaa_total * 100)
+    frameworks.append(ComplianceFramework(
+        name="HIPAA",
+        status="compliant" if hipaa_coverage >= 80 else "partial" if hipaa_coverage >= 50 else "non_compliant",
+        coverage_percent=hipaa_coverage,
+        issues=hipaa_total - hipaa_met,
+        last_audit=None,
+    ))
+
+    # PCI-DSS
+    strong_crypto = all(
+        "AES-256" in ctx.algorithm or "AES-128" in ctx.algorithm or "ChaCha20" in ctx.algorithm
+        for ctx in contexts
+    ) if contexts else False
+    pci_met = sum([has_encryption, has_key_rotation, strong_crypto])
+    pci_total = 3
+    pci_coverage = int(pci_met / pci_total * 100)
+    frameworks.append(ComplianceFramework(
+        name="PCI-DSS",
+        status="compliant" if pci_coverage >= 80 else "partial" if pci_coverage >= 50 else "non_compliant",
+        coverage_percent=pci_coverage,
+        issues=pci_total - pci_met,
+        last_audit=None,
+    ))
+
+    # GDPR
+    has_gdpr = "GDPR" in context_tags or any("pii" in (ctx.name or "").lower() for ctx in contexts)
+    gdpr_met = sum([has_encryption, has_gdpr, has_audit])
+    gdpr_total = 3
+    gdpr_coverage = int(gdpr_met / gdpr_total * 100)
+    frameworks.append(ComplianceFramework(
+        name="GDPR",
+        status="compliant" if gdpr_coverage >= 80 else "partial" if gdpr_coverage >= 50 else "non_compliant",
+        coverage_percent=gdpr_coverage,
+        issues=gdpr_total - gdpr_met,
+        last_audit=None,
+    ))
+
+    # Calculate overall score
+    overall_score = int(sum(f.coverage_percent for f in frameworks) / len(frameworks))
+
+    return ComplianceStatusResponse(
+        frameworks=frameworks,
+        overall_score=overall_score,
+        export_available=False,  # Always false for OSS
+        premium_required=True,
     )

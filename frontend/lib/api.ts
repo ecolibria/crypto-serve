@@ -277,6 +277,45 @@ export interface HealthStatus {
   avg_latency_last_hour: number;
 }
 
+// Premium Feature Types
+export interface RiskScoreFactor {
+  name: string;
+  category: string;
+}
+
+export interface RiskScoreResponse {
+  score: number;
+  grade: string;
+  trend: string;
+  factors: RiskScoreFactor[];
+  premium_required: boolean;
+}
+
+export interface QuantumReadinessResponse {
+  readiness_percent: number;
+  classical_contexts: number;
+  quantum_ready_contexts: number;
+  hybrid_contexts: number;
+  migration_status: string;
+  estimated_completion: string | null;
+  premium_required: boolean;
+}
+
+export interface ComplianceFramework {
+  name: string;
+  status: string;
+  coverage_percent: number;
+  issues: number;
+  last_audit: string | null;
+}
+
+export interface ComplianceStatusResponse {
+  frameworks: ComplianceFramework[];
+  overall_score: number;
+  export_available: boolean;
+  premium_required: boolean;
+}
+
 // Policy Types
 export interface Policy {
   name: string;
@@ -502,6 +541,11 @@ export const api = {
 
   // Admin - Health
   getSystemHealth: () => fetchApi("/api/admin/health") as Promise<HealthStatus>,
+
+  // Admin - Premium Features (OSS Preview)
+  getRiskScore: () => fetchApi("/api/admin/risk-score") as Promise<RiskScoreResponse>,
+  getQuantumReadiness: () => fetchApi("/api/admin/quantum-readiness") as Promise<QuantumReadinessResponse>,
+  getComplianceStatus: () => fetchApi("/api/admin/compliance-status") as Promise<ComplianceStatusResponse>,
 
   // Policies
   listPolicies: (params?: { enabled_only?: boolean; severity?: string }) => {

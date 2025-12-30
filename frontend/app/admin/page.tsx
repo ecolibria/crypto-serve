@@ -24,7 +24,13 @@ import {
   TeamUsage,
   HealthStatus,
   AuditLog,
+  RiskScoreResponse,
+  QuantumReadinessResponse,
+  ComplianceStatusResponse,
 } from "@/lib/api";
+import { RiskScoreGauge } from "@/components/premium/risk-score-gauge";
+import { QuantumReadinessMeter } from "@/components/premium/quantum-readiness-meter";
+import { ComplianceBadges } from "@/components/premium/compliance-badges";
 import { cn } from "@/lib/utils";
 
 function formatBytes(bytes: number): string {
@@ -47,22 +53,40 @@ export default function AdminDashboard() {
   const [teamUsage, setTeamUsage] = useState<TeamUsage[]>([]);
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
+  const [riskScore, setRiskScore] = useState<RiskScoreResponse | null>(null);
+  const [quantumReadiness, setQuantumReadiness] = useState<QuantumReadinessResponse | null>(null);
+  const [complianceStatus, setComplianceStatus] = useState<ComplianceStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     try {
-      const [statsData, trendsData, teamsData, healthData, logsData] = await Promise.all([
+      const [
+        statsData,
+        trendsData,
+        teamsData,
+        healthData,
+        logsData,
+        riskData,
+        quantumData,
+        complianceData,
+      ] = await Promise.all([
         api.getAdminDashboard(),
         api.getOperationTrends(30),
         api.getTeamUsage(5),
         api.getSystemHealth(),
         api.getGlobalAuditLogs({ limit: 10 }),
+        api.getRiskScore(),
+        api.getQuantumReadiness(),
+        api.getComplianceStatus(),
       ]);
       setStats(statsData);
       setTrends(trendsData);
       setTeamUsage(teamsData);
       setHealth(healthData);
       setRecentLogs(logsData);
+      setRiskScore(riskData);
+      setQuantumReadiness(quantumData);
+      setComplianceStatus(complianceData);
     } catch (error) {
       console.error("Failed to load admin data:", error);
     } finally {
@@ -203,6 +227,13 @@ export default function AdminDashboard() {
           subtitle={`${stats?.contexts_count ?? 0} contexts`}
           icon={<Database className="h-5 w-5" />}
         />
+      </div>
+
+      {/* Premium Insights Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {riskScore && <RiskScoreGauge data={riskScore} />}
+        {quantumReadiness && <QuantumReadinessMeter data={quantumReadiness} />}
+        {complianceStatus && <ComplianceBadges data={complianceStatus} />}
       </div>
 
       {/* Charts Row */}
