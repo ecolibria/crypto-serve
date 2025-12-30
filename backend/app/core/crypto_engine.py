@@ -1,4 +1,7 @@
-"""Cryptographic operations engine."""
+"""Cryptographic operations engine.
+
+Handles encryption and decryption with policy enforcement.
+"""
 
 import os
 import json
@@ -10,8 +13,14 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Context, Identity, AuditLog
+from app.models import Context, Identity, AuditLog, PolicyViolationLog
 from app.core.key_manager import key_manager
+from app.core.policy_engine import (
+    policy_engine,
+    PolicyViolation,
+    PolicySeverity,
+    build_evaluation_context,
+)
 
 
 class CryptoError(Exception):
@@ -34,6 +43,14 @@ class DecryptionError(CryptoError):
     pass
 
 
+class PolicyError(CryptoError):
+    """Policy violation blocked the operation."""
+
+    def __init__(self, policy_name: str, message: str):
+        self.policy_name = policy_name
+        super().__init__(f"Policy violation [{policy_name}]: {message}")
+
+
 @dataclass
 class EncryptResult:
     """Result of encryption operation."""
@@ -45,9 +62,13 @@ class EncryptResult:
 
 
 class CryptoEngine:
-    """Handles encryption and decryption operations."""
+    """Handles encryption and decryption operations with policy enforcement."""
 
     HEADER_VERSION = 1
+
+    def __init__(self):
+        # Load default policies on startup
+        policy_engine.load_default_policies()
 
     async def encrypt(
         self,
@@ -57,11 +78,31 @@ class CryptoEngine:
         identity: Identity,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        enforce_policies: bool = True,
     ) -> bytes:
-        """Encrypt data and return self-describing ciphertext."""
+        """Encrypt data and return self-describing ciphertext.
+
+        Args:
+            db: Database session
+            plaintext: Data to encrypt
+            context_name: Encryption context
+            identity: Calling identity
+            ip_address: Request IP for audit
+            user_agent: Request user agent for audit
+            enforce_policies: If True, evaluate and enforce policies
+
+        Returns:
+            Self-describing ciphertext
+
+        Raises:
+            ContextNotFoundError: If context doesn't exist
+            AuthorizationError: If identity not authorized
+            PolicyError: If a blocking policy is violated
+        """
         start_time = datetime.utcnow()
         success = False
         error_message = None
+        packed = b""
 
         try:
             # Validate context exists
@@ -76,6 +117,17 @@ class CryptoEngine:
             if context_name not in identity.allowed_contexts:
                 raise AuthorizationError(
                     f"Identity not authorized for context: {context_name}"
+                )
+
+            # Evaluate policies
+            if enforce_policies:
+                await self._evaluate_policies(
+                    db=db,
+                    context=context,
+                    identity=identity,
+                    operation="encrypt",
+                    ip_address=ip_address,
+                    user_agent=user_agent,
                 )
 
             # Get key for context
@@ -97,6 +149,10 @@ class CryptoEngine:
 
             success = True
             return packed
+
+        except PolicyViolation as e:
+            error_message = str(e)
+            raise PolicyError(e.policy_name, e.args[0])
 
         except Exception as e:
             error_message = str(e)
@@ -239,6 +295,81 @@ class CryptoEngine:
             )
 
         return header, ciphertext
+
+    async def _evaluate_policies(
+        self,
+        db: AsyncSession,
+        context: Context,
+        identity: Identity,
+        operation: str,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> None:
+        """Evaluate policies for a crypto operation.
+
+        This is where the magic happens: policies are automatically evaluated
+        based on the context configuration. Developers don't need to know the
+        details - the system handles enforcement intelligently.
+
+        Args:
+            db: Database session
+            context: The encryption context
+            identity: The calling identity
+            operation: "encrypt" or "decrypt"
+            ip_address: Request IP for logging
+            user_agent: Request user agent for logging
+
+        Raises:
+            PolicyViolation: If a blocking policy is violated
+        """
+        # Build evaluation context from the 5-layer context model
+        # This maps context configuration → policy evaluation automatically
+        eval_context = build_evaluation_context(
+            context_config=context.config,  # 5-layer configuration
+            context_derived=context.derived,  # Derived requirements (algorithm, etc.)
+            context_name=context.name,
+            identity_data={
+                "id": identity.id,
+                "name": identity.name,
+                "team": identity.team,
+                "type": identity.identity_type.value if identity.identity_type else None,
+                "environment": identity.environment,
+            },
+            operation=operation,
+        )
+
+        # Evaluate all applicable policies
+        # The policy engine knows which policies apply based on context and operation
+        results = policy_engine.evaluate(eval_context, raise_on_block=True)
+
+        # Log any violations (warn or info level)
+        for result in results:
+            if not result.passed:
+                # Log the violation for audit trail
+                violation = PolicyViolationLog(
+                    policy_name=result.policy_name,
+                    severity=result.severity.value,
+                    message=result.message,
+                    blocked=(result.severity == PolicySeverity.BLOCK),
+                    context_name=context.name,
+                    operation=operation,
+                    identity_id=str(identity.id) if identity.id else None,
+                    identity_name=identity.name,
+                    team=identity.team,
+                    rule=result.details.get("rule", ""),
+                    evaluation_context={
+                        "algorithm": eval_context.algorithm,
+                        "context": eval_context.context,
+                        "identity": eval_context.identity,
+                    },
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                )
+                db.add(violation)
+
+        # Commit any logged violations
+        if any(not r.passed for r in results):
+            await db.commit()
 
 
 # Singleton instance

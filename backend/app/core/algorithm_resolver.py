@@ -15,42 +15,49 @@ from app.schemas.context import (
 
 
 # Algorithm registry with properties
+# Uses official NIST naming: ML-KEM (FIPS 203), ML-DSA (FIPS 204), SLH-DSA (FIPS 205)
 ALGORITHMS = {
     "AES-128-GCM": {
         "security_bits": 128,
         "quantum_resistant": False,
         "latency_ms": 0.1,
-        "description": "AES-128 in GCM mode",
+        "description": "AES-128 in GCM mode (FIPS 197, SP 800-38D)",
+        "standards": ["FIPS 197", "NIST SP 800-38D"],
     },
     "AES-256-GCM": {
         "security_bits": 256,
         "quantum_resistant": False,
         "latency_ms": 0.15,
-        "description": "AES-256 in GCM mode",
+        "description": "AES-256 in GCM mode (FIPS 197, SP 800-38D)",
+        "standards": ["FIPS 197", "NIST SP 800-38D"],
     },
     "AES-256-GCM-SIV": {
         "security_bits": 256,
         "quantum_resistant": False,
         "latency_ms": 0.2,
-        "description": "AES-256 in GCM-SIV mode (nonce-misuse resistant)",
+        "description": "AES-256 in GCM-SIV mode - nonce-misuse resistant (RFC 8452)",
+        "standards": ["RFC 8452"],
     },
     "ChaCha20-Poly1305": {
         "security_bits": 256,
         "quantum_resistant": False,
         "latency_ms": 0.12,
-        "description": "ChaCha20 with Poly1305 (good for non-AES-NI)",
+        "description": "ChaCha20 with Poly1305 - good for non-AES-NI (RFC 8439)",
+        "standards": ["RFC 8439"],
     },
-    "AES-256-GCM+Kyber768": {
+    "AES-256-GCM+ML-KEM-768": {
         "security_bits": 256,
         "quantum_resistant": True,
         "latency_ms": 0.5,
-        "description": "Hybrid classical + post-quantum (NIST Level 3)",
+        "description": "Hybrid classical + post-quantum, NIST PQC Level 3 (FIPS 203)",
+        "standards": ["FIPS 197", "FIPS 203"],
     },
-    "AES-256-GCM+Kyber1024": {
+    "AES-256-GCM+ML-KEM-1024": {
         "security_bits": 256,
         "quantum_resistant": True,
         "latency_ms": 0.7,
-        "description": "Hybrid classical + post-quantum (NIST Level 5)",
+        "description": "Hybrid classical + post-quantum, NIST PQC Level 5 (FIPS 203)",
+        "standards": ["FIPS 197", "FIPS 203"],
     },
 }
 
@@ -227,7 +234,7 @@ class AlgorithmResolver:
             self.rationale.append(
                 "No algorithm meets all requirements, using strongest available"
             )
-            return "AES-256-GCM+Kyber1024" if quantum_resistant else "AES-256-GCM"
+            return "AES-256-GCM+ML-KEM-1024" if quantum_resistant else "AES-256-GCM"
 
         # Sort by latency (prefer faster algorithms)
         candidates.sort(key=lambda x: x[1]["latency_ms"])
