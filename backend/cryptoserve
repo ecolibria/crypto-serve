@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""CryptoServe Unified CLI.
+
+A single entry point for all CryptoServe CLI tools.
+
+Usage:
+    cryptoserve policy validate policy.yaml
+    cryptoserve policy check --algorithm AES-256-GCM
+    cryptoserve migrate scan ./src
+    cryptoserve migrate plan ./src
+    cryptoserve heal status
+    cryptoserve heal auto
+"""
+
+import sys
+from pathlib import Path
+
+# Add the backend directory to the path
+sys.path.insert(0, str(Path(__file__).parent))
+
+
+def print_help():
+    """Print unified help."""
+    help_text = """
+CryptoServe CLI - Context-Aware Cryptography Platform
+
+USAGE:
+    cryptoserve <command> [subcommand] [options]
+
+COMMANDS:
+    policy      Policy validation and compliance checking
+    migrate     Codebase migration and scanning
+    heal        Self-healing and remediation
+
+POLICY COMMANDS:
+    cryptoserve policy validate <file>          Validate policy YAML files
+    cryptoserve policy check -a <algorithm>     Check algorithm compliance
+    cryptoserve policy list algorithms          List all algorithms
+    cryptoserve policy list quantum             List quantum-resistant algorithms
+    cryptoserve policy list deprecated          List deprecated algorithms
+    cryptoserve policy simulate                 Simulate algorithm resolution
+
+MIGRATE COMMANDS:
+    cryptoserve migrate scan <dir>              Scan for crypto issues
+    cryptoserve migrate plan <dir>              Generate migration plan
+    cryptoserve migrate report <dir>            Generate detailed report
+
+HEAL COMMANDS:
+    cryptoserve heal status                     Show system health
+    cryptoserve heal auto                       Auto-heal all issues
+    cryptoserve heal reencrypt -c <context>     Re-encrypt data
+    cryptoserve heal rotate-keys                Rotate encryption keys
+    cryptoserve heal upgrade-quantum            Plan quantum migration
+
+OPTIONS:
+    --help, -h      Show this help message
+    --no-color      Disable colored output
+    --format        Output format (text, json)
+
+EXAMPLES:
+    # Check if algorithm is policy-compliant
+    cryptoserve policy check -a AES-256-GCM -c user-pii
+
+    # Scan codebase for deprecated crypto
+    cryptoserve migrate scan ./src --fail-on-critical
+
+    # Check system health
+    cryptoserve heal status
+
+    # Auto-heal cryptographic issues
+    cryptoserve heal auto --dry-run
+
+For more information on each command:
+    cryptoserve <command> --help
+"""
+    print(help_text)
+
+
+def main() -> int:
+    """Main entry point."""
+    if len(sys.argv) < 2:
+        print_help()
+        return 0
+
+    command = sys.argv[1]
+
+    if command in ["--help", "-h", "help"]:
+        print_help()
+        return 0
+
+    # Remove the main command from argv so subcommands parse correctly
+    sys.argv = [f"cryptoserve-{command}"] + sys.argv[2:]
+
+    if command == "policy":
+        from app.cli.policy_cli import main as policy_main
+        return policy_main()
+    elif command == "migrate":
+        from app.cli.migrate_cli import main as migrate_main
+        return migrate_main()
+    elif command == "heal":
+        from app.cli.heal_cli import main as heal_main
+        return heal_main()
+    else:
+        print(f"Unknown command: {command}")
+        print("Run 'cryptoserve --help' for usage information.")
+        return 3
+
+
+if __name__ == "__main__":
+    sys.exit(main())
