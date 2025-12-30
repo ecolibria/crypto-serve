@@ -1,0 +1,242 @@
+# CryptoServe Policy Validation for GitLab CI/CD
+#
+# Usage:
+#   1. Include this file in your .gitlab-ci.yml:
+#      include:
+#        - project: 'your-org/crypto-serve'
+#          ref: main
+#          file: '/ci/gitlab-ci-policy.yml'
+#
+#   2. Or copy the relevant jobs to your pipeline
+#
+# Required Variables (set in CI/CD settings):
+#   - CRYPTOSERVE_API_URL: URL of your CryptoServe instance
+#   - CRYPTOSERVE_API_KEY: API key for authentication
+
+stages:
+  - validate
+  - security
+
+variables:
+  # Default algorithm and contexts to check
+  DEFAULT_ALGORITHM: "AES-256-GCM"
+  PII_CONTEXT: "user-pii"
+  PAYMENT_CONTEXT: "payment-data"
+  HEALTH_CONTEXT: "health-data"
+
+# =============================================================================
+# Policy Validation (CLI-based)
+# =============================================================================
+
+.policy-check-base:
+  image: python:3.11-slim
+  stage: validate
+  before_script:
+    - pip install pyyaml --quiet
+    # Clone CryptoServe for CLI tool
+    - apt-get update && apt-get install -y git --quiet
+    - git clone --depth 1 https://github.com/your-org/crypto-serve.git /tmp/crypto-serve
+    - chmod +x /tmp/crypto-serve/backend/cryptoserve-policy
+    - export PATH="/tmp/crypto-serve/backend:$PATH"
+
+validate-policy-files:
+  extends: .policy-check-base
+  script:
+    - |
+      echo "Validating policy YAML files..."
+      exit_code=0
+
+      for file in policies/*.yaml; do
+        if [ -f "$file" ]; then
+          echo "Checking $file..."
+          if ! cryptoserve-policy --format json validate "$file"; then
+            exit_code=1
+          fi
+        fi
+      done
+
+      exit $exit_code
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - policies/**/*.yaml
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+        - policies/**/*.yaml
+
+check-pii-context:
+  extends: .policy-check-base
+  script:
+    - |
+      echo "Checking PII data encryption policy..."
+      cryptoserve-policy check \
+        --algorithm ${DEFAULT_ALGORITHM} \
+        --context ${PII_CONTEXT} \
+        --pii \
+        --frameworks GDPR,CCPA
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+check-payment-context:
+  extends: .policy-check-base
+  script:
+    - |
+      echo "Checking payment data encryption policy..."
+      cryptoserve-policy check \
+        --algorithm ${DEFAULT_ALGORITHM} \
+        --context ${PAYMENT_CONTEXT} \
+        --sensitivity critical \
+        --frameworks PCI-DSS
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+check-health-context:
+  extends: .policy-check-base
+  script:
+    - |
+      echo "Checking health data encryption policy..."
+      cryptoserve-policy check \
+        --algorithm ${DEFAULT_ALGORITHM} \
+        --context ${HEALTH_CONTEXT} \
+        --pii \
+        --frameworks HIPAA
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# =============================================================================
+# Policy Validation (API-based)
+# =============================================================================
+
+check-policies-api:
+  image: curlimages/curl:latest
+  stage: validate
+  script:
+    - |
+      echo "Evaluating policies via API..."
+
+      # Check PII context
+      response=$(curl -s -X POST \
+        "${CRYPTOSERVE_API_URL}/api/policies/evaluate" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${CRYPTOSERVE_API_KEY}" \
+        -d '{
+          "algorithm": "AES-256-GCM",
+          "context_name": "user-pii",
+          "pii": true,
+          "frameworks": ["GDPR", "CCPA"]
+        }')
+
+      allowed=$(echo "$response" | grep -o '"allowed":[^,]*' | cut -d: -f2)
+
+      if [ "$allowed" = "false" ]; then
+        echo "ERROR: Policy violation for PII context"
+        echo "$response"
+        exit 1
+      fi
+
+      echo "All policy checks passed!"
+  rules:
+    - if: '$CRYPTOSERVE_API_URL && $CRYPTOSERVE_API_KEY'
+      when: manual
+      allow_failure: true
+
+# =============================================================================
+# Security Scanning
+# =============================================================================
+
+scan-deprecated-algorithms:
+  image: alpine:latest
+  stage: security
+  before_script:
+    - apk add --no-cache grep
+  script:
+    - |
+      echo "Scanning for deprecated algorithm usage..."
+
+      deprecated="DES|3DES|MD5|SHA1|RC4|AES-128-ECB|Blowfish"
+
+      # Find all source files and scan for deprecated algorithms
+      found=0
+      for ext in py js ts java go rs; do
+        matches=$(find . -name "*.${ext}" -type f \
+          -exec grep -l -E "(encrypt|cipher|algorithm|crypto).*(${deprecated})" {} \; 2>/dev/null || true)
+
+        if [ -n "$matches" ]; then
+          echo "WARNING: Potential deprecated algorithm usage in:"
+          echo "$matches"
+          found=1
+        fi
+      done
+
+      if [ $found -eq 1 ]; then
+        echo ""
+        echo "Please review the above files for deprecated algorithm usage."
+        echo "Recommended replacements:"
+        echo "  - DES, 3DES -> AES-256-GCM"
+        echo "  - MD5, SHA1 -> SHA-256 or SHA-3"
+        echo "  - RC4 -> ChaCha20-Poly1305"
+        echo "  - AES-128-ECB -> AES-256-GCM"
+        exit 1
+      fi
+
+      echo "No deprecated algorithms found."
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  allow_failure: true
+
+scan-hardcoded-secrets:
+  image: trufflesecurity/trufflehog:latest
+  stage: security
+  script:
+    - trufflehog git file://. --only-verified --fail
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  allow_failure: true
+
+# =============================================================================
+# Compliance Report Generation
+# =============================================================================
+
+generate-compliance-report:
+  extends: .policy-check-base
+  stage: validate
+  script:
+    - |
+      echo "Generating compliance report..."
+
+      cat > compliance-report.json << 'EOF'
+      {
+        "generated_at": "$(date -Iseconds)",
+        "commit": "${CI_COMMIT_SHA}",
+        "branch": "${CI_COMMIT_BRANCH}",
+        "contexts": []
+      }
+      EOF
+
+      # Check each context and add to report
+      contexts=("user-pii:GDPR,CCPA:pii" "payment-data:PCI-DSS:pci" "health-data:HIPAA:pii")
+
+      for ctx_config in "${contexts[@]}"; do
+        IFS=':' read -r ctx frameworks flags <<< "$ctx_config"
+
+        result=$(cryptoserve-policy --format json check \
+          --algorithm ${DEFAULT_ALGORITHM} \
+          --context "$ctx" \
+          --frameworks "$frameworks" \
+          $([[ "$flags" == *"pii"* ]] && echo "--pii") 2>&1 || true)
+
+        echo "$result" >> compliance-report.json
+      done
+
+      echo "Report saved to compliance-report.json"
+  artifacts:
+    paths:
+      - compliance-report.json
+    expire_in: 30 days
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual

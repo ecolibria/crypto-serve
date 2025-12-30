@@ -1,0 +1,58 @@
+# Strict Cryptographic Policy Example
+#
+# Use this as a template for enforcing strict cryptographic standards.
+# Run impact analysis before deploying:
+#   python ci/policy-simulator.py impact --policy ci/examples/strict-crypto-policy.yaml
+
+# Block all legacy and deprecated algorithms
+- name: block-all-legacy
+  description: Block all legacy and deprecated cryptographic algorithms
+  rule: algorithm.name not in ['DES', '3DES', 'MD5', 'SHA1', 'RC4', 'RC2', 'Blowfish', 'AES-128-ECB', 'AES-192-ECB', 'AES-256-ECB']
+  severity: block
+  message: Legacy or insecure algorithm detected. Use AES-256-GCM or ChaCha20-Poly1305.
+
+# Require 256-bit minimum for all sensitive data
+- name: minimum-256-bit
+  description: All encryption must use at least 256-bit keys
+  rule: algorithm.key_bits >= 256
+  severity: block
+  message: Minimum 256-bit encryption required for all data
+
+# Require quantum-resistant algorithms for long-term secrets
+- name: quantum-resistant-long-term
+  description: Data with >10 year protection needs post-quantum crypto
+  rule: context.protection_lifetime_years <= 10 or algorithm.quantum_resistant == true
+  severity: block
+  message: Long-term secrets (>10 years) require quantum-resistant algorithms
+
+# HIPAA compliance
+- name: hipaa-strict
+  description: HIPAA data requires specific controls
+  rule: "'HIPAA' not in context.frameworks or (algorithm.key_bits >= 256 and context.audit_level == 'full')"
+  severity: block
+  message: HIPAA compliance requires 256-bit encryption and full audit logging
+  contexts:
+    - health-data
+
+# PCI-DSS compliance
+- name: pci-dss-strict
+  description: Payment card data requires specific controls
+  rule: "'PCI-DSS' not in context.frameworks or algorithm.key_bits >= 256"
+  severity: block
+  message: PCI-DSS requires 256-bit encryption for cardholder data
+  contexts:
+    - payment-data
+
+# No PII in general context
+- name: pii-context-required
+  description: PII must use dedicated context
+  rule: context.pii != true or context.name != 'general'
+  severity: block
+  message: PII cannot use the general context. Use user-pii or a dedicated context.
+
+# Hardware acceleration for high-volume
+- name: hw-acceleration-high-volume
+  description: High-volume operations should use hardware acceleration
+  rule: context.frequency != 'high' or algorithm.hardware_acceleration == true
+  severity: warn
+  message: Consider using hardware-accelerated algorithms for high-volume operations
