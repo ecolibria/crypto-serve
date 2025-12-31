@@ -6,6 +6,7 @@ from app.api.crypto import router as crypto_router
 from app.api.users import router as users_router
 from app.api.audit import router as audit_router
 from app.api.policies import router as policies_router
+from app.api.signatures import router as signatures_router
 
 __all__ = [
     "identities_router",
@@ -14,4 +15,5 @@ __all__ = [
     "users_router",
     "audit_router",
     "policies_router",
+    "signatures_router",
 ]

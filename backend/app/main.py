@@ -27,6 +27,7 @@ from app.api import (
     users_router,
     audit_router,
     policies_router,
+    signatures_router,
 )
 from app.api.sdk import router as sdk_router
 from app.api.admin import router as admin_router
@@ -522,6 +523,7 @@ app.include_router(contexts_router)
 app.include_router(crypto_router)
 app.include_router(audit_router)
 app.include_router(policies_router)
+app.include_router(signatures_router)
 app.include_router(sdk_router)
 app.include_router(algorithms_router)
 app.include_router(admin_router)
