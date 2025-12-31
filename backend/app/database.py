@@ -1,9 +1,53 @@
 """Database connection and session management."""
 
+import json
+from typing import Any
+
+from sqlalchemy import TypeDecorator, Text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import get_settings
+
+
+class StringList(TypeDecorator):
+    """Database-agnostic string list type.
+
+    Uses JSON storage which works with both SQLite and PostgreSQL.
+    This replaces ARRAY(String) for cross-database compatibility.
+    """
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value: list[str] | None, dialect) -> str | None:
+        if value is None:
+            return None
+        return json.dumps(value)
+
+    def process_result_value(self, value: str | None, dialect) -> list[str] | None:
+        if value is None:
+            return None
+        return json.loads(value)
+
+
+class JSONType(TypeDecorator):
+    """Database-agnostic JSON type.
+
+    Uses JSON storage which works with both SQLite and PostgreSQL.
+    This replaces JSONB for cross-database compatibility.
+    """
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value: dict[str, Any] | None, dialect) -> str | None:
+        if value is None:
+            return None
+        return json.dumps(value)
+
+    def process_result_value(self, value: str | None, dialect) -> dict[str, Any] | None:
+        if value is None:
+            return None
+        return json.loads(value)
 
 
 class Base(DeclarativeBase):

@@ -42,20 +42,20 @@ async def test_encrypt_decrypt_roundtrip(db_session, test_user, test_context):
 
     # Encrypt
     plaintext = b"Hello, World!"
-    ciphertext = await crypto_engine.encrypt(
+    result = await crypto_engine.encrypt(
         db=db_session,
         plaintext=plaintext,
         context_name="test-context",
         identity=identity,
     )
 
-    assert ciphertext != plaintext
-    assert len(ciphertext) > len(plaintext)  # Ciphertext includes header
+    assert result.ciphertext != plaintext
+    assert len(result.ciphertext) > len(plaintext)  # Ciphertext includes header
 
     # Decrypt
     decrypted = await crypto_engine.decrypt(
         db=db_session,
-        packed_ciphertext=ciphertext,
+        packed_ciphertext=result.ciphertext,
         context_name="test-context",
         identity=identity,
     )

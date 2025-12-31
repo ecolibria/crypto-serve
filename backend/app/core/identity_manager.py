@@ -1,7 +1,8 @@
 """Identity creation and management."""
 
 import secrets
-from datetime import datetime, timedelta
+import time
+from datetime import datetime, timedelta, timezone
 
 import jwt
 from slugify import slugify
@@ -26,12 +27,18 @@ class IdentityManager:
 
     def create_identity_token(self, identity: Identity) -> str:
         """Create signed JWT token for SDK identity."""
+        # Use time.time() for accurate timestamps (not affected by timezone)
+        now = int(time.time())
+        # Calculate expiry in seconds from now
+        expiry_delta = (identity.expires_at.replace(tzinfo=None) - identity.created_at.replace(tzinfo=None)).total_seconds()
+        exp = now + int(expiry_delta)
+
         payload = {
             "iss": settings.backend_url,
             "sub": identity.id,
             "aud": "cryptoserve-sdk",
-            "iat": int(identity.created_at.timestamp()),
-            "exp": int(identity.expires_at.timestamp()),
+            "iat": now,
+            "exp": exp,
             "type": identity.type.value,
             "name": identity.name,
             "team": identity.team,
@@ -77,6 +84,7 @@ class IdentityManager:
 
         identity_id = self.generate_identity_id(identity_type, name)
 
+        now = datetime.utcnow()
         identity = Identity(
             id=identity_id,
             user_id=user.id,
@@ -86,7 +94,8 @@ class IdentityManager:
             environment=environment,
             allowed_contexts=allowed_contexts,
             status=IdentityStatus.ACTIVE,
-            expires_at=datetime.utcnow() + timedelta(days=expires_in_days),
+            created_at=now,
+            expires_at=now + timedelta(days=expires_in_days),
         )
 
         db.add(identity)

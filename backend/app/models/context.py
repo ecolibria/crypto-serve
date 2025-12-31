@@ -12,10 +12,9 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import String, DateTime, Text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.database import Base
+from app.database import Base, StringList, JSONType
 
 
 class Context(Base):
@@ -37,9 +36,9 @@ class Context(Base):
     display_name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
-    # 5-layer configuration stored as JSONB
+    # 5-layer configuration stored as JSON
     config: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONB,
+        JSONType(),
         nullable=True,
         default=None,
         comment="5-layer context configuration"
@@ -47,7 +46,7 @@ class Context(Base):
 
     # Cached derived requirements (computed from config)
     derived: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONB,
+        JSONType(),
         nullable=True,
         default=None,
         comment="Cached derived requirements from algorithm resolver"
@@ -55,11 +54,11 @@ class Context(Base):
 
     # Legacy fields for backward compatibility
     data_examples: Mapped[list[str] | None] = mapped_column(
-        ARRAY(String),
+        StringList(),
         nullable=True
     )
     compliance_tags: Mapped[list[str] | None] = mapped_column(
-        ARRAY(String),
+        StringList(),
         nullable=True
     )
     algorithm: Mapped[str] = mapped_column(
