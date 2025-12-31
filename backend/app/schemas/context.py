@@ -51,6 +51,90 @@ class AccessFrequency(str, Enum):
 
 
 # =============================================================================
+# Encryption Context & Cipher Modes (Phase 1 - Core Completeness)
+# =============================================================================
+
+class EncryptionUsageContext(str, Enum):
+    """Where/how the encryption is being used.
+
+    This eliminates the "AES is vague" problem by explicitly specifying
+    the operational context, which drives mode and algorithm selection.
+    """
+    AT_REST = "at_rest"          # Databases, file storage, backups
+    IN_TRANSIT = "in_transit"    # API calls, network traffic
+    IN_USE = "in_use"            # Memory encryption, processing
+    STREAMING = "streaming"      # Real-time data feeds
+    DISK = "disk"                # Full volume/disk encryption
+
+
+class CipherMode(str, Enum):
+    """Cipher block modes for symmetric encryption.
+
+    Each mode has specific properties and use cases:
+    - GCM: Authenticated encryption, parallelizable, most common
+    - GCM_SIV: Nonce-misuse resistant, safer in complex systems
+    - CBC: Legacy compatibility, requires separate MAC
+    - CTR: Stream mode, parallelizable, requires separate MAC
+    - CCM: Authenticated, for constrained devices
+    - XTS: Disk encryption, tweakable block cipher
+    """
+    GCM = "gcm"          # Galois/Counter Mode - AEAD, fast, hardware accelerated
+    GCM_SIV = "gcm-siv"  # GCM with SIV - nonce-misuse resistant
+    CBC = "cbc"          # Cipher Block Chaining - legacy, needs HMAC
+    CTR = "ctr"          # Counter Mode - streaming, needs HMAC
+    CCM = "ccm"          # Counter with CBC-MAC - constrained devices
+    XTS = "xts"          # XEX-based Tweaked-codebook - disk encryption
+
+
+class KeySize(int, Enum):
+    """Standard cryptographic key sizes in bits."""
+    AES_128 = 128
+    AES_192 = 192
+    AES_256 = 256
+    RSA_2048 = 2048
+    RSA_3072 = 3072
+    RSA_4096 = 4096
+    ECC_256 = 256   # P-256, X25519
+    ECC_384 = 384   # P-384
+    ECC_521 = 521   # P-521
+
+
+class AlgorithmOverride(BaseModel):
+    """Explicit algorithm configuration for advanced users.
+
+    Allows overriding the automatic algorithm selection when specific
+    requirements demand it. Use with caution - the automatic selection
+    is usually optimal.
+    """
+    cipher: str | None = Field(
+        default=None,
+        description="Cipher family (AES, ChaCha20)"
+    )
+    mode: CipherMode | None = Field(
+        default=None,
+        description="Cipher mode (GCM, CBC, CTR, CCM, XTS)"
+    )
+    key_bits: int | None = Field(
+        default=None,
+        description="Key size in bits (128, 192, 256 for AES)"
+    )
+
+    def to_algorithm_name(self) -> str | None:
+        """Convert override to standard algorithm name."""
+        if not self.cipher:
+            return None
+
+        cipher = self.cipher.upper()
+        if self.key_bits and self.mode:
+            return f"{cipher}-{self.key_bits}-{self.mode.value.upper()}"
+        elif self.key_bits:
+            return f"{cipher}-{self.key_bits}"
+        elif self.mode:
+            return f"{cipher}-{self.mode.value.upper()}"
+        return cipher
+
+
+# =============================================================================
 # Layer 1: Data Identity
 # =============================================================================
 
@@ -68,6 +152,10 @@ class DataIdentity(BaseModel):
     sensitivity: Sensitivity = Field(
         default=Sensitivity.MEDIUM,
         description="Sensitivity level - drives encryption strength"
+    )
+    usage_context: EncryptionUsageContext = Field(
+        default=EncryptionUsageContext.AT_REST,
+        description="Where/how encryption is used - drives mode selection"
     )
     pii: bool = Field(
         default=False,
@@ -210,6 +298,31 @@ class AccessPatterns(BaseModel):
 # Layer 5: Derived Requirements (Computed)
 # =============================================================================
 
+class AlgorithmAlternative(BaseModel):
+    """An alternative algorithm that could be used."""
+    algorithm: str = Field(description="Alternative algorithm name")
+    reason: str = Field(description="When to consider this alternative")
+
+
+class AlgorithmRationale(BaseModel):
+    """Detailed explanation of why an algorithm was selected.
+
+    Provides transparency into the decision-making process, showing
+    factors considered and alternatives available.
+    """
+    summary: str = Field(
+        description="One-line summary of the selection"
+    )
+    factors: list[str] = Field(
+        default_factory=list,
+        description="Factors that influenced the selection"
+    )
+    alternatives: list[AlgorithmAlternative] = Field(
+        default_factory=list,
+        description="Alternative algorithms and when to use them"
+    )
+
+
 class DerivedRequirements(BaseModel):
     """Layer 5: Computed optimal cryptography settings.
 
@@ -229,6 +342,14 @@ class DerivedRequirements(BaseModel):
     resolved_algorithm: str = Field(
         description="Final algorithm selection"
     )
+    resolved_mode: CipherMode = Field(
+        default=CipherMode.GCM,
+        description="Selected cipher mode"
+    )
+    resolved_key_bits: int = Field(
+        default=256,
+        description="Selected key size in bits"
+    )
     audit_level: Literal["full", "detailed", "standard", "minimal"] = Field(
         description="Level of audit logging required"
     )
@@ -237,7 +358,11 @@ class DerivedRequirements(BaseModel):
     )
     rationale: list[str] = Field(
         default_factory=list,
-        description="Explanation for algorithm selection"
+        description="Legacy: Simple explanation list"
+    )
+    detailed_rationale: AlgorithmRationale | None = Field(
+        default=None,
+        description="Detailed explanation with factors and alternatives"
     )
 
 
