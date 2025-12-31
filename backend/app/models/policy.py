@@ -4,10 +4,9 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import String, DateTime, Text, Boolean
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.database import Base
+from app.database import Base, StringList, JSONType
 
 
 class Policy(Base):
@@ -54,19 +53,19 @@ class Policy(Base):
 
     # Scope restrictions
     contexts: Mapped[list[str] | None] = mapped_column(
-        ARRAY(String),
+        StringList(),
         nullable=True,
         comment="Contexts this policy applies to (null = all)"
     )
     operations: Mapped[list[str] | None] = mapped_column(
-        ARRAY(String),
+        StringList(),
         nullable=True,
         comment="Operations this applies to (null = all)"
     )
 
     # Metadata for policy management
     policy_metadata: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONB,
+        JSONType(),
         nullable=True,
         comment="Additional policy metadata"
     )
@@ -127,7 +126,7 @@ class PolicyViolationLog(Base):
     # Rule evaluation details
     rule: Mapped[str] = mapped_column(Text, nullable=False)
     evaluation_context: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONB,
+        JSONType(),
         nullable=True,
         comment="Snapshot of evaluation context"
     )

@@ -4,10 +4,10 @@ from datetime import datetime
 from enum import Enum
 
 from sqlalchemy import String, DateTime, ForeignKey, Enum as SQLEnum
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.database import Base
+from app.database import Base, StringList
 
 
 class IdentityType(str, Enum):
@@ -42,7 +42,7 @@ class Identity(Base):
     team: Mapped[str] = mapped_column(String(64), nullable=False)
     environment: Mapped[str] = mapped_column(String(32), nullable=False)
     allowed_contexts: Mapped[list[str]] = mapped_column(
-        ARRAY(String),
+        StringList(),
         nullable=False
     )
     status: Mapped[IdentityStatus] = mapped_column(
