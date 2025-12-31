@@ -5,7 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -17,6 +17,7 @@ from app.core.crypto_engine import (
     DecryptionError,
 )
 from app.core.identity_manager import identity_manager
+from app.schemas.context import AlgorithmOverride, CipherMode
 
 router = APIRouter(prefix="/v1/crypto", tags=["crypto"])
 security = HTTPBearer()
@@ -26,11 +27,31 @@ class EncryptRequest(BaseModel):
     """Encryption request schema."""
     plaintext: str  # Base64 encoded
     context: str
+    algorithm_override: AlgorithmOverride | None = Field(
+        default=None,
+        description="Optional: Override automatic algorithm selection"
+    )
+
+
+class AlgorithmInfo(BaseModel):
+    """Information about the algorithm used."""
+    name: str
+    mode: str
+    key_bits: int
+    description: str | None = None
 
 
 class EncryptResponse(BaseModel):
     """Encryption response schema."""
     ciphertext: str  # Base64 encoded
+    algorithm: AlgorithmInfo | None = Field(
+        default=None,
+        description="Algorithm used for encryption"
+    )
+    warnings: list[str] = Field(
+        default_factory=list,
+        description="Any warnings about the encryption (e.g., deprecation)"
+    )
 
 
 class DecryptRequest(BaseModel):
@@ -70,7 +91,12 @@ async def encrypt(
     identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Encrypt data."""
+    """Encrypt data.
+
+    Encrypts the provided plaintext using the specified context's algorithm.
+    Optionally accepts an algorithm_override to explicitly select cipher,
+    mode, and key size.
+    """
     try:
         plaintext = base64.b64decode(data.plaintext)
     except Exception:
@@ -80,13 +106,14 @@ async def encrypt(
         )
 
     try:
-        ciphertext = await crypto_engine.encrypt(
+        result = await crypto_engine.encrypt(
             db=db,
             plaintext=plaintext,
             context_name=data.context,
             identity=identity,
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
+            algorithm_override=data.algorithm_override,
         )
     except ContextNotFoundError as e:
         raise HTTPException(
@@ -99,8 +126,18 @@ async def encrypt(
             detail=str(e),
         )
 
+    # Build algorithm info for response
+    algorithm_info = AlgorithmInfo(
+        name=result.algorithm,
+        mode=result.mode.value if hasattr(result.mode, 'value') else str(result.mode),
+        key_bits=result.key_bits,
+        description=result.description,
+    )
+
     return EncryptResponse(
-        ciphertext=base64.b64encode(ciphertext).decode("ascii"),
+        ciphertext=base64.b64encode(result.ciphertext).decode("ascii"),
+        algorithm=algorithm_info,
+        warnings=result.warnings,
     )
 
 
