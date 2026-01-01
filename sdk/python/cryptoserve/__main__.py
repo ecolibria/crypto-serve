@@ -81,17 +81,51 @@ def cmd_login():
     import http.server
     import urllib.parse
     import threading
-    import time
+    import requests
 
     # Parse arguments
     server_url = "http://localhost:8000"
-    for i, arg in enumerate(sys.argv[2:], 2):
+    use_dev = False
+    manual_cookie = None
+
+    i = 2
+    while i < len(sys.argv):
+        arg = sys.argv[i]
         if arg in ["--server", "-s"] and i + 1 < len(sys.argv):
             server_url = sys.argv[i + 1]
+            i += 2
+        elif arg == "--dev":
+            use_dev = True
+            i += 1
+        elif arg == "--cookie" and i + 1 < len(sys.argv):
+            manual_cookie = sys.argv[i + 1]
+            i += 2
+        else:
+            i += 1
+
+    # Handle manual cookie setting
+    if manual_cookie:
+        creds = _load_credentials()
+        creds["session_cookie"] = manual_cookie
+        creds["server_url"] = server_url
+        _save_credentials(creds)
+        print("Session cookie saved.")
+        return 0
 
     print("CryptoServe Login")
     print("=" * 40)
     print()
+
+    # Check if server is in dev mode
+    try:
+        status_resp = requests.get(f"{server_url}/auth/status", timeout=5)
+        if status_resp.ok:
+            auth_status = status_resp.json()
+            if auth_status.get("devMode"):
+                use_dev = True
+                print("Server is in dev mode.")
+    except Exception:
+        pass
 
     # We'll use a simple callback server to capture the auth
     callback_port = 9876
@@ -136,9 +170,15 @@ def cmd_login():
     server_thread = threading.Thread(target=run_server)
     server_thread.start()
 
-    # Open browser with login URL
-    login_url = f"{server_url}/auth/github?cli_callback=http://127.0.0.1:{callback_port}"
-    print(f"Opening browser for authentication...")
+    # Build login URL based on mode
+    callback_url = f"http://127.0.0.1:{callback_port}"
+    if use_dev:
+        login_url = f"{server_url}/auth/dev-login?cli_callback={callback_url}"
+        print("Using dev mode login...")
+    else:
+        login_url = f"{server_url}/auth/github?cli_callback={callback_url}"
+        print("Opening browser for GitHub authentication...")
+
     print(f"If browser doesn't open, visit: {login_url}")
     print()
 
@@ -156,7 +196,7 @@ def cmd_login():
         creds["user"] = auth_result["user"]
         _save_credentials(creds)
 
-        print(f"Logged in as: {auth_result['user']}")
+        print(f"\nLogged in as: {auth_result['user']}")
         print()
         print("You can now use CLI commands like:")
         print("  cryptoserve promote my-app")
@@ -165,8 +205,9 @@ def cmd_login():
     else:
         print("Login timed out or was cancelled.")
         print()
-        print("Alternative: Set session cookie manually:")
-        print("  cryptoserve login --cookie <session_cookie>")
+        print("Alternatives:")
+        print(f"  1. Visit {login_url} manually")
+        print("  2. Set session cookie: cryptoserve login --cookie <token>")
         return 1
 
 
@@ -1500,7 +1541,9 @@ def cmd_help():
     print()
     print("  AUTHENTICATION")
     print("  login     Login to CryptoServe (opens browser)")
-    print("            Options: --server <url>")
+    print("            Options: --server <url>  Server URL")
+    print("                     --dev           Force dev mode login")
+    print("                     --cookie <jwt>  Set session manually")
     print("  logout    Logout and clear stored credentials")
     print()
     print("  APP MANAGEMENT (requires login)")
