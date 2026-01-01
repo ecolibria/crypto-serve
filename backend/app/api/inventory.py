@@ -16,7 +16,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Identity
+from app.models import Identity, User
 from app.models.crypto_inventory import (
     CryptoInventoryReport,
     CryptoLibraryUsage,
@@ -41,6 +41,7 @@ from app.core.pqc_recommendations import (
     pqc_recommendation_service,
     DataProfile,
 )
+from app.auth import get_current_user
 
 router = APIRouter(prefix="/api/v1/inventory", tags=["inventory"])
 
@@ -127,6 +128,29 @@ class CICDGateResponse(BaseModel):
     quantum_readiness_score: float
     # Links for CI output
     dashboard_url: str | None = None
+
+
+class CBOMUploadRequest(BaseModel):
+    """CBOM upload from CLI."""
+    format: str = "json"
+    content: dict = Field(default_factory=dict)
+    score: float = 0.0
+    risk_level: str = "unknown"
+    # Optional metadata
+    scan_name: str | None = None
+    scan_path: str | None = None
+    git_commit: str | None = None
+    git_branch: str | None = None
+    git_repo: str | None = None
+
+
+class CBOMUploadResponse(BaseModel):
+    """Response from CBOM upload."""
+    success: bool
+    report_id: int
+    message: str
+    quantum_readiness_score: float
+    dashboard_url: str
 
 
 # =============================================================================
@@ -639,6 +663,205 @@ async def _update_library_usage(
             db.add(usage)
 
     await db.commit()
+
+
+# =============================================================================
+# CBOM Upload Endpoint (for CLI)
+# =============================================================================
+
+
+# Create a separate router for /api/v1/cbom
+cbom_router = APIRouter(prefix="/api/v1/cbom", tags=["cbom"])
+
+
+@cbom_router.post("", response_model=CBOMUploadResponse)
+async def upload_cbom(
+    request: CBOMUploadRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """
+    Upload a CBOM (Cryptographic Bill of Materials) from CLI.
+
+    This endpoint receives CBOM data from the CLI's cbom command and stores
+    it for viewing in the dashboard. Requires authentication.
+
+    The CBOM is stored as an inventory report and can be viewed in:
+    - Dashboard > Applications > CBOM tab
+    - Dashboard > Security Posture
+    """
+    content = request.content
+
+    # Extract library and algorithm info from CBOM content
+    # Handle both flat format and nested CBOM format from CLI
+    cbom = content.get("cbom", content)  # Try nested, fall back to flat
+    libraries_data = cbom.get("components", cbom.get("libraries", []))
+    algorithms_data = cbom.get("algorithms", [])
+
+    # Count metrics
+    library_count = len(libraries_data)
+    algorithm_count = len(algorithms_data)
+
+    # Try to use pre-calculated quantum metrics from CLI if available
+    quantum_readiness = content.get("quantum_readiness", {})
+    cbom_summary = cbom.get("summary", {})
+
+    if quantum_readiness:
+        # Use CLI-provided metrics
+        quantum_safe = quantum_readiness.get("quantum_safe_count", 0)
+        quantum_vulnerable = quantum_readiness.get("quantum_vulnerable_count", 0)
+        has_pqc = quantum_readiness.get("has_pqc", False)
+        deprecated_count = quantum_readiness.get("deprecated_count", 0)
+    elif cbom_summary:
+        # Use CBOM summary
+        quantum_safe = cbom_summary.get("quantum_safe", 0)
+        quantum_vulnerable = cbom_summary.get("quantum_vulnerable", 0)
+        has_pqc = cbom_summary.get("has_pqc", False)
+        deprecated_count = cbom_summary.get("deprecated", 0)
+    else:
+        # Calculate from libraries data
+        quantum_safe = sum(
+            1 for lib in libraries_data
+            if lib.get("quantumRisk", lib.get("quantum_risk", "high")) == "low"
+        )
+        quantum_vulnerable = sum(
+            1 for lib in libraries_data
+            if lib.get("quantumRisk", lib.get("quantum_risk", "none")) in ["high", "critical"]
+        )
+        has_pqc = any(
+            lib.get("category") == "pqc" for lib in libraries_data
+        )
+        deprecated_count = sum(
+            1 for lib in libraries_data
+            if lib.get("isDeprecated", lib.get("is_deprecated", False))
+        )
+
+    # Create inventory report
+    report = CryptoInventoryReport(
+        user_id=str(user.id),
+        identity_id=None,
+        identity_name=None,
+        team=None,
+        department=None,
+        scan_source=ScanSource.CLI_SCAN,
+        action=DBEnforcementAction.ALLOW,
+        library_count=library_count,
+        algorithm_count=algorithm_count,
+        violation_count=0,
+        warning_count=0,
+        quantum_safe_count=quantum_safe,
+        quantum_vulnerable_count=quantum_vulnerable,
+        has_pqc=has_pqc,
+        deprecated_count=deprecated_count,
+        libraries=libraries_data,
+        algorithms=algorithms_data,
+        violations=[],
+        warnings=[],
+        qbom_data=content,
+        scan_name=request.scan_name,
+        scan_path=request.scan_path,
+        git_commit=request.git_commit,
+        git_branch=request.git_branch,
+        git_repo=request.git_repo,
+    )
+    db.add(report)
+    await db.commit()
+    await db.refresh(report)
+
+    return CBOMUploadResponse(
+        success=True,
+        report_id=report.id,
+        message=f"CBOM uploaded successfully with {library_count} libraries",
+        quantum_readiness_score=report.quantum_readiness_score,
+        dashboard_url=f"/dashboard/cbom/{report.id}",
+    )
+
+
+@cbom_router.get("", response_model=list[dict])
+async def list_cbom_reports(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+    limit: int = 20,
+):
+    """
+    List CBOM reports for the current user.
+
+    Returns recent CBOM uploads from CLI scans.
+    """
+    # Normalize UUID format (handle both with and without hyphens)
+    user_id_normalized = str(user.id).replace("-", "")
+    result = await db.execute(
+        select(CryptoInventoryReport)
+        .where(CryptoInventoryReport.user_id.in_([str(user.id), user_id_normalized]))
+        .where(CryptoInventoryReport.scan_source == ScanSource.CLI_SCAN)
+        .order_by(CryptoInventoryReport.scanned_at.desc())
+        .limit(limit)
+    )
+    reports = result.scalars().all()
+
+    return [
+        {
+            "id": r.id,
+            "scannedAt": r.scanned_at.isoformat(),
+            "scanName": r.scan_name,
+            "scanPath": r.scan_path,
+            "libraryCount": r.library_count,
+            "algorithmCount": r.algorithm_count,
+            "quantumReadinessScore": r.quantum_readiness_score,
+            "hasPqc": r.has_pqc,
+            "gitCommit": r.git_commit,
+            "gitBranch": r.git_branch,
+            "gitRepo": r.git_repo,
+        }
+        for r in reports
+    ]
+
+
+@cbom_router.get("/{report_id}")
+async def get_cbom_report(
+    report_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """
+    Get a specific CBOM report by ID.
+    """
+    # Normalize UUID format (handle both with and without hyphens)
+    user_id_normalized = str(user.id).replace("-", "")
+    result = await db.execute(
+        select(CryptoInventoryReport)
+        .where(CryptoInventoryReport.id == report_id)
+        .where(CryptoInventoryReport.user_id.in_([str(user.id), user_id_normalized]))
+    )
+    report = result.scalar_one_or_none()
+
+    if not report:
+        raise HTTPException(status_code=404, detail="CBOM report not found")
+
+    return {
+        "id": report.id,
+        "scannedAt": report.scanned_at.isoformat(),
+        "scanName": report.scan_name,
+        "scanPath": report.scan_path,
+        "scanSource": report.scan_source.value,
+        "quantumReadinessScore": report.quantum_readiness_score,
+        "metrics": {
+            "libraryCount": report.library_count,
+            "algorithmCount": report.algorithm_count,
+            "quantumSafeCount": report.quantum_safe_count,
+            "quantumVulnerableCount": report.quantum_vulnerable_count,
+            "hasPqc": report.has_pqc,
+            "deprecatedCount": report.deprecated_count,
+        },
+        "libraries": report.libraries,
+        "algorithms": report.algorithms,
+        "cbomData": report.qbom_data,
+        "git": {
+            "commit": report.git_commit,
+            "branch": report.git_branch,
+            "repo": report.git_repo,
+        },
+    }
 
 
 # =============================================================================
