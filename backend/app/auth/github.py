@@ -87,13 +87,32 @@ GITHUB_EMAILS_URL = "https://api.github.com/user/emails"
 
 @router.get("/dev-login")
 @rate_limit("5/minute")
-async def dev_login(request: Request, db: AsyncSession = Depends(get_db)):
-    """Development mode login - bypasses OAuth for testing."""
+async def dev_login(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    cli_callback: str | None = None,
+):
+    """Development mode login - bypasses OAuth for testing.
+
+    Args:
+        cli_callback: Optional callback URL for CLI login flow.
+                     If provided, redirects to this URL after auth with session info.
+    """
     if not settings.dev_mode:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Dev login only available in dev mode",
         )
+
+    # Validate CLI callback URL if provided (must be localhost)
+    if cli_callback:
+        from urllib.parse import urlparse
+        parsed = urlparse(cli_callback)
+        if parsed.hostname not in ("localhost", "127.0.0.1"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CLI callback must be localhost",
+            )
 
     # Find or create dev user
     dev_github_id = 1
@@ -122,7 +141,22 @@ async def dev_login(request: Request, db: AsyncSession = Depends(get_db)):
     # Create JWT token
     jwt_token = create_access_token(user.id, user.github_username)
 
-    # Redirect to frontend with token in cookie
+    # Check if this is a CLI login
+    if cli_callback:
+        # CLI login flow - redirect to local callback with session info
+        from urllib.parse import urlencode
+        callback_params = urlencode({
+            "session": jwt_token,
+            "user": user.github_username,
+        })
+        callback_url = f"{cli_callback}?{callback_params}"
+
+        return RedirectResponse(
+            url=callback_url,
+            status_code=status.HTTP_302_FOUND,
+        )
+
+    # Standard web login flow - redirect to frontend with token in cookie
     response = RedirectResponse(
         url=f"{settings.frontend_url}/dashboard",
         status_code=status.HTTP_302_FOUND,
@@ -150,13 +184,28 @@ async def auth_status():
 
 @router.get("/github")
 @rate_limit("10/minute")
-async def github_login(request: Request):
-    """Redirect to GitHub OAuth authorization with CSRF protection."""
+async def github_login(request: Request, cli_callback: str | None = None):
+    """Redirect to GitHub OAuth authorization with CSRF protection.
+
+    Args:
+        cli_callback: Optional callback URL for CLI login flow.
+                     If provided, redirects to this URL after auth with session info.
+    """
     if not settings.github_client_id:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="GitHub OAuth not configured",
         )
+
+    # Validate CLI callback URL if provided (must be localhost)
+    if cli_callback:
+        from urllib.parse import urlparse
+        parsed = urlparse(cli_callback)
+        if parsed.hostname not in ("localhost", "127.0.0.1"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CLI callback must be localhost",
+            )
 
     # Generate CSRF state token
     state = generate_oauth_state()
@@ -179,6 +228,18 @@ async def github_login(request: Request):
         samesite="lax",
         max_age=OAUTH_STATE_EXPIRATION,
     )
+
+    # Store CLI callback URL if provided
+    if cli_callback:
+        response.set_cookie(
+            key="cli_callback",
+            value=cli_callback,
+            httponly=True,
+            secure=settings.cookie_secure,
+            samesite="lax",
+            max_age=OAUTH_STATE_EXPIRATION,
+        )
+
     return response
 
 
@@ -296,7 +357,38 @@ async def github_callback(
     # Create JWT token
     jwt_token = create_access_token(user.id, user.github_username)
 
-    # Redirect to frontend with token in cookie
+    # Check if this is a CLI login (callback URL stored in cookie)
+    cli_callback = request.cookies.get("cli_callback")
+
+    if cli_callback:
+        # CLI login flow - redirect to local callback with session info
+        from urllib.parse import urlencode, urlparse
+        parsed = urlparse(cli_callback)
+
+        # Validate again for safety
+        if parsed.hostname not in ("localhost", "127.0.0.1"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid CLI callback",
+            )
+
+        # Build callback URL with session token and user info
+        callback_params = urlencode({
+            "session": jwt_token,
+            "user": user.github_username,
+        })
+        callback_url = f"{cli_callback}?{callback_params}"
+
+        response = RedirectResponse(
+            url=callback_url,
+            status_code=status.HTTP_302_FOUND,
+        )
+        # Clear the CLI callback cookie
+        response.delete_cookie("cli_callback")
+        response.delete_cookie("oauth_state")
+        return response
+
+    # Standard web login flow - redirect to frontend with token in cookie
     response = RedirectResponse(
         url=f"{settings.frontend_url}/dashboard",
         status_code=status.HTTP_302_FOUND,
