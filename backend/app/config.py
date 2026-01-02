@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql+asyncpg://cryptoserve:localdev@localhost:5432/cryptoserve"
 
+    # Database connection pool (for horizontal scaling)
+    db_pool_size: int = 10  # Base connections per instance
+    db_max_overflow: int = 20  # Extra connections under load
+    db_pool_recycle: int = 3600  # Recycle connections after 1 hour (handles RDS timeouts)
+
     # GitHub OAuth
     github_client_id: str = ""
     github_client_secret: str = ""

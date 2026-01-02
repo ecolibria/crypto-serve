@@ -67,15 +67,36 @@ _async_session_maker = None
 
 
 def get_engine():
-    """Get or create the database engine."""
+    """Get or create the database engine.
+
+    Connection pooling is configured for horizontal scaling:
+    - pool_size: Base number of connections per instance
+    - max_overflow: Additional temporary connections under load
+    - pool_recycle: Recycle connections to handle cloud DB timeouts
+    - pool_pre_ping: Verify connections are alive before use
+    """
     global _engine
     if _engine is None:
         settings = get_settings()
-        _engine = create_async_engine(
-            settings.database_url,
-            echo=False,
-            pool_pre_ping=True,
-        )
+
+        # SQLite doesn't support connection pooling the same way
+        is_sqlite = settings.database_url.startswith("sqlite")
+
+        pool_options = {
+            "echo": False,
+            "pool_pre_ping": True,  # Verify connections before use
+        }
+
+        if not is_sqlite:
+            # PostgreSQL/MySQL connection pool settings for scaling
+            pool_options.update({
+                "pool_size": settings.db_pool_size,  # Base connections per instance
+                "max_overflow": settings.db_max_overflow,  # Extra connections under load
+                "pool_recycle": settings.db_pool_recycle,  # Recycle after N seconds (RDS timeout)
+                "pool_timeout": 30,  # Wait up to 30s for connection
+            })
+
+        _engine = create_async_engine(settings.database_url, **pool_options)
     return _engine
 
 
