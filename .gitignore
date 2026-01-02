@@ -54,3 +54,9 @@ site/
 docs-site/.next/
 docs-site/out/
 docs-site/node_modules/
+
+# Local database
+cryptoserve.db
+
+# TypeScript build info
+tsconfig.tsbuildinfo
