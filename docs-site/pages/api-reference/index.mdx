@@ -1,0 +1,94 @@
+---
+title: API Reference
+---
+
+import { Cards, Card, Callout } from 'nextra/components'
+
+# API Reference
+
+Complete REST API documentation for CryptoServe.
+
+<Callout type="info">
+  **Interactive API Documentation**
+
+  - [Swagger UI](http://localhost:8001/docs) - Try endpoints live
+  - [ReDoc](http://localhost:8001/redoc) - Beautiful three-panel docs
+  - [OpenAPI Spec](http://localhost:8001/openapi.json) - Import into Postman
+</Callout>
+
+## Base URL
+
+```
+Production:  https://api.cryptoserve.io/v1
+Development: http://localhost:8001
+```
+
+## Authentication
+
+All API requests require a JWT token:
+
+```bash
+curl -H "Authorization: Bearer <token>" \
+  http://localhost:8001/api/crypto/encrypt
+```
+
+## API Sections
+
+<Cards>
+  <Card title="Crypto Operations" href="/crypto-serve/api-reference/crypto" arrow>
+    Encrypt, decrypt, sign, verify
+  </Card>
+  <Card title="Contexts" href="/crypto-serve/api-reference/contexts" arrow>
+    Manage encryption contexts
+  </Card>
+  <Card title="Identities" href="/crypto-serve/api-reference/identities" arrow>
+    Create and manage identities
+  </Card>
+  <Card title="Policies" href="/crypto-serve/api-reference/policies" arrow>
+    Define cryptographic policies
+  </Card>
+</Cards>
+
+---
+
+## Response Format
+
+### Success
+
+```json
+{
+  "data": { ... },
+  "warnings": []
+}
+```
+
+### Error
+
+```json
+{
+  "error": "error_code",
+  "message": "Human-readable description",
+  "details": { ... }
+}
+```
+
+## Status Codes
+
+| Code | Description |
+|------|-------------|
+| `200` | Success |
+| `201` | Created |
+| `400` | Bad Request |
+| `401` | Unauthorized |
+| `403` | Forbidden |
+| `404` | Not Found |
+| `429` | Rate Limited |
+| `500` | Server Error |
+
+## Rate Limiting
+
+```
+X-RateLimit-Limit: 1000
+X-RateLimit-Remaining: 999
+X-RateLimit-Reset: 1642089600
+```

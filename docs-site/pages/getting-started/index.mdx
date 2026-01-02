@@ -1,0 +1,53 @@
+---
+title: Getting Started
+---
+
+import { Cards, Card, Callout } from 'nextra/components'
+
+# Getting Started
+
+Get up and running with CryptoServe in minutes.
+
+<Callout type="info">
+  CryptoServe requires Python 3.11+ for the SDK and Docker for the backend.
+</Callout>
+
+## Choose Your Path
+
+<Cards>
+  <Card title="Quick Start" href="/crypto-serve/getting-started/quickstart" arrow>
+    5-minute tutorial to encrypt your first data
+  </Card>
+  <Card title="Installation" href="/crypto-serve/getting-started/installation" arrow>
+    Detailed setup for development and production
+  </Card>
+  <Card title="Configuration" href="/crypto-serve/getting-started/configuration" arrow>
+    Environment variables and settings
+  </Card>
+</Cards>
+
+## Prerequisites
+
+- **Docker** and Docker Compose
+- **Python 3.11+** for the SDK
+- **GitHub account** for OAuth authentication
+
+## Architecture Overview
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│                 │     │                 │     │                 │
+│   Your App      │────▶│   CryptoServe   │────▶│   Database      │
+│   + SDK         │     │   Backend       │     │   + Keys        │
+│                 │     │                 │     │                 │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+        │                       │
+        │                       ▼
+        │               ┌─────────────────┐
+        │               │                 │
+        └──────────────▶│   Dashboard     │
+                        │                 │
+                        └─────────────────┘
+```
+
+Your application uses the SDK to communicate with the CryptoServe backend. The dashboard provides a UI for managing identities, contexts, and viewing audit logs.

@@ -1,0 +1,181 @@
+---
+title: CryptoServe
+---
+
+import { Cards, Card, Steps, Callout, Tabs } from 'nextra/components'
+
+<div className="mt-8 mb-16 text-center">
+  <h1 className="text-5xl font-bold tracking-tight mb-4">
+    Secure your data with<br />
+    <span className="bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">
+      one line of code
+    </span>
+  </h1>
+  <p className="text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto mb-8">
+    Enterprise-grade cryptography without the complexity. Download a personalized SDK,
+    then encrypt and decrypt with zero configuration.
+  </p>
+  <div className="flex gap-4 justify-center flex-wrap">
+    <a href="/crypto-serve/getting-started/quickstart" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+      Get Started →
+    </a>
+    <a href="https://github.com/keytum/crypto-serve" className="px-6 py-3 border border-gray-300 dark:border-gray-700 rounded-lg font-semibold hover:border-gray-400 transition-colors">
+      View on GitHub
+    </a>
+  </div>
+</div>
+
+```python copy
+from cryptoserve import crypto
+
+# No configuration needed - identity is embedded in your SDK
+ciphertext = crypto.encrypt("sensitive data", context="user-pii")
+plaintext = crypto.decrypt(ciphertext)
+```
+
+---
+
+## Why CryptoServe?
+
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+  <div className="p-6 border border-gray-200 dark:border-gray-800 rounded-xl">
+    <div className="text-3xl mb-3">🔐</div>
+    <h3 className="text-lg font-semibold mb-2">Zero Configuration</h3>
+    <p className="text-gray-500 dark:text-gray-400">
+      Download a personalized SDK with your identity embedded. No API keys to configure, no secrets to manage.
+    </p>
+  </div>
+  <div className="p-6 border border-gray-200 dark:border-gray-800 rounded-xl">
+    <div className="text-3xl mb-3">🛡️</div>
+    <h3 className="text-lg font-semibold mb-2">Enterprise Security</h3>
+    <p className="text-gray-500 dark:text-gray-400">
+      AES-256-GCM with key commitment, HKDF key derivation, Ed25519 authentication, and FIPS compliance.
+    </p>
+  </div>
+  <div className="p-6 border border-gray-200 dark:border-gray-800 rounded-xl">
+    <div className="text-3xl mb-3">⚛️</div>
+    <h3 className="text-lg font-semibold mb-2">Post-Quantum Ready</h3>
+    <p className="text-gray-500 dark:text-gray-400">
+      NIST-standardized ML-KEM and ML-DSA algorithms. Hybrid modes for defense in depth against quantum threats.
+    </p>
+  </div>
+  <div className="p-6 border border-gray-200 dark:border-gray-800 rounded-xl">
+    <div className="text-3xl mb-3">📋</div>
+    <h3 className="text-lg font-semibold mb-2">Policy Engine</h3>
+    <p className="text-gray-500 dark:text-gray-400">
+      Enforce cryptographic standards at runtime. Block deprecated algorithms, require minimum key sizes.
+    </p>
+  </div>
+  <div className="p-6 border border-gray-200 dark:border-gray-800 rounded-xl">
+    <div className="text-3xl mb-3">📊</div>
+    <h3 className="text-lg font-semibold mb-2">Full Audit Trail</h3>
+    <p className="text-gray-500 dark:text-gray-400">
+      Every operation logged with identity, context, algorithm, and timestamp. Complete compliance visibility.
+    </p>
+  </div>
+  <div className="p-6 border border-gray-200 dark:border-gray-800 rounded-xl">
+    <div className="text-3xl mb-3">🔄</div>
+    <h3 className="text-lg font-semibold mb-2">Automatic Key Rotation</h3>
+    <p className="text-gray-500 dark:text-gray-400">
+      Keys rotate automatically without application changes. Old ciphertext remains decryptable.
+    </p>
+  </div>
+</div>
+
+---
+
+## How It Works
+
+<Steps>
+### Create an Identity
+
+Sign in to the dashboard and create an identity for your application.
+
+### Download Your SDK
+
+Get a personalized SDK with your identity embedded - no configuration required.
+
+```bash copy
+pip install https://your-server/sdk/download/YOUR_TOKEN/python
+```
+
+### Start Encrypting
+
+Use the SDK with a single line of code. The right algorithm is selected automatically.
+
+```python copy
+from cryptoserve import crypto
+
+# Encrypt with automatic algorithm selection
+encrypted = crypto.encrypt_string("user@example.com", context="user-pii")
+
+# Decrypt seamlessly
+email = crypto.decrypt_string(encrypted)
+```
+</Steps>
+
+---
+
+## 5-Layer Context Model
+
+CryptoServe automatically selects the optimal algorithm based on your data's requirements:
+
+| Layer | Purpose | Example |
+|-------|---------|---------|
+| **Data Identity** | What type of data? | PII, PHI, PCI, credentials |
+| **Regulatory** | Compliance requirements | HIPAA, PCI-DSS, GDPR |
+| **Threat Model** | Who are adversaries? | Nation-state, organized crime |
+| **Access Patterns** | How is data accessed? | High-frequency, batch, rare |
+| **Technical** | Infrastructure constraints | FIPS mode, latency limits |
+
+---
+
+## Supported Algorithms
+
+<Tabs items={['Symmetric', 'Asymmetric', 'Post-Quantum', 'Hashing']}>
+  <Tabs.Tab>
+    | Algorithm | Key Size | Use Case |
+    |-----------|----------|----------|
+    | AES-256-GCM | 256-bit | Default encryption |
+    | AES-256-GCM-SIV | 256-bit | Deterministic encryption |
+    | ChaCha20-Poly1305 | 256-bit | Mobile/embedded |
+  </Tabs.Tab>
+  <Tabs.Tab>
+    | Algorithm | Purpose |
+    |-----------|---------|
+    | Ed25519 | Digital signatures, JWT |
+    | X25519 | Key agreement |
+    | RSA-OAEP | Legacy compatibility |
+  </Tabs.Tab>
+  <Tabs.Tab>
+    | Algorithm | Standard | Purpose |
+    |-----------|----------|---------|
+    | ML-KEM-768 | FIPS 203 | Key encapsulation |
+    | ML-DSA-65 | FIPS 204 | Digital signatures |
+    | Hybrid modes | — | Classical + PQC |
+  </Tabs.Tab>
+  <Tabs.Tab>
+    | Algorithm | Output | Use Case |
+    |-----------|--------|----------|
+    | SHA-256 | 256-bit | General hashing |
+    | SHA-384 | 384-bit | Higher security |
+    | BLAKE3 | Variable | High performance |
+    | Argon2id | Variable | Password hashing |
+  </Tabs.Tab>
+</Tabs>
+
+---
+
+## Ready to Get Started?
+
+<Cards>
+  <Card title="Quick Start" href="/crypto-serve/getting-started/quickstart" arrow>
+    Get up and running in 5 minutes
+  </Card>
+  <Card title="API Reference" href="/crypto-serve/api-reference" arrow>
+    Explore the complete REST API
+  </Card>
+  <Card title="Security Whitepaper" href="/crypto-serve/security/whitepaper" arrow>
+    Deep dive into our cryptographic design
+  </Card>
+</Cards>
