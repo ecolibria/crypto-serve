@@ -1,0 +1,116 @@
+---
+title: Configuration
+---
+
+import { Callout } from 'nextra/components'
+
+# Configuration
+
+CryptoServe is configured via environment variables.
+
+## Core Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | `sqlite+aiosqlite:///./cryptoserve.db` | Database connection string |
+| `SECRET_KEY` | Generated | JWT signing key (32+ bytes) |
+| `FRONTEND_URL` | `http://localhost:3001` | Frontend URL for CORS |
+
+## Authentication
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GITHUB_CLIENT_ID` | Yes | GitHub OAuth client ID |
+| `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth client secret |
+| `GOOGLE_CLIENT_ID` | No | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | No | Google OAuth client secret |
+
+## KMS Integration
+
+<Callout type="warning">
+  In production, always use a KMS provider for key management.
+</Callout>
+
+### AWS KMS
+
+```bash
+KMS_PROVIDER=aws
+AWS_KMS_KEY_ID=arn:aws:kms:us-east-1:123456789:key/abc123
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+```
+
+### Google Cloud KMS
+
+```bash
+KMS_PROVIDER=gcp
+GCP_KMS_KEY_ID=projects/myproject/locations/global/keyRings/myring/cryptoKeys/mykey
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+```
+
+### Local (Development Only)
+
+```bash
+KMS_PROVIDER=local
+MASTER_KEY=your-32-byte-master-key-here
+```
+
+## Security Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FIPS_MODE` | `disabled` | Enable FIPS 140-2 compliance |
+| `RATE_LIMIT_ENABLED` | `true` | Enable rate limiting |
+| `RATE_LIMIT_PER_MINUTE` | `1000` | Requests per minute per identity |
+| `SESSION_TIMEOUT_MINUTES` | `30` | Session expiration time |
+
+## Logging
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| `LOG_FORMAT` | `json` | Log format (json, text) |
+| `AUDIT_LOGGING` | `true` | Enable audit logging |
+
+## Example Configuration
+
+### Development
+
+```bash filename=".env.development"
+DATABASE_URL=sqlite+aiosqlite:///./cryptoserve.db
+SECRET_KEY=dev-secret-key-not-for-production
+FRONTEND_URL=http://localhost:3001
+
+GITHUB_CLIENT_ID=your-dev-client-id
+GITHUB_CLIENT_SECRET=your-dev-client-secret
+
+KMS_PROVIDER=local
+MASTER_KEY=01234567890123456789012345678901
+
+LOG_LEVEL=DEBUG
+LOG_FORMAT=text
+```
+
+### Production
+
+```bash filename=".env.production"
+DATABASE_URL=postgresql+asyncpg://user:pass@db:5432/cryptoserve
+SECRET_KEY=<generate with: openssl rand -base64 32>
+FRONTEND_URL=https://dashboard.yourcompany.com
+
+GITHUB_CLIENT_ID=your-prod-client-id
+GITHUB_CLIENT_SECRET=your-prod-client-secret
+
+KMS_PROVIDER=aws
+AWS_KMS_KEY_ID=arn:aws:kms:us-east-1:123456789:key/abc123
+AWS_REGION=us-east-1
+
+FIPS_MODE=enabled
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_PER_MINUTE=1000
+
+LOG_LEVEL=INFO
+LOG_FORMAT=json
+AUDIT_LOGGING=true
+```

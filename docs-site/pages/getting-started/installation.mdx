@@ -1,0 +1,229 @@
+---
+title: Installation
+---
+
+import { Tabs, Callout, Steps } from 'nextra/components'
+
+# Installation
+
+Choose the installation method that best fits your needs.
+
+<Tabs items={['Docker (Recommended)', 'Local Development', 'Production']}>
+  <Tabs.Tab>
+    ## Docker Installation
+
+    The fastest way to get started.
+
+    <Steps>
+    ### Clone the Repository
+
+    ```bash copy
+    git clone https://github.com/keytum/crypto-serve.git
+    cd crypto-serve
+    ```
+
+    ### Configure OAuth
+
+    Create a GitHub OAuth application:
+
+    1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+    2. Click **New OAuth App**
+    3. Set Homepage URL: `http://localhost:3001`
+    4. Set Callback URL: `http://localhost:8001/auth/github/callback`
+    5. Copy the Client ID and Client Secret
+
+    ### Set Environment Variables
+
+    ```bash copy
+    cp .env.example .env
+    ```
+
+    Edit `.env`:
+
+    ```bash filename=".env"
+    GITHUB_CLIENT_ID=your_client_id
+    GITHUB_CLIENT_SECRET=your_client_secret
+    ```
+
+    ### Start Services
+
+    ```bash copy
+    docker compose up -d
+    ```
+
+    ### Verify Installation
+
+    ```bash copy
+    curl http://localhost:8001/health
+    ```
+
+    Expected output:
+    ```json
+    {"status": "healthy"}
+    ```
+    </Steps>
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+    ## Local Development
+
+    For contributing or debugging.
+
+    ### Prerequisites
+
+    - Python 3.11+
+    - Node.js 18+
+    - PostgreSQL 15+
+
+    <Steps>
+    ### Backend Setup
+
+    ```bash copy
+    cd backend
+    python -m venv venv
+    source venv/bin/activate  # Windows: venv\Scripts\activate
+    pip install -e ".[dev]"
+    ```
+
+    ### Database Setup
+
+    ```bash copy
+    # Using Docker for PostgreSQL
+    docker run -d \
+      --name cryptoserve-db \
+      -e POSTGRES_PASSWORD=postgres \
+      -e POSTGRES_DB=cryptoserve \
+      -p 5432:5432 \
+      postgres:15
+    ```
+
+    ### Run Migrations
+
+    ```bash copy
+    alembic upgrade head
+    ```
+
+    ### Start Backend
+
+    ```bash copy
+    uvicorn app.main:app --reload --port 8001
+    ```
+
+    ### Frontend Setup
+
+    ```bash copy
+    cd frontend
+    npm install
+    npm run dev
+    ```
+    </Steps>
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+    ## Production Deployment
+
+    For production environments.
+
+    <Callout type="warning">
+      Always use a KMS provider (AWS KMS, Google Cloud KMS) in production.
+    </Callout>
+
+    ### Docker Compose (Simple)
+
+    ```yaml filename="docker-compose.prod.yml" copy
+    version: '3.8'
+    services:
+      backend:
+        image: cryptoserve/backend:latest
+        environment:
+          - DATABASE_URL=postgresql+asyncpg://user:pass@db:5432/cryptoserve
+          - KMS_PROVIDER=aws
+          - AWS_KMS_KEY_ID=arn:aws:kms:...
+          - FIPS_MODE=enabled
+        deploy:
+          replicas: 3
+
+      db:
+        image: postgres:15
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+
+      nginx:
+        image: nginx:alpine
+        ports:
+          - "443:443"
+        volumes:
+          - ./nginx.conf:/etc/nginx/nginx.conf
+          - ./certs:/etc/ssl/certs
+    ```
+
+    ### Kubernetes
+
+    ```yaml filename="deployment.yaml" copy
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: cryptoserve
+    spec:
+      replicas: 3
+      template:
+        spec:
+          containers:
+          - name: backend
+            image: cryptoserve/backend:latest
+            envFrom:
+            - secretRef:
+                name: cryptoserve-secrets
+            resources:
+              limits:
+                cpu: "2"
+                memory: "2Gi"
+    ```
+
+    ### Security Checklist
+
+    - [ ] Use HTTPS/TLS termination
+    - [ ] Configure KMS integration
+    - [ ] Enable FIPS mode if required
+    - [ ] Set up monitoring and alerting
+    - [ ] Configure backup procedures
+    - [ ] Review rate limiting settings
+  </Tabs.Tab>
+</Tabs>
+
+---
+
+## Post-Quantum Support
+
+To enable post-quantum cryptography:
+
+```bash copy
+pip install liboqs-python
+```
+
+<Callout>
+  Post-quantum algorithms require the liboqs library. On some systems, you may need to install it from source.
+</Callout>
+
+## Troubleshooting
+
+### Port Already in Use
+
+```bash
+# Find and kill the process using port 8001
+lsof -i :8001
+kill -9 <PID>
+```
+
+### Database Connection Failed
+
+Ensure PostgreSQL is running:
+
+```bash
+docker ps | grep postgres
+```
+
+### OAuth Callback Error
+
+Verify your callback URL matches exactly:
+- GitHub: `http://localhost:8001/auth/github/callback`
