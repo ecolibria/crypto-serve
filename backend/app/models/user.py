@@ -84,6 +84,12 @@ class User(Base):
         back_populates="user",
         lazy="selectin"
     )
+    teams: Mapped[list["Team"]] = relationship(
+        "Team",
+        secondary="user_teams",
+        back_populates="users",
+        lazy="selectin"
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.github_username}>"

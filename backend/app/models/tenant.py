@@ -136,6 +136,11 @@ class Tenant(Base):
         back_populates="tenant",
         lazy="dynamic"
     )
+    teams: Mapped[list["Team"]] = relationship(
+        "Team",
+        back_populates="tenant",
+        lazy="dynamic"
+    )
 
     def __repr__(self) -> str:
         return f"<Tenant {self.slug}>"

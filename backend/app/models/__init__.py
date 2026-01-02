@@ -2,6 +2,7 @@
 
 from app.models.tenant import Tenant, DEFAULT_TENANT_ID, DEFAULT_TENANT_SLUG
 from app.models.user import User
+from app.models.team import Team, TeamSource, user_teams
 from app.models.organization import OrganizationSettings  # Legacy, kept for migration
 from app.models.identity import Identity, IdentityType, IdentityStatus
 from app.models.application import Application, ApplicationStatus
@@ -25,6 +26,10 @@ __all__ = [
     # Users
     "User",
     "OrganizationSettings",  # Legacy, kept for migration
+    # Teams
+    "Team",
+    "TeamSource",
+    "user_teams",
     # Legacy Identity (keeping for backward compatibility)
     "Identity",
     "IdentityType",

@@ -312,7 +312,7 @@ import oqs
 kem = oqs.KeyEncapsulation("ML-KEM-768")
 ```
 
-**This is NOT a mock implementation.** liboqs provides real implementations of NIST-standardized algorithms.
+liboqs provides production-ready implementations of NIST-standardized algorithms.
 
 ### 5.2 Supported Algorithms
 

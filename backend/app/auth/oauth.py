@@ -339,6 +339,18 @@ async def oauth_callback(
     await db.commit()
     await db.refresh(user)
 
+    # Sync user's teams from OIDC groups
+    if user_info.groups:
+        from app.core.team_service import team_service
+        from app.models import TeamSource
+        await team_service.sync_user_teams(
+            db=db,
+            user=user,
+            team_names=user_info.groups,
+            source=TeamSource.GITHUB if provider == "github" else TeamSource.OIDC,
+        )
+        await db.commit()
+
     # Create JWT token
     jwt_token = create_access_token(user.id, user.github_username)
 
@@ -457,6 +469,13 @@ async def dev_login(
         user.last_login_at = datetime.now(timezone.utc)
         if not user.is_admin:
             user.is_admin = True
+        await db.commit()
+
+    # Add dev user to dev team
+    from app.core.team_service import team_service
+    dev_team = await team_service.get_or_create_dev_team(db, default_tenant.id)
+    if dev_team not in user.teams:
+        user.teams.append(dev_team)
         await db.commit()
 
     jwt_token = create_access_token(user.id, user.github_username)
