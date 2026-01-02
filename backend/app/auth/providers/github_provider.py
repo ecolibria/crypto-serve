@@ -16,6 +16,7 @@ class GitHubProvider(OAuthProvider):
     TOKEN_URL = "https://github.com/login/oauth/access_token"
     USER_URL = "https://api.github.com/user"
     EMAILS_URL = "https://api.github.com/user/emails"
+    ORGS_URL = "https://api.github.com/user/orgs"
 
     @property
     def provider_name(self) -> str:
@@ -26,7 +27,7 @@ class GitHubProvider(OAuthProvider):
         return self.config.display_name or "GitHub"
 
     def _default_scopes(self) -> list[str]:
-        return ["read:user", "user:email"]
+        return ["read:user", "user:email", "read:org"]
 
     async def get_authorization_url(
         self,
@@ -116,6 +117,17 @@ class GitHubProvider(OAuthProvider):
                 if primary_email not in verified_emails:
                     verified_emails.append(primary_email)
 
+            # Fetch user's organizations (for team-based access control)
+            groups: list[str] = []
+            try:
+                orgs_response = await client.get(self.ORGS_URL, headers=headers)
+                if orgs_response.status_code == 200:
+                    orgs = orgs_response.json()
+                    groups = [org["login"] for org in orgs]
+            except Exception:
+                # Don't fail login if org fetch fails
+                pass
+
             return OAuthUserInfo(
                 provider_id=str(user_data["id"]),
                 provider_name=self.provider_name,
@@ -126,4 +138,5 @@ class GitHubProvider(OAuthProvider):
                 avatar_url=user_data.get("avatar_url"),
                 raw_data=user_data,
                 verified_emails=verified_emails,
+                groups=groups,
             )

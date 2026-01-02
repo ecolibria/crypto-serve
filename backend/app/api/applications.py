@@ -242,7 +242,27 @@ async def create_application(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Create a new application with Ed25519 keypair and tokens."""
+    """Create a new application with Ed25519 keypair and tokens.
+
+    Team validation:
+    - Admins can create apps for any team
+    - Users can only create apps for teams they belong to
+    - Teams are synced from OIDC claims (GitHub orgs, Azure AD groups, etc.)
+    """
+    from app.core.team_service import team_service
+
+    # Validate team membership
+    is_valid, error_message = await team_service.validate_team_for_app_creation(
+        db=db,
+        user=user,
+        team_name=data.team,
+    )
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_message,
+        )
+
     application, access_token, refresh_token = await application_manager.create_application(
         db=db,
         user=user,
