@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +32,8 @@ router = APIRouter(prefix="/api/contexts", tags=["contexts"])
 
 class ContextResponse(BaseModel):
     """Context response schema with full 5-layer config."""
+    model_config = ConfigDict(from_attributes=True)
+
     name: str
     display_name: str
     description: str
@@ -50,12 +52,11 @@ class ContextResponse(BaseModel):
     created_at: datetime
     updated_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
-
 
 class ContextListResponse(BaseModel):
     """Simplified context for list views."""
+    model_config = ConfigDict(from_attributes=True)
+
     name: str
     display_name: str
     description: str
@@ -63,9 +64,6 @@ class ContextListResponse(BaseModel):
     sensitivity: str
     quantum_resistant: bool
     compliance_tags: list[str] | None = None
-
-    class Config:
-        from_attributes = True
 
 
 # =============================================================================

@@ -4,7 +4,7 @@ from typing import Annotated
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +17,8 @@ router = APIRouter(prefix="/api/audit", tags=["audit"])
 
 class AuditLogResponse(BaseModel):
     """Audit log response schema."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     timestamp: datetime
     operation: str
@@ -29,9 +31,6 @@ class AuditLogResponse(BaseModel):
     input_size_bytes: int | None
     output_size_bytes: int | None
     latency_ms: int | None
-
-    class Config:
-        from_attributes = True
 
 
 class AuditStats(BaseModel):
