@@ -174,3 +174,61 @@ async def test_different_contexts_different_keys(db_session, test_user, test_ten
     # Different contexts should produce different ciphertext
     # (different keys, different nonces)
     assert ciphertext1 != ciphertext2
+
+
+@pytest.mark.asyncio
+async def test_audit_log_algorithm_tracking(db_session, test_user, test_context, test_tenant):
+    """Test that audit logs capture algorithm details for metrics."""
+    from sqlalchemy import select
+    from app.models import AuditLog
+
+    # Create identity with access to test context
+    identity = Identity(
+        id="test_identity_audit_algo",
+        tenant_id=test_tenant.id,
+        user_id=test_user.id,
+        type=IdentityType.DEVELOPER,
+        name="Test Identity",
+        team="test",
+        environment="development",
+        allowed_contexts=["test-context"],
+        status=IdentityStatus.ACTIVE,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=90),
+    )
+    db_session.add(identity)
+    await db_session.commit()
+
+    # Encrypt some data
+    plaintext = b"Test data for algorithm tracking"
+    result = await crypto_engine.encrypt(
+        db=db_session,
+        plaintext=plaintext,
+        context_name="test-context",
+        identity=identity,
+    )
+
+    # Check audit log was created with algorithm details
+    audit_result = await db_session.execute(
+        select(AuditLog)
+        .where(AuditLog.identity_id == identity.id)
+        .where(AuditLog.operation == "encrypt")
+        .order_by(AuditLog.timestamp.desc())
+    )
+    audit = audit_result.scalar_one_or_none()
+
+    assert audit is not None, "Audit log should be created for encrypt operation"
+    assert audit.success is True
+    assert audit.context == "test-context"
+
+    # Verify algorithm tracking fields are populated
+    assert audit.algorithm is not None, "Algorithm field should be populated"
+    assert audit.cipher is not None, "Cipher field should be populated"
+    assert audit.mode is not None, "Mode field should be populated"
+    assert audit.key_bits is not None, "Key bits field should be populated"
+
+    # Verify sensible values
+    assert audit.cipher in ("AES", "ChaCha20"), f"Unexpected cipher: {audit.cipher}"
+    assert audit.mode in ("gcm", "gcm-siv", "cbc", "ctr", "ccm"), f"Unexpected mode: {audit.mode}"
+    assert audit.key_bits in (128, 192, 256), f"Unexpected key bits: {audit.key_bits}"
+    assert isinstance(audit.quantum_safe, bool)
+    assert isinstance(audit.policy_violation, bool)
