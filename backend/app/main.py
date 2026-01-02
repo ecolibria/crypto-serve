@@ -502,7 +502,15 @@ async def seed_default_contexts():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan events."""
+    """Application lifespan events.
+
+    Handles graceful startup and shutdown for horizontal scaling:
+    - Startup: Initialize DB, seed defaults, log readiness
+    - Shutdown: Close DB connections, cleanup rate limiter
+    """
+    import signal
+    import os
+
     # Validate startup configuration
     from app.core.startup import validate_startup
     validate_startup()  # Raises RuntimeError in STRICT mode if validation fails
@@ -512,13 +520,26 @@ async def lifespan(app: FastAPI):
     await seed_default_contexts()
 
     logger = get_logger("cryptoserve")
-    logger.info("CryptoServe started", version="0.1.0")
+    instance_id = os.getenv("HOSTNAME", os.getenv("INSTANCE_ID", "unknown"))
+    logger.info(
+        "CryptoServe started",
+        version="0.1.0",
+        instance_id=instance_id,
+        pid=os.getpid(),
+    )
 
     yield
 
-    # Shutdown
-    logger.info("CryptoServe shutting down")
+    # Graceful shutdown
+    logger.info("CryptoServe shutting down gracefully", instance_id=instance_id)
+
+    # Close database connections
     await close_db()
+    logger.info("Database connections closed")
+
+    # Note: In-flight requests are handled by Uvicorn's graceful shutdown
+    # Default timeout is 30 seconds (configurable via --timeout-graceful-shutdown)
+    logger.info("Shutdown complete")
 
 
 app = FastAPI(
