@@ -1,0 +1,458 @@
+# Python SDK
+
+The official Python SDK for CryptoServe.
+
+## Installation
+
+```bash
+pip install http://localhost:8001/sdk/download/YOUR_TOKEN/python
+```
+
+## Requirements
+
+- Python 3.8+
+- No additional dependencies (batteries included)
+
+---
+
+## Quick Start
+
+```python
+from cryptoserve import crypto
+
+# Encrypt a string
+encrypted = crypto.encrypt_string("Hello World!", context="user-pii")
+
+# Decrypt it back
+decrypted = crypto.decrypt_string(encrypted)
+
+print(decrypted)  # "Hello World!"
+```
+
+---
+
+## API Reference
+
+### Encryption
+
+#### `encrypt(data, context, **kwargs)`
+
+Encrypt binary data.
+
+```python
+from cryptoserve import crypto
+
+# Encrypt bytes
+data = b"binary data here"
+encrypted = crypto.encrypt(data, context="user-pii")
+
+# With associated data
+encrypted = crypto.encrypt(
+    data,
+    context="user-pii",
+    associated_data=b"metadata"
+)
+```
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `data` | bytes | Yes | Data to encrypt |
+| `context` | str | Yes | Encryption context name |
+| `associated_data` | bytes | No | Authenticated but not encrypted |
+| `algorithm` | str | No | Override default algorithm |
+
+**Returns:** `bytes` - Ciphertext
+
+#### `encrypt_string(text, context, **kwargs)`
+
+Encrypt a string (UTF-8 encoded).
+
+```python
+encrypted = crypto.encrypt_string("sensitive text", context="user-pii")
+```
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `text` | str | Yes | String to encrypt |
+| `context` | str | Yes | Encryption context name |
+
+**Returns:** `str` - Base64-encoded ciphertext
+
+#### `encrypt_json(obj, context, **kwargs)`
+
+Encrypt a JSON-serializable object.
+
+```python
+user = {"name": "John", "ssn": "123-45-6789"}
+encrypted = crypto.encrypt_json(user, context="user-pii")
+```
+
+**Returns:** `str` - Base64-encoded ciphertext
+
+---
+
+### Decryption
+
+#### `decrypt(ciphertext, **kwargs)`
+
+Decrypt binary data.
+
+```python
+plaintext = crypto.decrypt(encrypted_bytes)
+
+# With associated data
+plaintext = crypto.decrypt(
+    encrypted_bytes,
+    associated_data=b"metadata"  # Must match encryption
+)
+```
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `ciphertext` | bytes | Yes | Ciphertext to decrypt |
+| `associated_data` | bytes | No | Must match encryption AAD |
+
+**Returns:** `bytes` - Plaintext
+
+#### `decrypt_string(ciphertext, **kwargs)`
+
+Decrypt to a string.
+
+```python
+text = crypto.decrypt_string(encrypted_string)
+```
+
+**Returns:** `str` - Decrypted string
+
+#### `decrypt_json(ciphertext, **kwargs)`
+
+Decrypt to a JSON object.
+
+```python
+user = crypto.decrypt_json(encrypted_string)
+print(user["name"])  # "John"
+```
+
+**Returns:** `dict | list` - Parsed JSON
+
+---
+
+### Signing
+
+#### `sign(message, context, **kwargs)`
+
+Create a digital signature.
+
+```python
+signature = crypto.sign(b"message to sign", context="signing-context")
+```
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `message` | bytes | Yes | Message to sign |
+| `context` | str | Yes | Signing context |
+| `algorithm` | str | No | `Ed25519` or `ML-DSA-65` |
+
+**Returns:** `bytes` - Signature
+
+#### `verify(message, signature, context, **kwargs)`
+
+Verify a digital signature.
+
+```python
+is_valid = crypto.verify(message, signature, context="signing-context")
+```
+
+**Returns:** `bool` - True if valid
+
+---
+
+### Batch Operations
+
+#### `batch_encrypt(items)`
+
+Encrypt multiple items efficiently.
+
+```python
+items = [
+    {"data": b"item1", "context": "user-pii"},
+    {"data": b"item2", "context": "user-pii"},
+]
+results = crypto.batch_encrypt(items)
+
+for result in results:
+    if result.success:
+        print(result.ciphertext)
+    else:
+        print(f"Error: {result.error}")
+```
+
+#### `batch_decrypt(items)`
+
+Decrypt multiple items efficiently.
+
+```python
+items = [
+    {"ciphertext": ct1},
+    {"ciphertext": ct2},
+]
+results = crypto.batch_decrypt(items)
+```
+
+---
+
+### Configuration
+
+#### `configure(**kwargs)`
+
+Configure SDK behavior.
+
+```python
+crypto.configure(
+    server_url="https://api.cryptoserve.io",  # Override server
+    timeout=30,           # Request timeout in seconds
+    max_retries=3,        # Retry count
+    verify_ssl=True,      # SSL verification
+    debug=False           # Enable debug logging
+)
+```
+
+#### `get_identity_info()`
+
+Get information about the current identity.
+
+```python
+info = crypto.get_identity_info()
+print(info)
+# {
+#     "identity_id": "id_abc123",
+#     "name": "backend-api",
+#     "team": "platform",
+#     "environment": "production",
+#     "contexts": ["user-pii", "session-tokens"]
+# }
+```
+
+#### `get_contexts()`
+
+List available contexts for this identity.
+
+```python
+contexts = crypto.get_contexts()
+for ctx in contexts:
+    print(f"{ctx.name}: {ctx.algorithm}")
+```
+
+---
+
+### Async Support
+
+The SDK provides async versions of all methods:
+
+```python
+from cryptoserve import async_crypto
+
+async def main():
+    encrypted = await async_crypto.encrypt_string(
+        "Hello World!",
+        context="user-pii"
+    )
+    decrypted = await async_crypto.decrypt_string(encrypted)
+    print(decrypted)
+
+import asyncio
+asyncio.run(main())
+```
+
+---
+
+## Error Handling
+
+```python
+from cryptoserve import crypto
+from cryptoserve.exceptions import (
+    CryptoServeError,      # Base exception
+    DecryptionError,       # Decryption failed
+    AuthorizationError,    # Not authorized for context
+    ContextNotFoundError,  # Context doesn't exist
+    PolicyViolationError,  # Blocked by policy
+    NetworkError,          # Connection issues
+    TokenExpiredError      # Token needs refresh
+)
+
+try:
+    decrypted = crypto.decrypt_string(ciphertext)
+except DecryptionError as e:
+    print(f"Decryption failed: {e}")
+except AuthorizationError as e:
+    print(f"Not authorized: {e}")
+except PolicyViolationError as e:
+    print(f"Policy violation: {e.violations}")
+except CryptoServeError as e:
+    print(f"General error: {e}")
+```
+
+---
+
+## Type Hints
+
+Full type annotations for IDE support:
+
+```python
+from cryptoserve import crypto
+from cryptoserve.types import (
+    EncryptResult,
+    DecryptResult,
+    ContextInfo,
+    IdentityInfo
+)
+
+def encrypt_user_data(user: dict) -> str:
+    """Encrypt user data and return ciphertext."""
+    return crypto.encrypt_json(user, context="user-pii")
+```
+
+---
+
+## Examples
+
+### Django Integration
+
+```python
+# models.py
+from django.db import models
+from cryptoserve import crypto
+
+class User(models.Model):
+    email = models.EmailField()
+    _ssn_encrypted = models.TextField()
+
+    @property
+    def ssn(self):
+        return crypto.decrypt_string(self._ssn_encrypted)
+
+    @ssn.setter
+    def ssn(self, value):
+        self._ssn_encrypted = crypto.encrypt_string(
+            value, context="user-pii"
+        )
+```
+
+### FastAPI Integration
+
+```python
+from fastapi import FastAPI, Depends
+from cryptoserve import crypto
+
+app = FastAPI()
+
+@app.post("/users")
+async def create_user(ssn: str):
+    encrypted_ssn = crypto.encrypt_string(ssn, context="user-pii")
+    # Store encrypted_ssn in database
+    return {"status": "created"}
+
+@app.get("/users/{user_id}/ssn")
+async def get_ssn(user_id: str):
+    # Fetch encrypted_ssn from database
+    return {"ssn": crypto.decrypt_string(encrypted_ssn)}
+```
+
+### SQLAlchemy Integration
+
+```python
+from sqlalchemy import Column, String
+from sqlalchemy.ext.hybrid import hybrid_property
+from cryptoserve import crypto
+
+class User(Base):
+    __tablename__ = 'users'
+
+    id = Column(String, primary_key=True)
+    _ssn = Column("ssn", String)
+
+    @hybrid_property
+    def ssn(self):
+        if self._ssn:
+            return crypto.decrypt_string(self._ssn)
+        return None
+
+    @ssn.setter
+    def ssn(self, value):
+        if value:
+            self._ssn = crypto.encrypt_string(value, context="user-pii")
+        else:
+            self._ssn = None
+```
+
+### File Encryption
+
+```python
+from cryptoserve import crypto
+
+def encrypt_file(input_path: str, output_path: str, context: str):
+    """Encrypt a file."""
+    with open(input_path, "rb") as f:
+        plaintext = f.read()
+
+    ciphertext = crypto.encrypt(plaintext, context=context)
+
+    with open(output_path, "wb") as f:
+        f.write(ciphertext)
+
+def decrypt_file(input_path: str, output_path: str):
+    """Decrypt a file."""
+    with open(input_path, "rb") as f:
+        ciphertext = f.read()
+
+    plaintext = crypto.decrypt(ciphertext)
+
+    with open(output_path, "wb") as f:
+        f.write(plaintext)
+```
+
+---
+
+## Testing
+
+### Mock Mode
+
+For testing without a server:
+
+```python
+from cryptoserve import crypto
+from cryptoserve.testing import enable_mock_mode
+
+# In your test setup
+enable_mock_mode()
+
+# Now all operations work locally
+encrypted = crypto.encrypt_string("test", context="test-context")
+decrypted = crypto.decrypt_string(encrypted)
+assert decrypted == "test"
+```
+
+### Pytest Fixture
+
+```python
+import pytest
+from cryptoserve.testing import mock_crypto
+
+@pytest.fixture(autouse=True)
+def mock_cryptoserve():
+    with mock_crypto():
+        yield
+
+def test_encryption():
+    from cryptoserve import crypto
+    encrypted = crypto.encrypt_string("test", context="user-pii")
+    assert crypto.decrypt_string(encrypted) == "test"
+```
