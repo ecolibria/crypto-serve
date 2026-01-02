@@ -4,7 +4,7 @@ from typing import Annotated
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +30,8 @@ class IdentityCreate(BaseModel):
 
 class IdentityResponse(BaseModel):
     """Identity response schema."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     type: IdentityType
     name: str
@@ -40,9 +42,6 @@ class IdentityResponse(BaseModel):
     created_at: datetime
     expires_at: datetime
     last_used_at: datetime | None
-
-    class Config:
-        from_attributes = True
 
 
 class IdentityCreateResponse(BaseModel):

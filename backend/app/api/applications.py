@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -77,6 +77,8 @@ class ApplicationUpdate(BaseModel):
 
 class ApplicationResponse(BaseModel):
     """Application response schema."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     description: str | None
@@ -90,9 +92,6 @@ class ApplicationResponse(BaseModel):
     key_created_at: datetime
     has_refresh_token: bool
     refresh_token_expires_at: datetime | None
-
-    class Config:
-        from_attributes = True
 
 
 class ApplicationCreateResponse(BaseModel):

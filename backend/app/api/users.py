@@ -3,7 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.auth.jwt import get_current_user
 from app.models import User
@@ -13,14 +13,13 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 class UserResponse(BaseModel):
     """User response schema."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     github_username: str
     email: str | None
     avatar_url: str | None
     is_admin: bool = False
-
-    class Config:
-        from_attributes = True
 
 
 @router.get("/me", response_model=UserResponse)
