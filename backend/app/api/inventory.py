@@ -42,6 +42,7 @@ from app.core.pqc_recommendations import (
     DataProfile,
 )
 from app.auth import get_current_user
+from app.api.crypto import get_sdk_identity
 
 router = APIRouter(prefix="/api/v1/inventory", tags=["inventory"])
 
@@ -679,7 +680,7 @@ cbom_router = APIRouter(prefix="/api/v1/cbom", tags=["cbom"])
 async def upload_cbom(
     request: CBOMUploadRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """
     Upload a CBOM (Cryptographic Bill of Materials) from CLI.
@@ -739,10 +740,10 @@ async def upload_cbom(
 
     # Create inventory report
     report = CryptoInventoryReport(
-        user_id=str(user.id),
-        identity_id=None,
-        identity_name=None,
-        team=None,
+        user_id=str(identity.user_id),
+        identity_id=str(identity.id),
+        identity_name=identity.name,
+        team=identity.team,
         department=None,
         scan_source=ScanSource.CLI_SCAN,
         action=DBEnforcementAction.ALLOW,
@@ -782,7 +783,7 @@ async def upload_cbom(
 @cbom_router.get("", response_model=list[dict])
 async def list_cbom_reports(
     db: Annotated[AsyncSession, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
     limit: int = 20,
 ):
     """
@@ -791,10 +792,10 @@ async def list_cbom_reports(
     Returns recent CBOM uploads from CLI scans.
     """
     # Normalize UUID format (handle both with and without hyphens)
-    user_id_normalized = str(user.id).replace("-", "")
+    user_id_normalized = str(identity.user_id).replace("-", "")
     result = await db.execute(
         select(CryptoInventoryReport)
-        .where(CryptoInventoryReport.user_id.in_([str(user.id), user_id_normalized]))
+        .where(CryptoInventoryReport.user_id.in_([str(identity.user_id), user_id_normalized]))
         .where(CryptoInventoryReport.scan_source == ScanSource.CLI_SCAN)
         .order_by(CryptoInventoryReport.scanned_at.desc())
         .limit(limit)
@@ -824,7 +825,7 @@ async def list_cbom_reports(
 async def get_cbom_report(
     report_id_or_ref: str,
     db: Annotated[AsyncSession, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """
     Get a specific CBOM report by ID or reference.
@@ -834,7 +835,7 @@ async def get_cbom_report(
     - Scan reference: /api/v1/cbom/cbom-a7b3c9d2 (case-insensitive)
     """
     # Normalize UUID format (handle both with and without hyphens)
-    user_id_normalized = str(user.id).replace("-", "")
+    user_id_normalized = str(identity.user_id).replace("-", "")
 
     # Determine if lookup is by ID or scan_ref (case-insensitive prefix check)
     if report_id_or_ref.lower().startswith("cbom-"):
@@ -842,7 +843,7 @@ async def get_cbom_report(
         result = await db.execute(
             select(CryptoInventoryReport)
             .where(CryptoInventoryReport.scan_ref.in_([report_id_or_ref, report_id_or_ref.lower(), report_id_or_ref.upper()]))
-            .where(CryptoInventoryReport.user_id.in_([str(user.id), user_id_normalized]))
+            .where(CryptoInventoryReport.user_id.in_([str(identity.user_id), user_id_normalized]))
         )
     else:
         # Lookup by numeric ID
@@ -854,7 +855,7 @@ async def get_cbom_report(
         result = await db.execute(
             select(CryptoInventoryReport)
             .where(CryptoInventoryReport.id == report_id)
-            .where(CryptoInventoryReport.user_id.in_([str(user.id), user_id_normalized]))
+            .where(CryptoInventoryReport.user_id.in_([str(identity.user_id), user_id_normalized]))
         )
 
     report = result.scalar_one_or_none()
