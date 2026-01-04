@@ -163,7 +163,7 @@ export default function DashboardPage() {
             </div>
           </Link>
           <Link
-            href="/certificates"
+            href="/dev/certificates"
             className="flex items-center gap-3 p-4 bg-white border border-slate-200 rounded-xl hover:border-amber-300 hover:shadow-sm transition-all group"
           >
             <div className="p-2 bg-amber-50 rounded-lg group-hover:bg-amber-100 transition-colors">
