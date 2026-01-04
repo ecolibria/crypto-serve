@@ -1037,12 +1037,21 @@ export interface FindingSummary {
   id: number;
   severity: SeverityLevel;
   title: string;
+  description: string | null;
   scan_type: ScanType;
   algorithm: string | null;
   quantum_risk: string | null;
   file_path: string | null;
+  line_number: number | null;
+  library: string | null;
   recommendation: string | null;
+  // Target/app info
+  target_name: string;
+  // Timestamps
   scanned_at: string;
+  first_detected_at: string | null;
+  resolved_at: string | null;
+  // Status
   status: FindingStatus;
   status_reason: string | null;
   is_new: boolean;

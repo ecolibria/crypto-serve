@@ -165,9 +165,11 @@ async def scan_dependencies(
 
                 # Check if this finding existed before
                 is_new = fingerprint not in previous_findings
+                prev_finding = previous_findings.get(fingerprint)
                 first_seen_scan_id = scan_record.id if is_new else (
-                    previous_findings[fingerprint].first_seen_scan_id or previous_findings[fingerprint].scan_id
+                    prev_finding.first_seen_scan_id or prev_finding.scan_id if prev_finding else None
                 )
+                first_detected_at = datetime.now(timezone.utc) if is_new else (prev_finding.first_detected_at if prev_finding else None)
 
                 finding_record = SecurityFinding(
                     scan_id=scan_record.id,
@@ -181,6 +183,7 @@ async def scan_dependencies(
                     recommendation=f"Replace with: {dep.recommended_replacement}" if dep.recommended_replacement else "Find a modern alternative",
                     fingerprint=fingerprint,
                     first_seen_scan_id=first_seen_scan_id,
+                    first_detected_at=first_detected_at or datetime.now(timezone.utc),
                     is_new=is_new,
                 )
                 db.add(finding_record)
@@ -192,9 +195,11 @@ async def scan_dependencies(
 
                 # Check if this finding existed before
                 is_new = fingerprint not in previous_findings
+                prev_finding = previous_findings.get(fingerprint)
                 first_seen_scan_id = scan_record.id if is_new else (
-                    previous_findings[fingerprint].first_seen_scan_id or previous_findings[fingerprint].scan_id
+                    prev_finding.first_seen_scan_id or prev_finding.scan_id if prev_finding else None
                 )
+                first_detected_at = datetime.now(timezone.utc) if is_new else (prev_finding.first_detected_at if prev_finding else None)
 
                 finding_record = SecurityFinding(
                     scan_id=scan_record.id,
@@ -208,6 +213,7 @@ async def scan_dependencies(
                     recommendation="Plan migration to post-quantum cryptography",
                     fingerprint=fingerprint,
                     first_seen_scan_id=first_seen_scan_id,
+                    first_detected_at=first_detected_at or datetime.now(timezone.utc),
                     is_new=is_new,
                 )
                 db.add(finding_record)
