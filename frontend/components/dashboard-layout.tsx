@@ -18,9 +18,9 @@ const baseNavigation = [
 ];
 
 const toolsNavigation = [
-  { name: "Code Scanner", href: "/scanner", icon: Code },
-  { name: "Dependencies", href: "/dependencies", icon: Package },
-  { name: "Certificates", href: "/certificates", icon: Award },
+  { name: "Code Scanner", href: "/dev/scanner", icon: Code },
+  { name: "Dependencies", href: "/dev/dependencies", icon: Package },
+  { name: "Certificates", href: "/dev/certificates", icon: Award },
   { name: "CBOM Reports", href: "/cbom", icon: FileText },
 ];
 
