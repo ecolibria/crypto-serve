@@ -719,14 +719,29 @@ async def health_readiness(db: AsyncSession = Depends(get_db)):
     """
     from app.core.health import health_checker, HealthStatus
     from fastapi.responses import JSONResponse
+    from datetime import datetime, timezone
 
-    report = await health_checker.readiness(db)
-    status_code = 200 if report.status != HealthStatus.UNHEALTHY else 503
+    try:
+        report = await health_checker.readiness(db)
+        status_code = 200 if report.status != HealthStatus.UNHEALTHY else 503
 
-    return JSONResponse(
-        content=report.to_dict(),
-        status_code=status_code,
-    )
+        return JSONResponse(
+            content=report.to_dict(),
+            status_code=status_code,
+        )
+
+    except Exception as e:
+        # Graceful degradation - return error info instead of 500
+        logger.error(f"Readiness check failed unexpectedly: {e}")
+        return JSONResponse(
+            content={
+                "status": "unhealthy",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "error": str(e),
+                "checks": {},
+            },
+            status_code=503,
+        )
 
 
 @app.get("/health/deep")
@@ -743,20 +758,38 @@ async def health_deep(db: AsyncSession = Depends(get_db)):
     from app.core.health import health_checker, HealthStatus
     from app.core.fips import get_fips_status
     from fastapi.responses import JSONResponse
+    from datetime import datetime, timezone
 
-    report = await health_checker.deep(db)
+    try:
+        report = await health_checker.deep(db)
+        report_dict = report.to_dict()
 
-    # Add FIPS status to the report
-    fips_status = get_fips_status()
-    report_dict = report.to_dict()
-    report_dict["fips"] = fips_status.to_dict()
+        # Add FIPS status to the report (with error handling)
+        try:
+            fips_status = get_fips_status()
+            report_dict["fips"] = fips_status.to_dict()
+        except Exception as e:
+            report_dict["fips"] = {"error": str(e), "enabled": False}
 
-    status_code = 200 if report.status != HealthStatus.UNHEALTHY else 503
+        status_code = 200 if report.status != HealthStatus.UNHEALTHY else 503
 
-    return JSONResponse(
-        content=report_dict,
-        status_code=status_code,
-    )
+        return JSONResponse(
+            content=report_dict,
+            status_code=status_code,
+        )
+
+    except Exception as e:
+        # Graceful degradation - return error info instead of 500
+        logger.error(f"Health check failed unexpectedly: {e}")
+        return JSONResponse(
+            content={
+                "status": "unhealthy",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "error": str(e),
+                "checks": {},
+            },
+            status_code=503,
+        )
 
 
 @app.get("/health/fips")
