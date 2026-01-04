@@ -349,14 +349,12 @@ async def list_findings(
     """List security findings.
 
     Returns a list of individual security findings.
+    Available to all authenticated users (developers can see findings to remediate).
     Optionally filter by severity, scan type, or status.
     Use hide_accepted=true to exclude accepted/resolved/false_positive findings.
     """
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
-        )
+    # Note: All authenticated users can view findings to understand what to fix
+    # In a multi-tenant setup, this would be filtered by user's applications
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
