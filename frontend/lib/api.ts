@@ -2019,12 +2019,28 @@ export const api = {
   // Certificate Transparency Monitoring API
   // =============================================================================
 
+  // Helper: Normalize domain by stripping URL components
+  // "https://www.example.com/path" -> "www.example.com"
+  _normalizeDomain: (domain: string): string => {
+    let d = domain.trim();
+    // Remove protocol
+    if (d.startsWith("https://")) d = d.slice(8);
+    else if (d.startsWith("http://")) d = d.slice(7);
+    // Remove path, query, fragment
+    d = d.split("/")[0].split("?")[0].split("#")[0];
+    // Remove port
+    d = d.split(":")[0];
+    return d.toLowerCase();
+  },
+
   // Scan a domain for CT certificates
   scanCTDomain: (domain: string, params?: {
     includeSubdomains?: boolean;
     includeExpired?: boolean;
     expectedIssuers?: string[];
   }) => {
+    // Normalize domain (strip https://, paths, etc.)
+    const normalizedDomain = api._normalizeDomain(domain);
     const query = new URLSearchParams();
     if (params?.includeSubdomains !== undefined) {
       query.set("include_subdomains", String(params.includeSubdomains));
@@ -2036,7 +2052,7 @@ export const api = {
       params.expectedIssuers.forEach(issuer => query.append("expected_issuers", issuer));
     }
     const queryStr = query.toString();
-    return fetchApi(`/api/v1/ct/scan/${encodeURIComponent(domain)}${queryStr ? `?${queryStr}` : ""}`) as Promise<CTScanResponse>;
+    return fetchApi(`/api/v1/ct/scan/${encodeURIComponent(normalizedDomain)}${queryStr ? `?${queryStr}` : ""}`) as Promise<CTScanResponse>;
   },
 
   // Bulk scan multiple domains
@@ -2047,16 +2063,20 @@ export const api = {
     }) as Promise<CTBulkScanResponse>,
 
   // Get recently issued certificates
-  getCTRecentCerts: (domain: string, days: number = 7) =>
-    fetchApi(`/api/v1/ct/recent/${encodeURIComponent(domain)}?days=${days}`) as Promise<CTRecentCertsResponse>,
+  getCTRecentCerts: (domain: string, days: number = 7) => {
+    const normalizedDomain = api._normalizeDomain(domain);
+    return fetchApi(`/api/v1/ct/recent/${encodeURIComponent(normalizedDomain)}?days=${days}`) as Promise<CTRecentCertsResponse>;
+  },
 
   // Get certificate details
   getCTCertificateDetails: (certId: number) =>
     fetchApi(`/api/v1/ct/certificate/${certId}`) as Promise<Record<string, unknown>>,
 
   // Get CA issuers for a domain
-  getCTIssuers: (domain: string, includeSubdomains: boolean = true) =>
-    fetchApi(`/api/v1/ct/issuers/${encodeURIComponent(domain)}?include_subdomains=${includeSubdomains}`) as Promise<CTIssuersResponse>,
+  getCTIssuers: (domain: string, includeSubdomains: boolean = true) => {
+    const normalizedDomain = api._normalizeDomain(domain);
+    return fetchApi(`/api/v1/ct/issuers/${encodeURIComponent(normalizedDomain)}?include_subdomains=${includeSubdomains}`) as Promise<CTIssuersResponse>;
+  },
 
   // Search CT logs
   searchCTCertificates: (query: string, params?: {
