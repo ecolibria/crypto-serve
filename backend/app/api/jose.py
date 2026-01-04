@@ -106,11 +106,11 @@ async def create_jws(
     key = _parse_key(data.key)
 
     try:
-        result = jose_engine.sign_jws(
+        result = jose_engine.create_jws(
             payload=payload,
             key=key,
             algorithm=algorithm,
-            additional_headers=data.additional_headers,
+            extra_headers=data.additional_headers,
         )
     except UnsupportedAlgorithmError as e:
         raise HTTPException(
@@ -157,7 +157,7 @@ async def verify_jws(
         payload, header = jose_engine.verify_jws(
             jws=data.jws,
             key=key,
-            allowed_algorithms=allowed_algorithms,
+            algorithms=allowed_algorithms,
         )
     except InvalidJWSError as e:
         return JWSVerifyResponse(
@@ -279,7 +279,7 @@ async def create_jwe(
             )
 
     try:
-        result = jose_engine.encrypt_jwe(
+        result = jose_engine.create_jwe(
             plaintext=plaintext,
             key=key,
             algorithm=algorithm,
@@ -404,11 +404,15 @@ async def generate_jwk(
     - OKP keys: Ed25519 (signing), X25519 (key exchange)
     - Symmetric (oct): 128-bit or 256-bit keys
     """
+    # Convert size from bits to bytes for symmetric keys
+    key_size_bytes = data.size // 8 if data.size else None
+
     try:
-        private_jwk, public_jwk = jose_engine.generate_jwk(
-            key_type=data.key_type,
-            curve=data.curve,
-            size=data.size,
+        # Engine returns (public_jwk, private_jwk) for asymmetric, (jwk, None) for symmetric
+        public_jwk, private_jwk = jose_engine.generate_jwk(
+            kty=data.key_type,
+            crv=data.curve,
+            key_size=key_size_bytes,
             use=data.use,
             kid=data.kid,
         )
@@ -423,15 +427,30 @@ async def generate_jwk(
             detail=str(e),
         )
 
-    return JWKGenerateResponse(
-        private_jwk=private_jwk,
-        public_jwk=public_jwk,
-    )
+    # For symmetric keys: public_jwk contains the key, private_jwk is None
+    # For asymmetric keys: public_jwk is public, private_jwk is private
+    if private_jwk is None:
+        # Symmetric key case
+        return JWKGenerateResponse(
+            private_jwk=public_jwk.to_dict(),
+            public_jwk=None,
+        )
+    else:
+        # Asymmetric key case
+        return JWKGenerateResponse(
+            private_jwk=private_jwk.to_dict(),
+            public_jwk=public_jwk.to_dict(),
+        )
+
+
+class JWKThumbprintRequest(BaseModel):
+    """JWK thumbprint request schema."""
+    jwk: str = Field(..., description="JWK as JSON string")
 
 
 @router.post("/jwk/thumbprint")
 async def get_jwk_thumbprint(
-    jwk: dict,
+    data: JWKThumbprintRequest,
     identity: Annotated[Identity, Depends(get_sdk_identity)],
 ) -> dict:
     """Compute JWK thumbprint (RFC 7638).
@@ -439,8 +458,17 @@ async def get_jwk_thumbprint(
     Returns the SHA-256 thumbprint of the JWK, which can be used
     as a key identifier.
     """
+    import json as json_module
     try:
-        thumbprint = jose_engine.compute_thumbprint(jwk)
+        jwk_dict = json_module.loads(data.jwk)
+    except json_module.JSONDecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JWK JSON",
+        )
+
+    try:
+        thumbprint = jose_engine.compute_thumbprint(jwk_dict)
     except JOSEError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -454,18 +482,20 @@ async def get_jwk_thumbprint(
 # Helpers
 # ============================================================================
 
-def _parse_key(key_str: str) -> bytes | dict:
-    """Parse a key from string (JWK JSON or base64 bytes)."""
+def _parse_key(key_str: str):
+    """Parse a key from string (JWK JSON or base64 bytes) and convert to crypto key."""
+    import json as json_module
+
     # Try parsing as JWK JSON first
     try:
-        import json
-        key_dict = json.loads(key_str)
+        key_dict = json_module.loads(key_str)
         if isinstance(key_dict, dict) and "kty" in key_dict:
-            return key_dict
-    except (json.JSONDecodeError, TypeError):
+            # Convert JWK dict to cryptographic key object
+            return jose_engine.jwk_to_key(key_dict)
+    except (json_module.JSONDecodeError, TypeError):
         pass
 
-    # Try parsing as base64
+    # Try parsing as base64 (symmetric key)
     try:
         return base64.b64decode(key_str)
     except Exception:

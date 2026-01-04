@@ -14,13 +14,13 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import User, SecurityScan, SecurityFinding, ScanType, SeverityLevel, FindingStatus
+from app.models import Identity, SecurityScan, SecurityFinding, ScanType, SeverityLevel, FindingStatus
 from app.core.code_scanner import (
     CodeScanner,
     CodeScannerError,
     Language,
 )
-from app.auth.jwt import get_dashboard_or_sdk_user
+from app.api.crypto import get_sdk_identity
 
 
 def compute_finding_fingerprint(target_name: str, file_path: str | None, algorithm: str | None, title: str, line_number: int | None) -> str:
@@ -176,7 +176,7 @@ class QuickAnalysisResponse(BaseModel):
 @router.post("/scan", response_model=CodeScanResponse)
 async def scan_code(
     data: CodeScanRequest,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: AsyncSession = Depends(get_db),
 ):
     """Scan source code for cryptographic usage.
@@ -420,7 +420,7 @@ async def scan_code(
 @router.post("/scan/quick", response_model=QuickAnalysisResponse)
 async def quick_analysis(
     data: QuickAnalysisRequest,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Quick code analysis for crypto detection.
 
@@ -476,7 +476,7 @@ async def quick_analysis(
 @router.post("/scan/file")
 async def scan_file(
     file: UploadFile = File(...),
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)] = None,
+    identity: Annotated[Identity, Depends(get_sdk_identity)] = None,
 ):
     """Scan an uploaded source file for cryptographic usage.
 
@@ -547,7 +547,7 @@ async def scan_file(
 
 @router.get("/languages")
 async def list_supported_languages(
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """List supported programming languages for code scanning."""
     return code_scanner.get_supported_languages()
@@ -555,7 +555,7 @@ async def list_supported_languages(
 
 @router.get("/algorithms")
 async def list_detectable_algorithms(
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """List all algorithms the scanner can detect.
 
@@ -567,7 +567,7 @@ async def list_detectable_algorithms(
 @router.post("/cbom", response_model=CBOMResponse)
 async def generate_cbom(
     data: CodeScanRequest,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Generate a Cryptographic Bill of Materials (CBOM).
 
@@ -631,7 +631,7 @@ class PQCRecommendationRequest(BaseModel):
 @router.post("/cbom/export")
 async def export_cbom(
     data: CBOMExportRequest,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Export CBOM in various formats.
 
@@ -733,7 +733,7 @@ async def export_cbom(
 @router.post("/recommendations")
 async def get_pqc_recommendations(
     data: PQCRecommendationRequest,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Get PQC migration recommendations based on code analysis.
 

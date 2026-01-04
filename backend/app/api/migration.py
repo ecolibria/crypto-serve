@@ -13,8 +13,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.auth.jwt import get_current_user
-from app.models import User, Context, MigrationHistory
+from app.api.crypto import get_sdk_identity
+from app.models import Identity, Context, MigrationHistory
 from app.core.migration_advisor import (
     MigrationAdvisor,
     MigrationAssessment,
@@ -77,7 +77,7 @@ class MigrationHistoryEntry(BaseModel):
 
 @router.get("/assessment", response_model=MigrationAssessment)
 async def get_assessment(
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get full migration assessment for the current tenant.
@@ -95,7 +95,7 @@ async def get_assessment(
 
 @router.get("/recommendations", response_model=list[Recommendation])
 async def get_recommendations(
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get prioritized list of migration recommendations.
@@ -111,7 +111,7 @@ async def get_recommendations(
 async def get_migration_plan(
     context_name: str,
     target_algorithm: str,
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get detailed migration plan for a specific context.
@@ -145,7 +145,7 @@ async def get_migration_plan(
 @router.post("/simulate", response_model=MigrationPreview)
 async def simulate_migration(
     request: SimulateRequest,
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Simulate a migration to preview impact.
@@ -176,7 +176,7 @@ async def simulate_migration(
 @router.post("/execute", response_model=MigrationResult)
 async def execute_migration(
     request: MigrateContextRequest,
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Execute a migration for a single context.
@@ -251,7 +251,7 @@ async def execute_migration(
 @router.post("/execute-bulk", response_model=BulkMigrationResult)
 async def execute_bulk_migration(
     request: BulkMigrateRequest,
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Execute migration for all contexts using a specific algorithm.
@@ -343,7 +343,7 @@ async def execute_bulk_migration(
 
 @router.get("/history", response_model=list[MigrationHistoryEntry])
 async def get_migration_history(
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = 50,
 ):

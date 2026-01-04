@@ -10,7 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from pydantic import BaseModel, Field
 
-from app.models import User
+from app.models import Identity
 from app.core.certificate_engine import (
     CertificateEngine,
     CertificateError,
@@ -24,7 +24,7 @@ from app.core.key_export import (
     PKCS12ExportError,
     PKCS12ImportError,
 )
-from app.auth.jwt import get_dashboard_or_sdk_user
+from app.api.crypto import get_sdk_identity
 
 router = APIRouter(prefix="/api/v1/certificates", tags=["certificates"])
 
@@ -152,7 +152,7 @@ class ParseCSRRequest(BaseModel):
 @router.post("/csr/generate", response_model=CSRResponse)
 async def generate_csr(
     data: CSRRequest,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Generate a Certificate Signing Request (CSR).
 
@@ -206,7 +206,7 @@ async def generate_csr(
 @router.post("/self-signed/generate", response_model=SelfSignedResponse)
 async def generate_self_signed(
     data: SelfSignedRequest,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Generate a self-signed certificate.
 
@@ -257,7 +257,7 @@ async def generate_self_signed(
 @router.post("/parse", response_model=CertificateInfoResponse)
 async def parse_certificate(
     data: ParseCertificateRequest,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Parse a certificate and extract its information.
 
@@ -315,7 +315,7 @@ async def parse_certificate(
 @router.post("/verify", response_model=ValidationResultResponse)
 async def verify_certificate(
     data: VerifyCertificateRequest,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Verify a certificate.
 
@@ -346,7 +346,7 @@ async def verify_certificate(
 @router.post("/verify-chain", response_model=ValidationResultResponse)
 async def verify_certificate_chain(
     data: VerifyChainRequest,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Verify a certificate chain.
 
@@ -382,7 +382,7 @@ async def verify_certificate_chain(
 @router.post("/csr/parse")
 async def parse_csr(
     data: ParseCSRRequest,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Parse a Certificate Signing Request.
 
@@ -399,13 +399,13 @@ async def parse_csr(
 @router.post("/upload/parse")
 async def parse_uploaded_certificate(
     file: UploadFile = File(...),
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)] = None,
+    identity: Annotated[Identity, Depends(get_sdk_identity)] = None,
 ):
     """Parse an uploaded certificate file.
 
     Accepts PEM or DER format certificate files.
     """
-    if not user:
+    if not identity:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     content = await file.read()
@@ -500,7 +500,7 @@ class PKCS12ImportResponse(BaseModel):
 @router.post("/pkcs12/export", response_model=PKCS12ExportResponse)
 async def export_to_pkcs12(
     data: PKCS12ExportRequest,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Export a private key and certificate to PKCS#12 format.
 
@@ -558,7 +558,7 @@ async def export_to_pkcs12(
 @router.post("/pkcs12/import", response_model=PKCS12ImportResponse)
 async def import_from_pkcs12(
     data: PKCS12ImportRequest,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Import a private key and certificate from PKCS#12 format.
 
@@ -626,7 +626,7 @@ async def import_from_pkcs12(
 async def upload_pkcs12(
     file: UploadFile = File(...),
     password: str | None = None,
-    user: Annotated[User, Depends(get_dashboard_or_sdk_user)] = None,
+    identity: Annotated[Identity, Depends(get_sdk_identity)] = None,
 ):
     """Upload and import a PKCS#12 file.
 
@@ -638,7 +638,7 @@ async def upload_pkcs12(
     """
     from cryptography.hazmat.primitives import serialization
 
-    if not user:
+    if not identity:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     content = await file.read()

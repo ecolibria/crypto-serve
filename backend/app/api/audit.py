@@ -9,8 +9,8 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.auth.jwt import get_current_user
-from app.models import User, Identity, AuditLog
+from app.api.crypto import get_sdk_identity
+from app.models import Identity, AuditLog
 
 router = APIRouter(prefix="/api/audit", tags=["audit"])
 
@@ -44,7 +44,7 @@ class AuditStats(BaseModel):
 
 @router.get("", response_model=list[AuditLogResponse])
 async def list_audit_logs(
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: Annotated[AsyncSession, Depends(get_db)],
     identity_id: str | None = Query(None),
     context: str | None = Query(None),
@@ -88,7 +88,7 @@ async def list_audit_logs(
 
 @router.get("/stats", response_model=AuditStats)
 async def get_audit_stats(
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get audit statistics for the current user."""
