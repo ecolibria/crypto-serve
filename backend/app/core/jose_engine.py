@@ -1094,6 +1094,52 @@ class JOSEEngine:
         else:
             raise JOSEError(f"Unsupported key type: {type(key)}")
 
+    def compute_thumbprint(self, jwk: JWK | dict, hash_algorithm: str = "SHA-256") -> str:
+        """Compute JWK thumbprint per RFC 7638.
+
+        Args:
+            jwk: JWK object or dictionary
+            hash_algorithm: Hash algorithm (default SHA-256)
+
+        Returns:
+            Base64url-encoded thumbprint
+        """
+        import hashlib
+
+        if isinstance(jwk, dict):
+            jwk = JWK.from_dict(jwk)
+
+        # Per RFC 7638, only include required members in canonical order
+        kty = jwk.kty
+        if kty == "EC":
+            # For EC keys: crv, kty, x, y
+            canonical = {
+                "crv": jwk.crv,
+                "kty": kty,
+                "x": jwk.x,
+                "y": jwk.y,
+            }
+        elif kty == "OKP":
+            # For OKP keys: crv, kty, x
+            canonical = {
+                "crv": jwk.crv,
+                "kty": kty,
+                "x": jwk.x,
+            }
+        elif kty == "oct":
+            # For symmetric keys: k, kty
+            canonical = {
+                "k": jwk.k,
+                "kty": kty,
+            }
+        else:
+            raise JOSEError(f"Unsupported key type for thumbprint: {kty}")
+
+        # Serialize with lexicographic key ordering and no whitespace
+        canonical_json = json.dumps(canonical, separators=(",", ":"), sort_keys=True)
+        digest = hashlib.sha256(canonical_json.encode()).digest()
+        return _b64url_encode(digest)
+
 
 # Singleton instance
 jose_engine = JOSEEngine()

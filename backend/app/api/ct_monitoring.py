@@ -12,8 +12,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import User
-from app.auth.jwt import get_current_user
+from app.models import Identity
+from app.api.crypto import get_sdk_identity
 from app.core.ct_monitoring import (
     ct_monitor,
     CTMonitor,
@@ -229,7 +229,7 @@ async def scan_domain(
     include_subdomains: bool = Query(default=True, description="Include subdomains"),
     include_expired: bool = Query(default=False, description="Include expired certs in results"),
     expected_issuers: list[str] = Query(default=[], description="Expected CA issuers"),
-    user: Annotated[User, Depends(get_current_user)] = None,
+    identity: Annotated[Identity, Depends(get_sdk_identity)] = None,
 ):
     """Scan CT logs for certificates issued to a domain.
 
@@ -287,7 +287,7 @@ async def scan_domain(
 @router.post("/scan/bulk", response_model=BulkScanResponse)
 async def scan_domains_bulk(
     request: BulkScanRequest,
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Scan CT logs for multiple domains.
 
@@ -332,7 +332,7 @@ async def scan_domains_bulk(
 async def get_recent_certificates(
     domain: str,
     days: int = Query(default=7, ge=1, le=90, description="Days to look back"),
-    user: Annotated[User, Depends(get_current_user)] = None,
+    identity: Annotated[Identity, Depends(get_sdk_identity)] = None,
 ):
     """Get recently issued certificates for a domain.
 
@@ -367,7 +367,7 @@ async def get_recent_certificates(
 @router.get("/certificate/{cert_id}")
 async def get_certificate_details(
     cert_id: int,
-    user: Annotated[User, Depends(get_current_user)] = None,
+    identity: Annotated[Identity, Depends(get_sdk_identity)] = None,
 ):
     """Get detailed information about a specific certificate.
 
@@ -395,7 +395,7 @@ async def get_certificate_details(
 async def get_certificate_issuers(
     domain: str,
     include_subdomains: bool = Query(default=True),
-    user: Annotated[User, Depends(get_current_user)] = None,
+    identity: Annotated[Identity, Depends(get_sdk_identity)] = None,
 ):
     """Get all CAs that have issued certificates for a domain.
 
@@ -464,7 +464,7 @@ async def search_certificates(
     q: str = Query(..., min_length=3, description="Domain to search"),
     exclude_expired: bool = Query(default=False, description="Exclude expired certs"),
     limit: int = Query(default=100, ge=1, le=1000, description="Max results"),
-    user: Annotated[User, Depends(get_current_user)] = None,
+    identity: Annotated[Identity, Depends(get_sdk_identity)] = None,
 ):
     """Search CT logs for certificates matching a query.
 

@@ -8,8 +8,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from app.auth.jwt import get_current_user
-from app.models import User
+from app.api.crypto import get_sdk_identity
+from app.models import Identity
 from app.core.crypto_registry import (
     crypto_registry,
     AlgorithmType,
@@ -69,7 +69,7 @@ class AlgorithmTypeInfo(BaseModel):
 
 @router.get("", response_model=list[AlgorithmResponse])
 async def list_algorithms(
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
     type: str | None = Query(None, description="Filter by algorithm type"),
     quantum_resistant: bool | None = Query(None, description="Filter by quantum resistance"),
     status: str | None = Query(None, description="Filter by security status"),
@@ -123,7 +123,7 @@ async def list_algorithms(
 
 @router.get("/types", response_model=list[AlgorithmTypeInfo])
 async def list_algorithm_types(
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """List all algorithm types with descriptions."""
     type_descriptions = {
@@ -163,7 +163,7 @@ async def list_algorithm_types(
 
 @router.get("/recommended", response_model=list[AlgorithmResponse])
 async def list_recommended_algorithms(
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
     type: str | None = Query(None, description="Filter by algorithm type"),
 ):
     """List recommended algorithms for production use."""
@@ -201,7 +201,7 @@ async def list_recommended_algorithms(
 
 @router.get("/quantum-resistant", response_model=list[AlgorithmResponse])
 async def list_quantum_resistant_algorithms(
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """List all quantum-resistant (post-quantum) algorithms."""
     algorithms = crypto_registry.get_quantum_resistant()
@@ -228,7 +228,7 @@ async def list_quantum_resistant_algorithms(
 
 @router.get("/deprecated", response_model=list[AlgorithmResponse])
 async def list_deprecated_algorithms(
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """List deprecated and broken algorithms that should be avoided."""
     algorithms = crypto_registry.get_deprecated()
@@ -256,7 +256,7 @@ async def list_deprecated_algorithms(
 @router.get("/{name}", response_model=AlgorithmDetailResponse)
 async def get_algorithm(
     name: str,
-    user: Annotated[User, Depends(get_current_user)],
+    identity: Annotated[Identity, Depends(get_sdk_identity)],
 ):
     """Get detailed information about a specific algorithm."""
     algo = crypto_registry.get(name)

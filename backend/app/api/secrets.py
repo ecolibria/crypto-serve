@@ -21,12 +21,14 @@ from app.core.secret_sharing_engine import (
 from app.core.threshold_engine import (
     ThresholdEngine,
     ThresholdError,
+    ThresholdScheme,
 )
 from app.core.lease_engine import (
     LeaseEngine,
     LeaseError,
     LeaseNotFoundError,
     LeaseExpiredError,
+    LeaseRevokedError,
 )
 from app.api.crypto import get_sdk_identity
 
@@ -219,11 +221,18 @@ async def threshold_key_generation(
             detail="Threshold cannot exceed total parties",
         )
 
+    # Map curve parameter to ThresholdScheme
+    curve_to_scheme = {
+        "secp256k1": ThresholdScheme.FROST_ED25519,  # Default scheme
+        "p256": ThresholdScheme.THRESHOLD_ECDSA_P256,
+    }
+    scheme = curve_to_scheme.get(data.curve, ThresholdScheme.FROST_ED25519)
+
     try:
-        result = threshold_engine.distributed_key_generation(
+        result = threshold_engine.generate_threshold_key(
             threshold=data.threshold,
-            num_parties=data.total_parties,
-            curve=data.curve,
+            total_participants=data.total_parties,
+            scheme=scheme,
         )
     except ThresholdError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -231,14 +240,14 @@ async def threshold_key_generation(
     return ThresholdKeyGenResponse(
         shares=[
             ThresholdKeyShare(
-                party_id=s.party_id,
-                private_share=base64.b64encode(s.private_share).decode("ascii"),
-                public_share=base64.b64encode(s.public_share).decode("ascii"),
-                verification_key=base64.b64encode(s.verification_key).decode("ascii"),
+                party_id=s.participant_id,
+                private_share=base64.b64encode(s.share_value.to_bytes(32, "big")).decode("ascii"),
+                public_share=base64.b64encode(s.public_key).decode("ascii"),
+                verification_key=base64.b64encode(b"".join(s.verification_points)).decode("ascii"),
             )
             for s in result.shares
         ],
-        group_public_key=base64.b64encode(result.group_public_key).decode("ascii"),
+        group_public_key=base64.b64encode(result.public_key).decode("ascii"),
         threshold=data.threshold,
         total_parties=data.total_parties,
     )
@@ -253,6 +262,12 @@ async def threshold_sign(
 
     Combines partial signatures from T parties to produce a valid
     signature that verifies against the group public key.
+
+    Each party_share should contain:
+    - party_id: int
+    - private_share: str (base64)
+    - public_share: str (base64)
+    - verification_key: str (base64)
     """
     try:
         message = base64.b64decode(data.message)
@@ -264,17 +279,60 @@ async def threshold_sign(
         )
 
     try:
-        result = threshold_engine.threshold_sign(
-            message=message,
-            party_shares=data.party_shares,
-            group_public_key=group_public_key,
+        from app.core.threshold_engine import ThresholdKeyShare as EngineKeyShare
+
+        # Reconstruct ThresholdKeyShare objects from API data
+        key_shares = []
+        for ps in data.party_shares:
+            share = EngineKeyShare(
+                participant_id=ps["party_id"],
+                share_value=int.from_bytes(base64.b64decode(ps["private_share"]), "big"),
+                public_key=group_public_key,
+                verification_points=[base64.b64decode(ps["verification_key"])],
+                threshold=len(data.party_shares),
+                total_participants=len(data.party_shares),
+                scheme=ThresholdScheme.FROST_ED25519,
+            )
+            key_shares.append(share)
+
+        # Step 1: Generate nonce shares for each party
+        nonce_data = {}  # party_id -> (nonce_value, commitment)
+        for share in key_shares:
+            nonce, commitment = threshold_engine.generate_nonce_share(share)
+            nonce_data[share.participant_id] = (nonce, commitment)
+
+        # Collect nonce commitments
+        nonce_commitments = {pid: nonce_info[1] for pid, nonce_info in nonce_data.items()}
+
+        # Step 2: Create signature shares for each party
+        sig_shares = []
+        for share in key_shares:
+            nonce = nonce_data[share.participant_id][0]
+            sig_share = threshold_engine.create_signature_share(
+                share=share,
+                message=message,
+                nonce=nonce,
+                nonce_commitments=nonce_commitments,
+            )
+            sig_shares.append(sig_share)
+
+        # Step 3: Combine signature shares
+        combined = threshold_engine.combine_signature_shares(sig_shares, nonce_commitments)
+
+        # Serialize signature: R || s
+        signature = combined.r + combined.s.to_bytes(32, "big")
+
+    except KeyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Missing field in party_share: {e}",
         )
     except ThresholdError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     return ThresholdSignResponse(
-        signature=base64.b64encode(result.signature).decode("ascii"),
-        signers=result.signers,
+        signature=base64.b64encode(signature).decode("ascii"),
+        signers=combined.participants,
     )
 
 
@@ -371,9 +429,11 @@ async def get_lease(
     Automatically tracks access for auditing.
     """
     try:
-        lease = lease_engine.get_lease(lease_id)
+        lease = lease_engine.access_lease(lease_id)
     except LeaseNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
+    except LeaseRevokedError:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Lease revoked")
     except LeaseExpiredError:
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="Lease expired")
     except LeaseError as e:
@@ -402,7 +462,7 @@ async def renew_lease(
     try:
         lease = lease_engine.renew_lease(
             lease_id=data.lease_id,
-            increment=data.increment_seconds,
+            increment_seconds=data.increment_seconds,
         )
     except LeaseNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
@@ -450,11 +510,21 @@ async def get_lease_audit(
 
     Shows all access events, renewals, and revocations.
     """
+    # Verify lease exists first
     try:
-        audit = lease_engine.get_lease_audit(lease_id)
+        lease_engine.get_lease(lease_id)
     except LeaseNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
-    except LeaseError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    return audit
+    audit_events = lease_engine.get_audit_log(lease_id=lease_id)
+    return {
+        "lease_id": lease_id,
+        "events": [
+            {
+                "event_type": event.event_type.value,
+                "timestamp": event.timestamp.isoformat(),
+                "details": event.details,
+            }
+            for event in audit_events
+        ]
+    }

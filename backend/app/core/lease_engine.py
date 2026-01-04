@@ -106,7 +106,7 @@ class Lease:
     """A lease for time-limited secret access."""
 
     lease_id: str
-    secret_id: str
+    secret: bytes  # The actual secret data
     created_at: datetime
     expires_at: datetime
     ttl_seconds: int
@@ -119,6 +119,11 @@ class Lease:
     revoked_at: Optional[datetime] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     client_id: Optional[str] = None
+
+    @property
+    def ttl(self) -> int:
+        """Alias for ttl_seconds."""
+        return self.ttl_seconds
 
     @property
     def is_expired(self) -> bool:
@@ -167,14 +172,14 @@ class LeaseEngine:
 
         # Create a lease for a secret (60 second TTL)
         lease = engine.create_lease(
-            secret_id="db-password-123",
-            ttl_seconds=60,
+            secret=b"my-secret-data",
+            ttl=60,
             renewable=True,
         )
 
         # Access the secret (checks lease validity)
         if engine.is_lease_valid(lease.lease_id):
-            secret = get_secret(lease.secret_id)
+            secret_data = lease.secret
 
         # Renew before expiration
         engine.renew_lease(lease.lease_id, increment_seconds=60)
@@ -204,7 +209,6 @@ class LeaseEngine:
         """
         self._lock = threading.RLock()
         self._leases: Dict[str, Lease] = {}
-        self._secret_leases: Dict[str, Set[str]] = {}  # secret_id -> lease_ids
         self._audit_log: List[LeaseEvent] = []
         self._stats = LeaseStats()
 
@@ -222,24 +226,30 @@ class LeaseEngine:
 
     def create_lease(
         self,
-        secret_id: str,
+        secret: bytes,
+        ttl: Optional[int] = None,
         ttl_seconds: Optional[int] = None,
+        max_ttl: Optional[int] = None,
         max_ttl_seconds: Optional[int] = None,
         renewable: bool = True,
         max_renewals: int = 0,
         metadata: Optional[Dict[str, Any]] = None,
         client_id: Optional[str] = None,
+        identity_id: Optional[str] = None,
     ) -> Lease:
         """Create a new lease for a secret.
 
         Args:
-            secret_id: ID of the secret to lease
+            secret: The secret data to store
+            ttl: Time-to-live in seconds (alias for ttl_seconds)
             ttl_seconds: Time-to-live in seconds (default: 1 hour)
+            max_ttl: Maximum TTL even with renewals (alias for max_ttl_seconds)
             max_ttl_seconds: Maximum TTL even with renewals
             renewable: Whether the lease can be renewed
             max_renewals: Maximum number of renewals (0 = unlimited)
             metadata: Additional metadata to store
             client_id: Optional client identifier
+            identity_id: Optional identity ID (alias for client_id)
 
         Returns:
             The created Lease
@@ -247,17 +257,19 @@ class LeaseEngine:
         Raises:
             LeaseMaxDurationError: If TTL exceeds maximum
         """
-        ttl = ttl_seconds or self.DEFAULT_TTL
-        max_ttl = max_ttl_seconds or self._max_ttl
+        # Support both parameter name styles
+        effective_ttl = ttl or ttl_seconds or self.DEFAULT_TTL
+        effective_max_ttl = max_ttl or max_ttl_seconds or self._max_ttl
+        effective_client_id = identity_id or client_id
 
-        if ttl > max_ttl:
+        if effective_ttl > effective_max_ttl:
             raise LeaseMaxDurationError(
-                f"TTL {ttl}s exceeds maximum {max_ttl}s"
+                f"TTL {effective_ttl}s exceeds maximum {effective_max_ttl}s"
             )
 
-        if max_ttl > self._max_ttl:
+        if effective_max_ttl > self._max_ttl:
             raise LeaseMaxDurationError(
-                f"Max TTL {max_ttl}s exceeds system maximum {self._max_ttl}s"
+                f"Max TTL {effective_max_ttl}s exceeds system maximum {self._max_ttl}s"
             )
 
         now = datetime.now(timezone.utc)
@@ -265,23 +277,19 @@ class LeaseEngine:
 
         lease = Lease(
             lease_id=lease_id,
-            secret_id=secret_id,
+            secret=secret,
             created_at=now,
-            expires_at=now + timedelta(seconds=ttl),
-            ttl_seconds=ttl,
-            max_ttl_seconds=max_ttl,
+            expires_at=now + timedelta(seconds=effective_ttl),
+            ttl_seconds=effective_ttl,
+            max_ttl_seconds=effective_max_ttl,
             renewable=renewable,
             max_renewals=max_renewals,
             metadata=metadata or {},
-            client_id=client_id,
+            client_id=effective_client_id,
         )
 
         with self._lock:
             self._leases[lease_id] = lease
-
-            if secret_id not in self._secret_leases:
-                self._secret_leases[secret_id] = set()
-            self._secret_leases[secret_id].add(lease_id)
 
             self._stats.total_leases_created += 1
             self._stats.active_leases += 1
@@ -290,7 +298,7 @@ class LeaseEngine:
                 self._stats.active_leases,
             )
 
-            self._audit(LeaseEventType.CREATED, lease_id, "Lease created", client_id)
+            self._audit(LeaseEventType.CREATED, lease_id, "Lease created", effective_client_id)
 
         return lease
 
@@ -477,7 +485,7 @@ class LeaseEngine:
                 # Call revocation callbacks
                 for callback in self._revocation_callbacks:
                     try:
-                        callback(lease_id, lease.secret_id)
+                        callback(lease_id)
                     except Exception:
                         pass  # Don't let callbacks break revocation
 
@@ -487,52 +495,6 @@ class LeaseEngine:
                 reason or "Lease revoked",
                 lease.client_id,
             )
-
-    def revoke_secret_leases(self, secret_id: str, reason: Optional[str] = None) -> int:
-        """Revoke all leases for a secret.
-
-        Args:
-            secret_id: The secret ID
-            reason: Optional reason for revocation
-
-        Returns:
-            Number of leases revoked
-        """
-        with self._lock:
-            if secret_id not in self._secret_leases:
-                return 0
-
-            lease_ids = list(self._secret_leases[secret_id])
-            count = 0
-
-            for lease_id in lease_ids:
-                try:
-                    self.revoke_lease(lease_id, reason)
-                    count += 1
-                except LeaseNotFoundError:
-                    pass
-
-            return count
-
-    def get_leases_for_secret(self, secret_id: str) -> List[Lease]:
-        """Get all leases for a secret.
-
-        Args:
-            secret_id: The secret ID
-
-        Returns:
-            List of leases
-        """
-        with self._lock:
-            if secret_id not in self._secret_leases:
-                return []
-
-            leases = []
-            for lease_id in self._secret_leases[secret_id]:
-                if lease_id in self._leases:
-                    leases.append(self._leases[lease_id])
-
-            return leases
 
     def get_active_leases(self) -> List[Lease]:
         """Get all active leases.
@@ -593,11 +555,11 @@ class LeaseEngine:
 
     def register_revocation_callback(
         self,
-        callback: Callable[[str, str], None],
+        callback: Callable[[str], None],
     ) -> None:
         """Register a callback for lease revocation.
 
-        Callback receives (lease_id, secret_id).
+        Callback receives (lease_id).
 
         Args:
             callback: Function to call on revocation

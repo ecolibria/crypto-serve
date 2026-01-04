@@ -21,8 +21,8 @@ from sqlalchemy import func, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.auth.jwt import get_current_user
-from app.models import User, AuditLog, Context, Key, PQCKey, Tenant
+from app.api.crypto import get_sdk_identity
+from app.models import Identity, AuditLog, Context, Key, PQCKey, Tenant
 from app.core.fips import get_fips_status, FIPSMode
 from app.core.key_ceremony import key_ceremony_service, CeremonyState
 from app.config import get_settings
@@ -427,7 +427,7 @@ async def get_tenant_compliance(
 
 @router.get("/status", response_model=ComplianceReport)
 async def get_compliance_status(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: AsyncSession = Depends(get_db),
 ):
     """Get comprehensive compliance status report.
@@ -540,7 +540,7 @@ async def get_compliance_status(
 @router.get("/frameworks/{framework}")
 async def get_framework_compliance(
     framework: str,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: AsyncSession = Depends(get_db),
 ):
     """Get detailed compliance status for a specific framework.
@@ -586,7 +586,7 @@ async def get_framework_compliance(
 
 @router.get("/algorithms")
 async def get_algorithm_status(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: AsyncSession = Depends(get_db),
 ):
     """Get algorithm compliance status.
@@ -616,7 +616,7 @@ async def get_algorithm_status(
 
 @router.get("/export")
 async def export_compliance_report(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: AsyncSession = Depends(get_db),
     format: str = Query(default="json", description="Export format: json, csv"),
 ):
@@ -644,7 +644,7 @@ async def export_compliance_report(
 
 @router.get("/audit-summary")
 async def get_audit_summary(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: AsyncSession = Depends(get_db),
     days: int = Query(default=30, ge=1, le=365),
 ):
@@ -736,7 +736,7 @@ async def get_audit_summary(
 
 @router.get("/data-inventory", response_model=DataInventorySummary)
 async def get_data_inventory(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: AsyncSession = Depends(get_db),
 ):
     """Get data inventory summary (Community Edition).
@@ -824,7 +824,7 @@ async def get_data_inventory(
 
 @router.get("/risk-score", response_model=RiskScoreSummary)
 async def get_risk_score(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_identity: Annotated[Identity, Depends(get_sdk_identity)],
     db: AsyncSession = Depends(get_db),
 ):
     """Get aggregate risk score (Community Edition).
