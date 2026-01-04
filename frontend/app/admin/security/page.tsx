@@ -717,11 +717,6 @@ export default function SecurityCommandCenter() {
           href="/admin/contexts"
         />
         <QuickActionCard
-          icon={<Users className="h-5 w-5 text-blue-600" />}
-          label="Manage Identities"
-          href="/admin/identities"
-        />
-        <QuickActionCard
           icon={<Activity className="h-5 w-5 text-green-600" />}
           label="Audit Log"
           href="/admin/audit"
