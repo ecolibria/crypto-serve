@@ -62,11 +62,23 @@ class HybridMode(str, Enum):
 
 class SignatureAlgorithm(str, Enum):
     """Supported PQC signature algorithms."""
-    ML_DSA_44 = "ML-DSA-44"      # NIST Level 1 (128-bit security)
+    # ML-DSA (FIPS 204) - Lattice-based, balanced key/signature sizes
+    ML_DSA_44 = "ML-DSA-44"      # NIST Level 2 (128-bit security)
     ML_DSA_65 = "ML-DSA-65"      # NIST Level 3 (192-bit security)
     ML_DSA_87 = "ML-DSA-87"      # NIST Level 5 (256-bit security)
-    FALCON_512 = "Falcon-512"    # Alternative: smaller signatures
-    FALCON_1024 = "Falcon-1024"  # Alternative: maximum security
+
+    # SLH-DSA (FIPS 205) - Hash-based, tiny keys but large signatures
+    # "f" = fast signing, larger signatures; "s" = small signatures, slower
+    SLH_DSA_SHA2_128F = "SLH-DSA-SHA2-128f"  # Level 1, fast (17KB sigs)
+    SLH_DSA_SHA2_128S = "SLH-DSA-SHA2-128s"  # Level 1, small (8KB sigs)
+    SLH_DSA_SHA2_192F = "SLH-DSA-SHA2-192f"  # Level 3, fast (35KB sigs)
+    SLH_DSA_SHA2_192S = "SLH-DSA-SHA2-192s"  # Level 3, small (16KB sigs)
+    SLH_DSA_SHA2_256F = "SLH-DSA-SHA2-256f"  # Level 5, fast (49KB sigs)
+    SLH_DSA_SHA2_256S = "SLH-DSA-SHA2-256s"  # Level 5, small (29KB sigs)
+
+    # Falcon (NIST alternate) - Smaller signatures than ML-DSA
+    FALCON_512 = "Falcon-512"    # Level 1, compact signatures
+    FALCON_1024 = "Falcon-1024"  # Level 5, compact signatures
 
 
 @dataclass
@@ -360,6 +372,152 @@ class MLDSA:
 
 
 # =============================================================================
+# Real SLH-DSA Implementation using liboqs
+# =============================================================================
+
+class SLHDSA:
+    """Real SLH-DSA implementation using liboqs.
+
+    SLH-DSA (Stateless Hash-based Digital Signature Algorithm) is the
+    NIST-standardized post-quantum signature scheme (FIPS 205),
+    formerly known as SPHINCS+.
+
+    Key characteristics:
+    - Hash-based: security relies only on hash function security
+    - Stateless: no state management required (unlike XMSS/LMS)
+    - Conservative: most conservative security assumptions of all PQC sigs
+    - Trade-off: tiny keys (32-64 bytes) but large signatures (8-50 KB)
+
+    Variants:
+    - "f" (fast): Faster signing, larger signatures
+    - "s" (small): Smaller signatures, slower signing
+    - SHA2: Uses SHA-256 internally
+    - SHAKE: Uses SHAKE256 internally
+
+    Security levels:
+    - 128f/128s: NIST Level 1 (128-bit security)
+    - 192f/192s: NIST Level 3 (192-bit security)
+    - 256f/256s: NIST Level 5 (256-bit security)
+    """
+
+    # NIST FIPS 205 parameter sizes (using liboqs SLH_DSA_PURE_* variants)
+    PARAMS = {
+        "SLH-DSA-SHA2-128f": {
+            "oqs_name": "SLH_DSA_PURE_SHA2_128F",
+            "pk_len": 32, "sk_len": 64, "sig_len": 17088,
+            "level": 1, "variant": "fast",
+        },
+        "SLH-DSA-SHA2-128s": {
+            "oqs_name": "SLH_DSA_PURE_SHA2_128S",
+            "pk_len": 32, "sk_len": 64, "sig_len": 7856,
+            "level": 1, "variant": "small",
+        },
+        "SLH-DSA-SHA2-192f": {
+            "oqs_name": "SLH_DSA_PURE_SHA2_192F",
+            "pk_len": 48, "sk_len": 96, "sig_len": 35664,
+            "level": 3, "variant": "fast",
+        },
+        "SLH-DSA-SHA2-192s": {
+            "oqs_name": "SLH_DSA_PURE_SHA2_192S",
+            "pk_len": 48, "sk_len": 96, "sig_len": 16224,
+            "level": 3, "variant": "small",
+        },
+        "SLH-DSA-SHA2-256f": {
+            "oqs_name": "SLH_DSA_PURE_SHA2_256F",
+            "pk_len": 64, "sk_len": 128, "sig_len": 49856,
+            "level": 5, "variant": "fast",
+        },
+        "SLH-DSA-SHA2-256s": {
+            "oqs_name": "SLH_DSA_PURE_SHA2_256S",
+            "pk_len": 64, "sk_len": 128, "sig_len": 29792,
+            "level": 5, "variant": "small",
+        },
+    }
+
+    def __init__(self, algorithm: str = "SLH-DSA-SHA2-128f"):
+        if not LIBOQS_AVAILABLE:
+            raise PQCError(
+                "liboqs not installed. Install with: pip install liboqs-python"
+            )
+
+        if algorithm not in self.PARAMS:
+            raise ValueError(f"Unknown algorithm: {algorithm}. Valid: {list(self.PARAMS.keys())}")
+
+        self.algorithm = algorithm
+        self.params = self.PARAMS[algorithm]
+        self._oqs_name = self.params["oqs_name"]
+        self._sig = oqs.Signature(self._oqs_name)
+        self._public_key: bytes | None = None
+        self._private_key: bytes | None = None
+
+    def generate_keypair(self) -> bytes:
+        """Generate a new signature key pair. Returns public key."""
+        self._public_key = self._sig.generate_keypair()
+        self._private_key = self._sig.export_secret_key()
+        return self._public_key
+
+    @property
+    def public_key(self) -> bytes | None:
+        return self._public_key
+
+    @property
+    def private_key(self) -> bytes | None:
+        return self._private_key
+
+    def set_keypair(self, public_key: bytes, private_key: bytes) -> None:
+        """Set an existing key pair."""
+        self._public_key = public_key
+        self._private_key = private_key
+        self._sig = oqs.Signature(self._oqs_name, secret_key=private_key)
+
+    def sign(self, message: bytes) -> bytes:
+        """Sign a message using the private key.
+
+        Note: SLH-DSA signing is slower than ML-DSA but produces
+        signatures with conservative security assumptions.
+
+        Args:
+            message: The message to sign
+
+        Returns:
+            The digital signature (large: 8-50 KB depending on variant)
+        """
+        if self._private_key is None:
+            raise PQCError("No private key set. Call generate_keypair() or set_keypair() first.")
+
+        return self._sig.sign(message)
+
+    def verify(self, message: bytes, signature: bytes, public_key: bytes) -> bool:
+        """Verify a signature using the public key.
+
+        Args:
+            message: The original message
+            signature: The signature to verify
+            public_key: The signer's public key
+
+        Returns:
+            True if signature is valid, False otherwise
+        """
+        try:
+            return self._sig.verify(message, signature, public_key)
+        except Exception:
+            return False
+
+    def get_details(self) -> dict:
+        """Get algorithm details."""
+        return {
+            "algorithm": self.algorithm,
+            "nist_level": self.params["level"],
+            "variant": self.params["variant"],
+            "public_key_bytes": self.params["pk_len"],
+            "secret_key_bytes": self.params["sk_len"],
+            "signature_bytes": self.params["sig_len"],
+            "standard": "NIST FIPS 205",
+            "security_basis": "hash-based (conservative)",
+        }
+
+
+# =============================================================================
 # Factory Functions
 # =============================================================================
 
@@ -393,6 +551,30 @@ def get_mldsa(algorithm: str = "ML-DSA-65") -> MLDSA:
     return MLDSA(algorithm)
 
 
+def get_slhdsa(algorithm: str = "SLH-DSA-SHA2-128f") -> SLHDSA:
+    """Get an SLH-DSA instance.
+
+    SLH-DSA (FIPS 205) is a hash-based signature scheme with the most
+    conservative security assumptions. It has tiny keys but large signatures.
+
+    Args:
+        algorithm: One of:
+            - "SLH-DSA-SHA2-128f" (fast, 17KB sigs) - recommended default
+            - "SLH-DSA-SHA2-128s" (small, 8KB sigs)
+            - "SLH-DSA-SHA2-192f" (fast, 35KB sigs)
+            - "SLH-DSA-SHA2-192s" (small, 16KB sigs)
+            - "SLH-DSA-SHA2-256f" (fast, 49KB sigs)
+            - "SLH-DSA-SHA2-256s" (small, 29KB sigs)
+
+    Returns:
+        SLHDSA instance for digital signatures
+
+    Raises:
+        PQCError: If liboqs is not installed
+    """
+    return SLHDSA(algorithm)
+
+
 def is_pqc_available() -> bool:
     """Check if PQC operations are available."""
     return LIBOQS_AVAILABLE
@@ -406,10 +588,24 @@ def get_available_kem_algorithms() -> list[str]:
 
 
 def get_available_sig_algorithms() -> list[str]:
-    """Get list of available signature algorithms."""
+    """Get list of available signature algorithms (ML-DSA only)."""
     if not LIBOQS_AVAILABLE:
         return []
     return list(MLDSA.PARAMS.keys())
+
+
+def get_available_slhdsa_algorithms() -> list[str]:
+    """Get list of available SLH-DSA signature algorithms."""
+    if not LIBOQS_AVAILABLE:
+        return []
+    return list(SLHDSA.PARAMS.keys())
+
+
+def get_all_available_sig_algorithms() -> list[str]:
+    """Get list of all available PQC signature algorithms (ML-DSA + SLH-DSA)."""
+    if not LIBOQS_AVAILABLE:
+        return []
+    return list(MLDSA.PARAMS.keys()) + list(SLHDSA.PARAMS.keys())
 
 
 # =============================================================================
@@ -582,10 +778,19 @@ class HybridCryptoEngine:
 # =============================================================================
 
 class PQCSignatureEngine:
-    """Post-quantum digital signature engine using ML-DSA.
+    """Post-quantum digital signature engine supporting ML-DSA and SLH-DSA.
+
+    Supports:
+    - ML-DSA (FIPS 204): Lattice-based, balanced key/signature sizes
+    - SLH-DSA (FIPS 205): Hash-based, tiny keys but large signatures
 
     Example:
+        # ML-DSA (recommended for most use cases)
         engine = PQCSignatureEngine(SignatureAlgorithm.ML_DSA_65)
+        keypair = engine.generate_keypair()
+
+        # SLH-DSA (conservative security, large signatures)
+        engine = PQCSignatureEngine(SignatureAlgorithm.SLH_DSA_SHA2_128F)
         keypair = engine.generate_keypair()
 
         # Sign
@@ -595,12 +800,26 @@ class PQCSignatureEngine:
         valid = engine.verify(b"message", signature, keypair.public_key)
     """
 
+    # SLH-DSA algorithm values for detection
+    _SLHDSA_ALGORITHMS = {
+        "SLH-DSA-SHA2-128f", "SLH-DSA-SHA2-128s",
+        "SLH-DSA-SHA2-192f", "SLH-DSA-SHA2-192s",
+        "SLH-DSA-SHA2-256f", "SLH-DSA-SHA2-256s",
+    }
+
     def __init__(self, algorithm: SignatureAlgorithm = SignatureAlgorithm.ML_DSA_65):
         self.algorithm = algorithm
+        self._is_slhdsa = algorithm.value in self._SLHDSA_ALGORITHMS
+
+    def _get_signer(self) -> MLDSA | SLHDSA:
+        """Get the appropriate signature implementation."""
+        if self._is_slhdsa:
+            return get_slhdsa(self.algorithm.value)
+        return get_mldsa(self.algorithm.value)
 
     def generate_keypair(self, key_id: str | None = None) -> SignatureKeyPair:
         """Generate a signature key pair."""
-        sig = get_mldsa(self.algorithm.value)
+        sig = self._get_signer()
         public_key = sig.generate_keypair()
 
         key_id = key_id or secrets.token_hex(16)
@@ -614,14 +833,19 @@ class PQCSignatureEngine:
 
     def sign(self, message: bytes, private_key: bytes) -> bytes:
         """Sign a message."""
-        sig = get_mldsa(self.algorithm.value)
+        sig = self._get_signer()
         sig.set_keypair(b"", private_key)
         return sig.sign(message)
 
     def verify(self, message: bytes, signature: bytes, public_key: bytes) -> bool:
         """Verify a signature."""
-        sig = get_mldsa(self.algorithm.value)
+        sig = self._get_signer()
         return sig.verify(message, signature, public_key)
+
+    def get_algorithm_info(self) -> dict:
+        """Get information about the current algorithm."""
+        sig = self._get_signer()
+        return sig.get_details()
 
 
 # =============================================================================
@@ -869,6 +1093,73 @@ def get_signature_algorithm_info(algorithm: SignatureAlgorithm) -> dict[str, Any
             "public_key_bytes": 1793,
             "signature_bytes": 1330,  # Average, varies
             "recommended_for": ["small signatures", "maximum security"],
+        },
+        # SLH-DSA (FIPS 205) - Hash-based signatures
+        SignatureAlgorithm.SLH_DSA_SHA2_128F: {
+            "name": "SLH-DSA-SHA2-128f",
+            "standard": "NIST FIPS 205",
+            "security_bits": 128,
+            "nist_level": 1,
+            "variant": "fast",
+            "public_key_bytes": 32,
+            "signature_bytes": 17088,
+            "security_basis": "hash-based (conservative)",
+            "recommended_for": ["firmware signing", "high-assurance", "conservative security"],
+        },
+        SignatureAlgorithm.SLH_DSA_SHA2_128S: {
+            "name": "SLH-DSA-SHA2-128s",
+            "standard": "NIST FIPS 205",
+            "security_bits": 128,
+            "nist_level": 1,
+            "variant": "small",
+            "public_key_bytes": 32,
+            "signature_bytes": 7856,
+            "security_basis": "hash-based (conservative)",
+            "recommended_for": ["bandwidth-constrained", "conservative security"],
+        },
+        SignatureAlgorithm.SLH_DSA_SHA2_192F: {
+            "name": "SLH-DSA-SHA2-192f",
+            "standard": "NIST FIPS 205",
+            "security_bits": 192,
+            "nist_level": 3,
+            "variant": "fast",
+            "public_key_bytes": 48,
+            "signature_bytes": 35664,
+            "security_basis": "hash-based (conservative)",
+            "recommended_for": ["high-assurance applications", "government"],
+        },
+        SignatureAlgorithm.SLH_DSA_SHA2_192S: {
+            "name": "SLH-DSA-SHA2-192s",
+            "standard": "NIST FIPS 205",
+            "security_bits": 192,
+            "nist_level": 3,
+            "variant": "small",
+            "public_key_bytes": 48,
+            "signature_bytes": 16224,
+            "security_basis": "hash-based (conservative)",
+            "recommended_for": ["balanced size/security", "government"],
+        },
+        SignatureAlgorithm.SLH_DSA_SHA2_256F: {
+            "name": "SLH-DSA-SHA2-256f",
+            "standard": "NIST FIPS 205",
+            "security_bits": 256,
+            "nist_level": 5,
+            "variant": "fast",
+            "public_key_bytes": 64,
+            "signature_bytes": 49856,
+            "security_basis": "hash-based (conservative)",
+            "recommended_for": ["maximum security", "long-term assurance"],
+        },
+        SignatureAlgorithm.SLH_DSA_SHA2_256S: {
+            "name": "SLH-DSA-SHA2-256s",
+            "standard": "NIST FIPS 205",
+            "security_bits": 256,
+            "nist_level": 5,
+            "variant": "small",
+            "public_key_bytes": 64,
+            "signature_bytes": 29792,
+            "security_basis": "hash-based (conservative)",
+            "recommended_for": ["maximum security", "bandwidth-sensitive"],
         },
     }
     return info.get(algorithm, {})

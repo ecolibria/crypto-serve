@@ -8,6 +8,7 @@ import pytest
 from app.core.hybrid_crypto import (
     MLKEM,
     MLDSA,
+    SLHDSA,
     HybridCryptoEngine,
     HybridCiphertext,
     HybridKeyPair,
@@ -18,12 +19,14 @@ from app.core.hybrid_crypto import (
     is_pqc_available,
     get_mlkem,
     get_mldsa,
+    get_slhdsa,
     hybrid_encrypt,
     hybrid_decrypt,
     pqc_sign,
     pqc_verify,
     get_available_kem_algorithms,
     get_available_sig_algorithms,
+    get_available_slhdsa_algorithms,
     PQCError,
 )
 
@@ -154,6 +157,143 @@ class TestMLDSA:
         corrupted = bytes([signature[0] ^ 0xFF]) + signature[1:]
 
         assert not sig.verify(message, corrupted, public_key)
+
+
+class TestSLHDSA:
+    """Tests for SLH-DSA (FIPS 205) hash-based digital signature algorithm."""
+
+    def test_slhdsa_128f_keygen(self):
+        """Test SLH-DSA-SHA2-128f key generation."""
+        sig = get_slhdsa("SLH-DSA-SHA2-128f")
+        public_key = sig.generate_keypair()
+
+        assert len(public_key) == 32  # FIPS 205 spec: tiny keys
+        assert len(sig.private_key) == 64
+
+    def test_slhdsa_sign_verify(self):
+        """Test SLH-DSA signing and verification roundtrip."""
+        sig = get_slhdsa("SLH-DSA-SHA2-128f")
+        public_key = sig.generate_keypair()
+
+        message = b"Test message for SLH-DSA signing"
+        signature = sig.sign(message)
+
+        # Verify signature
+        assert sig.verify(message, signature, public_key)
+
+    def test_slhdsa_signature_sizes(self):
+        """Test SLH-DSA signature sizes match FIPS 205."""
+        test_cases = [
+            ("SLH-DSA-SHA2-128f", 17088),
+            ("SLH-DSA-SHA2-128s", 7856),
+            ("SLH-DSA-SHA2-192f", 35664),
+            ("SLH-DSA-SHA2-192s", 16224),
+            ("SLH-DSA-SHA2-256f", 49856),
+            ("SLH-DSA-SHA2-256s", 29792),
+        ]
+        for algo, expected_sig_len in test_cases:
+            sig = get_slhdsa(algo)
+            public_key = sig.generate_keypair()
+            signature = sig.sign(b"test")
+            assert len(signature) == expected_sig_len, f"{algo} signature size mismatch"
+
+    def test_slhdsa_key_sizes(self):
+        """Test SLH-DSA key sizes match FIPS 205."""
+        test_cases = [
+            ("SLH-DSA-SHA2-128f", 32, 64),
+            ("SLH-DSA-SHA2-128s", 32, 64),
+            ("SLH-DSA-SHA2-192f", 48, 96),
+            ("SLH-DSA-SHA2-192s", 48, 96),
+            ("SLH-DSA-SHA2-256f", 64, 128),
+            ("SLH-DSA-SHA2-256s", 64, 128),
+        ]
+        for algo, expected_pk, expected_sk in test_cases:
+            sig = get_slhdsa(algo)
+            public_key = sig.generate_keypair()
+            assert len(public_key) == expected_pk, f"{algo} public key size mismatch"
+            assert len(sig.private_key) == expected_sk, f"{algo} secret key size mismatch"
+
+    def test_slhdsa_wrong_message_fails(self):
+        """Test that wrong message fails verification."""
+        sig = get_slhdsa("SLH-DSA-SHA2-128f")
+        public_key = sig.generate_keypair()
+
+        message = b"Original message"
+        signature = sig.sign(message)
+
+        # Verify with wrong message should fail
+        assert not sig.verify(b"Wrong message", signature, public_key)
+
+    def test_slhdsa_wrong_signature_fails(self):
+        """Test that corrupted signature fails verification."""
+        sig = get_slhdsa("SLH-DSA-SHA2-128f")
+        public_key = sig.generate_keypair()
+
+        message = b"Test message"
+        signature = sig.sign(message)
+
+        # Corrupt signature
+        corrupted = bytes([signature[0] ^ 0xFF]) + signature[1:]
+
+        assert not sig.verify(message, corrupted, public_key)
+
+    def test_slhdsa_details(self):
+        """Test SLH-DSA algorithm details."""
+        sig = get_slhdsa("SLH-DSA-SHA2-128f")
+        details = sig.get_details()
+
+        assert details["algorithm"] == "SLH-DSA-SHA2-128f"
+        assert details["nist_level"] == 1
+        assert details["variant"] == "fast"
+        assert details["standard"] == "NIST FIPS 205"
+        assert details["security_basis"] == "hash-based (conservative)"
+
+    def test_slhdsa_available_algorithms(self):
+        """Test that all SLH-DSA algorithms are available."""
+        algorithms = get_available_slhdsa_algorithms()
+        assert len(algorithms) == 6
+        assert "SLH-DSA-SHA2-128f" in algorithms
+        assert "SLH-DSA-SHA2-256s" in algorithms
+
+
+class TestSLHDSAEngine:
+    """Tests for PQCSignatureEngine with SLH-DSA algorithms."""
+
+    @pytest.mark.parametrize("algorithm", [
+        SignatureAlgorithm.SLH_DSA_SHA2_128F,
+        SignatureAlgorithm.SLH_DSA_SHA2_128S,
+        SignatureAlgorithm.SLH_DSA_SHA2_192F,
+        SignatureAlgorithm.SLH_DSA_SHA2_192S,
+        SignatureAlgorithm.SLH_DSA_SHA2_256F,
+        SignatureAlgorithm.SLH_DSA_SHA2_256S,
+    ])
+    def test_engine_sign_verify_roundtrip(self, algorithm: SignatureAlgorithm):
+        """Test PQCSignatureEngine sign/verify with all SLH-DSA variants."""
+        engine = PQCSignatureEngine(algorithm)
+        keypair = engine.generate_keypair()
+
+        message = b"Test message for SLH-DSA engine"
+        signature = engine.sign(message, keypair.private_key)
+        valid = engine.verify(message, signature, keypair.public_key)
+
+        assert valid
+
+    def test_engine_keypair_has_correct_algorithm(self):
+        """Test that generated keypair has correct algorithm."""
+        engine = PQCSignatureEngine(SignatureAlgorithm.SLH_DSA_SHA2_128F)
+        keypair = engine.generate_keypair()
+
+        assert keypair.algorithm == SignatureAlgorithm.SLH_DSA_SHA2_128F
+        assert keypair.key_id is not None
+
+    def test_engine_algorithm_info(self):
+        """Test PQCSignatureEngine.get_algorithm_info() for SLH-DSA."""
+        engine = PQCSignatureEngine(SignatureAlgorithm.SLH_DSA_SHA2_192F)
+        info = engine.get_algorithm_info()
+
+        assert info["algorithm"] == "SLH-DSA-SHA2-192f"
+        assert info["nist_level"] == 3
+        assert info["standard"] == "NIST FIPS 205"
 
 
 class TestHybridCryptoEngine:
@@ -330,6 +470,11 @@ class TestErrorHandling:
         """Test that invalid signature algorithm raises error."""
         with pytest.raises(ValueError, match="Unknown algorithm"):
             get_mldsa("INVALID-SIG")
+
+    def test_invalid_slhdsa_algorithm(self):
+        """Test that invalid SLH-DSA algorithm raises error."""
+        with pytest.raises(ValueError, match="Unknown algorithm"):
+            get_slhdsa("INVALID-SLHDSA")
 
     def test_decap_without_private_key(self):
         """Test that decapsulation without private key raises error."""

@@ -1140,8 +1140,32 @@ class CryptoRegistry:
             implementation_notes=[
                 "NIST PQC Security Level 3",
                 "NSA CNSA 2.0 compliant",
+                "'f' = fast variant (larger signatures)",
             ],
             code_patterns=[r"SLH.DSA.*192f", r"SPHINCS.*192f"],
+        ))
+
+        self.register(Algorithm(
+            name="SLH-DSA-SHA2-192s",
+            family="SLH-DSA",
+            variant="SHA2-192s",
+            aliases=["sphincs+-sha256-192s"],
+            algorithm_type=AlgorithmType.SIGNATURE,
+            use_cases=["post-quantum digital signatures", "balanced size/security"],
+            security_bits=192,
+            quantum_resistant=True,
+            quantum_security_bits=192,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["FIPS 205"],
+            approved_by=[StandardsBody.NIST],
+            compliance_frameworks=["CNSA 2.0"],
+            relative_speed="slow",
+            implementation_notes=[
+                "NIST PQC Security Level 3",
+                "NSA CNSA 2.0 compliant",
+                "'s' = small variant (smaller signatures, slower signing)",
+            ],
+            code_patterns=[r"SLH.DSA.*192s", r"SPHINCS.*192s"],
         ))
 
         self.register(Algorithm(
@@ -1161,8 +1185,31 @@ class CryptoRegistry:
             implementation_notes=[
                 "NIST PQC Security Level 5",
                 "Highest security level for hash-based signatures",
+                "'f' = fast variant (larger signatures)",
             ],
             code_patterns=[r"SLH.DSA.*256f", r"SPHINCS.*256f"],
+        ))
+
+        self.register(Algorithm(
+            name="SLH-DSA-SHA2-256s",
+            family="SLH-DSA",
+            variant="SHA2-256s",
+            aliases=["sphincs+-sha256-256s"],
+            algorithm_type=AlgorithmType.SIGNATURE,
+            use_cases=["post-quantum digital signatures", "maximum security", "bandwidth-sensitive"],
+            security_bits=256,
+            quantum_resistant=True,
+            quantum_security_bits=256,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["FIPS 205"],
+            approved_by=[StandardsBody.NIST],
+            relative_speed="slow",
+            implementation_notes=[
+                "NIST PQC Security Level 5",
+                "Highest security level for hash-based signatures",
+                "'s' = small variant (smaller signatures, slower signing)",
+            ],
+            code_patterns=[r"SLH.DSA.*256s", r"SPHINCS.*256s"],
         ))
 
         # =====================================================================
