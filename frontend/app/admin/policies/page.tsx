@@ -1274,18 +1274,22 @@ export default function AdminPoliciesPage() {
                                   </Button>
                                 </>
                               )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
+                              <button
                                 onClick={() => handleTogglePolicy(policy)}
-                                title={policy.enabled ? "Disable policy" : "Enable policy"}
-                              >
-                                {policy.enabled ? (
-                                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                ) : (
-                                  <XCircle className="h-4 w-4 text-slate-400" />
+                                title={policy.enabled ? "Click to disable" : "Click to enable"}
+                                className={cn(
+                                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                  policy.enabled ? "bg-green-500" : "bg-slate-200"
                                 )}
-                              </Button>
+                              >
+                                <span
+                                  className={cn(
+                                    "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition",
+                                    policy.enabled ? "translate-x-5" : "translate-x-0"
+                                  )}
+                                />
+                              </button>
                             </div>
                           </div>
                         </div>
