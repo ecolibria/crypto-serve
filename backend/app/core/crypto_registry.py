@@ -549,6 +549,220 @@ class CryptoRegistry:
         ))
 
         self.register(Algorithm(
+            name="SHA-3-224",
+            family="SHA-3",
+            variant="224",
+            aliases=["sha3-224"],
+            algorithm_type=AlgorithmType.HASH,
+            security_bits=112,
+            output_size=224,
+            quantum_resistant=False,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["FIPS 202"],
+            approved_by=[StandardsBody.NIST],
+            implementation_notes=["SHA-3 with 224-bit output"],
+            code_patterns=[r"sha3.224", r"SHA3_224"],
+        ))
+
+        self.register(Algorithm(
+            name="SHA-3-384",
+            family="SHA-3",
+            variant="384",
+            aliases=["sha3-384"],
+            algorithm_type=AlgorithmType.HASH,
+            security_bits=192,
+            output_size=384,
+            quantum_resistant=False,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["FIPS 202"],
+            approved_by=[StandardsBody.NIST],
+            implementation_notes=["SHA-3 with 384-bit output"],
+            code_patterns=[r"sha3.384", r"SHA3_384"],
+        ))
+
+        self.register(Algorithm(
+            name="SHA-3-512",
+            family="SHA-3",
+            variant="512",
+            aliases=["sha3-512"],
+            algorithm_type=AlgorithmType.HASH,
+            security_bits=256,
+            output_size=512,
+            quantum_resistant=False,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["FIPS 202"],
+            approved_by=[StandardsBody.NIST],
+            implementation_notes=["SHA-3 with 512-bit output, highest security"],
+            code_patterns=[r"sha3.512", r"SHA3_512"],
+        ))
+
+        # FIPS 202 Extendable Output Functions (XOFs)
+        self.register(Algorithm(
+            name="SHAKE128",
+            family="SHA-3",
+            variant="XOF-128",
+            aliases=["shake-128"],
+            algorithm_type=AlgorithmType.HASH,
+            security_bits=128,
+            output_size=0,  # Variable output
+            quantum_resistant=False,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["FIPS 202"],
+            approved_by=[StandardsBody.NIST],
+            implementation_notes=[
+                "Extendable Output Function (XOF) with 128-bit security",
+                "Output length is variable and specified at runtime",
+                "Used in ML-KEM and ML-DSA for key derivation",
+            ],
+            code_patterns=[r"shake_128", r"SHAKE128", r"shake128"],
+        ))
+
+        self.register(Algorithm(
+            name="SHAKE256",
+            family="SHA-3",
+            variant="XOF-256",
+            aliases=["shake-256"],
+            algorithm_type=AlgorithmType.HASH,
+            security_bits=256,
+            output_size=0,  # Variable output
+            quantum_resistant=False,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["FIPS 202"],
+            approved_by=[StandardsBody.NIST],
+            implementation_notes=[
+                "Extendable Output Function (XOF) with 256-bit security",
+                "Output length is variable and specified at runtime",
+                "Higher security than SHAKE128 for critical applications",
+            ],
+            code_patterns=[r"shake_256", r"SHAKE256", r"shake256"],
+        ))
+
+        # SP 800-185 Customizable XOFs
+        self.register(Algorithm(
+            name="cSHAKE128",
+            family="SHA-3",
+            variant="cXOF-128",
+            aliases=["cshake-128", "customizable-shake128"],
+            algorithm_type=AlgorithmType.HASH,
+            security_bits=128,
+            output_size=0,  # Variable output
+            quantum_resistant=False,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["SP 800-185"],
+            approved_by=[StandardsBody.NIST],
+            implementation_notes=[
+                "Customizable SHAKE with function name and customization string",
+                "Base for KMAC128 and TupleHash128",
+                "Domain separation built-in",
+            ],
+            code_patterns=[r"cshake128", r"cSHAKE128"],
+        ))
+
+        self.register(Algorithm(
+            name="cSHAKE256",
+            family="SHA-3",
+            variant="cXOF-256",
+            aliases=["cshake-256", "customizable-shake256"],
+            algorithm_type=AlgorithmType.HASH,
+            security_bits=256,
+            output_size=0,  # Variable output
+            quantum_resistant=False,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["SP 800-185"],
+            approved_by=[StandardsBody.NIST],
+            implementation_notes=[
+                "Customizable SHAKE with function name and customization string",
+                "Base for KMAC256 and TupleHash256",
+                "Domain separation built-in",
+            ],
+            code_patterns=[r"cshake256", r"cSHAKE256"],
+        ))
+
+        # SP 800-185 TupleHash
+        self.register(Algorithm(
+            name="TupleHash128",
+            family="SHA-3",
+            variant="TupleHash-128",
+            aliases=["tuple-hash-128", "tuplehash128"],
+            algorithm_type=AlgorithmType.HASH,
+            security_bits=128,
+            output_size=0,  # Variable output (XOF mode) or fixed
+            quantum_resistant=False,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["SP 800-185"],
+            approved_by=[StandardsBody.NIST],
+            implementation_notes=[
+                "Hashes tuples of variable-length strings unambiguously",
+                "Prevents length-extension and concatenation attacks",
+                "Built on cSHAKE128",
+            ],
+            code_patterns=[r"tuplehash128", r"TupleHash128", r"tuple_hash_128"],
+        ))
+
+        self.register(Algorithm(
+            name="TupleHash256",
+            family="SHA-3",
+            variant="TupleHash-256",
+            aliases=["tuple-hash-256", "tuplehash256"],
+            algorithm_type=AlgorithmType.HASH,
+            security_bits=256,
+            output_size=0,  # Variable output (XOF mode) or fixed
+            quantum_resistant=False,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["SP 800-185"],
+            approved_by=[StandardsBody.NIST],
+            implementation_notes=[
+                "Hashes tuples of variable-length strings unambiguously",
+                "Prevents length-extension and concatenation attacks",
+                "Built on cSHAKE256",
+            ],
+            code_patterns=[r"tuplehash256", r"TupleHash256", r"tuple_hash_256"],
+        ))
+
+        # SP 800-185 ParallelHash
+        self.register(Algorithm(
+            name="ParallelHash128",
+            family="SHA-3",
+            variant="ParallelHash-128",
+            aliases=["parallel-hash-128", "parallelhash128"],
+            algorithm_type=AlgorithmType.HASH,
+            security_bits=128,
+            output_size=0,  # Variable output
+            quantum_resistant=False,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["SP 800-185"],
+            approved_by=[StandardsBody.NIST],
+            relative_speed="fast",
+            implementation_notes=[
+                "Parallelizable hash for large messages",
+                "Splits input into blocks for parallel processing",
+                "Built on cSHAKE128",
+            ],
+            code_patterns=[r"parallelhash128", r"ParallelHash128", r"parallel_hash_128"],
+        ))
+
+        self.register(Algorithm(
+            name="ParallelHash256",
+            family="SHA-3",
+            variant="ParallelHash-256",
+            aliases=["parallel-hash-256", "parallelhash256"],
+            algorithm_type=AlgorithmType.HASH,
+            security_bits=256,
+            output_size=0,  # Variable output
+            quantum_resistant=False,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["SP 800-185"],
+            approved_by=[StandardsBody.NIST],
+            relative_speed="fast",
+            implementation_notes=[
+                "Parallelizable hash for large messages",
+                "Splits input into blocks for parallel processing",
+                "Built on cSHAKE256",
+            ],
+            code_patterns=[r"parallelhash256", r"ParallelHash256", r"parallel_hash_256"],
+        ))
+
+        self.register(Algorithm(
             name="BLAKE2b",
             family="BLAKE2",
             variant="b",
@@ -1391,6 +1605,53 @@ class CryptoRegistry:
                 "Secure if either algorithm remains unbroken",
             ],
             code_patterns=[r"ECDSA.*Dilithium", r"hybrid.*sig"],
+        ))
+
+        self.register(Algorithm(
+            name="Ed25519+ML-DSA-65",
+            family="Hybrid-Signature",
+            variant="Ed25519-MLDSA65",
+            aliases=["eddsa-dilithium3", "ed25519-mldsa-65", "hybrid-ed-mldsa"],
+            algorithm_type=AlgorithmType.SIGNATURE,
+            use_cases=["hybrid signatures", "quantum-safe authentication", "code signing"],
+            security_bits=192,
+            key_sizes=[256],
+            quantum_resistant=True,
+            quantum_security_bits=192,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["RFC 8032 + FIPS 204"],
+            approved_by=[StandardsBody.IETF, StandardsBody.NIST],
+            implementation_notes=[
+                "Combines Ed25519 with ML-DSA-65 for hybrid quantum safety",
+                "Both signatures required for verification",
+                "Secure if either algorithm remains unbroken",
+                "Deterministic Ed25519 eliminates nonce risks",
+                "Preferred over ECDSA hybrid for new applications",
+            ],
+            code_patterns=[r"Ed25519.*ML-DSA", r"ed25519.*mldsa", r"hybrid.*ed.*sig"],
+        ))
+
+        self.register(Algorithm(
+            name="Ed25519+ML-DSA-87",
+            family="Hybrid-Signature",
+            variant="Ed25519-MLDSA87",
+            aliases=["eddsa-dilithium5", "ed25519-mldsa-87"],
+            algorithm_type=AlgorithmType.SIGNATURE,
+            use_cases=["hybrid signatures", "maximum security applications"],
+            security_bits=256,
+            key_sizes=[256],
+            quantum_resistant=True,
+            quantum_security_bits=256,
+            status=SecurityStatus.RECOMMENDED,
+            standards=["RFC 8032 + FIPS 204"],
+            approved_by=[StandardsBody.IETF, StandardsBody.NIST],
+            implementation_notes=[
+                "Combines Ed25519 with ML-DSA-87 (NIST Level 5)",
+                "Maximum quantum security level",
+                "Both signatures required for verification",
+                "Secure if either algorithm remains unbroken",
+            ],
+            code_patterns=[r"Ed25519.*ML-DSA.*87", r"ed25519.*mldsa.*87"],
         ))
 
 
