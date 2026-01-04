@@ -903,7 +903,7 @@ export default function SecurityCommandCenter() {
                   <div className="text-center py-8 text-slate-500">
                     <Search className="h-12 w-12 mx-auto mb-2 text-slate-300" />
                     <p>No scans recorded yet</p>
-                    <p className="text-sm mt-1">Use the Code Scanner or Dependency Analyzer tools</p>
+                    <p className="text-sm mt-1">Run security scans via the API to see results here</p>
                   </div>
                 )}
               </CardContent>
@@ -1057,29 +1057,6 @@ export default function SecurityCommandCenter() {
             </CardContent>
           </Card>
 
-          {/* Quick Actions for Scanning */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <QuickActionCard
-              icon={<FileCode className="h-5 w-5 text-blue-600" />}
-              label="Code Scanner"
-              href="/dev/scanner"
-            />
-            <QuickActionCard
-              icon={<Package className="h-5 w-5 text-purple-600" />}
-              label="Dependencies"
-              href="/dev/dependencies"
-            />
-            <QuickActionCard
-              icon={<Award className="h-5 w-5 text-amber-600" />}
-              label="Certificates"
-              href="/dev/certificates"
-            />
-            <QuickActionCard
-              icon={<Shield className="h-5 w-5 text-green-600" />}
-              label="Compliance"
-              href="/admin/compliance"
-            />
-          </div>
         </>
       )}
     </AdminLayout>
