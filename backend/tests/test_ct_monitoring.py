@@ -13,6 +13,7 @@ from app.core.ct_monitoring import (
     CTMonitoringResult,
     DomainConfig,
 )
+from app.api.ct_monitoring import normalize_domain
 
 
 @pytest.fixture
@@ -295,3 +296,48 @@ class TestMonitoringResult:
         assert result.active_certs == 1
         assert result.expired_certs == 1
         assert len(result.issuers) == 2
+
+
+class TestNormalizeDomain:
+    """Tests for domain normalization."""
+
+    def test_normalize_plain_domain(self):
+        """Plain domain should stay the same."""
+        assert normalize_domain("example.com") == "example.com"
+
+    def test_normalize_https_url(self):
+        """HTTPS URL should be stripped to domain."""
+        assert normalize_domain("https://example.com") == "example.com"
+        assert normalize_domain("https://www.example.com") == "www.example.com"
+
+    def test_normalize_http_url(self):
+        """HTTP URL should be stripped to domain."""
+        assert normalize_domain("http://example.com") == "example.com"
+
+    def test_normalize_url_with_path(self):
+        """URL with path should strip path."""
+        assert normalize_domain("https://example.com/path/to/page") == "example.com"
+        assert normalize_domain("https://example.com/") == "example.com"
+
+    def test_normalize_url_with_query(self):
+        """URL with query string should strip query."""
+        assert normalize_domain("https://example.com?foo=bar") == "example.com"
+
+    def test_normalize_url_with_port(self):
+        """URL with port should strip port."""
+        assert normalize_domain("https://example.com:443") == "example.com"
+        assert normalize_domain("example.com:8080") == "example.com"
+
+    def test_normalize_uppercase(self):
+        """Domain should be lowercased."""
+        assert normalize_domain("EXAMPLE.COM") == "example.com"
+        assert normalize_domain("https://EXAMPLE.COM") == "example.com"
+
+    def test_normalize_whitespace(self):
+        """Whitespace should be stripped."""
+        assert normalize_domain("  example.com  ") == "example.com"
+        assert normalize_domain(" https://example.com ") == "example.com"
+
+    def test_normalize_complex_url(self):
+        """Complex URL with all components should work."""
+        assert normalize_domain("https://www.anthropic.com:443/about?ref=home#team") == "www.anthropic.com"

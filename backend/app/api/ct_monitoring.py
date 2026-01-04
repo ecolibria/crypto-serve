@@ -30,6 +30,44 @@ router = APIRouter(prefix="/api/v1/ct", tags=["certificate-transparency"])
 
 
 # =============================================================================
+# Helper Functions
+# =============================================================================
+
+
+def normalize_domain(domain: str) -> str:
+    """Normalize a domain by stripping URL components.
+
+    Handles inputs like:
+    - "https://www.example.com" -> "example.com"
+    - "http://example.com/path" -> "example.com"
+    - "www.example.com" -> "example.com"
+    - "example.com" -> "example.com"
+    """
+    # Strip whitespace
+    domain = domain.strip()
+
+    # Remove protocol
+    if domain.startswith("https://"):
+        domain = domain[8:]
+    elif domain.startswith("http://"):
+        domain = domain[7:]
+
+    # Remove path and query string
+    domain = domain.split("/")[0]
+    domain = domain.split("?")[0]
+    domain = domain.split("#")[0]
+
+    # Remove port if present
+    domain = domain.split(":")[0]
+
+    # Optionally remove www. prefix (keep it for now since certs may differ)
+    # if domain.startswith("www."):
+    #     domain = domain[4:]
+
+    return domain.lower()
+
+
+# =============================================================================
 # Request/Response Models
 # =============================================================================
 
@@ -207,7 +245,19 @@ async def scan_domain(
     - Finding rogue or misissued certificates
     - Auditing your CA relationships
     - Monitoring certificate expiration
+
+    The domain parameter accepts full URLs (e.g., "https://www.example.com")
+    which will be automatically normalized to just the domain.
     """
+    # Normalize domain (strip https://, paths, etc.)
+    domain = normalize_domain(domain)
+
+    if not domain or "." not in domain:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid domain format. Please provide a valid domain like 'example.com'",
+        )
+
     config = DomainConfig(
         domain=domain,
         include_subdomains=include_subdomains,
@@ -289,6 +339,15 @@ async def get_recent_certificates(
     Finds certificates issued within the last N days.
     Useful for detecting new or unexpected issuances.
     """
+    # Normalize domain (strip https://, paths, etc.)
+    domain = normalize_domain(domain)
+
+    if not domain or "." not in domain:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid domain format",
+        )
+
     try:
         certs = await ct_monitor.find_recent_certificates(domain, days)
     except Exception as e:
@@ -344,6 +403,15 @@ async def get_certificate_issuers(
     issued certificates for your domain. Useful for auditing
     your CA relationships and detecting unauthorized issuers.
     """
+    # Normalize domain (strip https://, paths, etc.)
+    domain = normalize_domain(domain)
+
+    if not domain or "." not in domain:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid domain format",
+        )
+
     try:
         certs = await ct_monitor.search_certificates(
             domain,
