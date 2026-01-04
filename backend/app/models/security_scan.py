@@ -191,6 +191,7 @@ class SecurityFinding(Base):
 
     # Tracking across scans
     first_seen_scan_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    first_detected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_new: Mapped[bool] = mapped_column(Boolean, default=True)  # New in this scan vs recurring
 
     # Relationship

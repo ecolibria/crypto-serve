@@ -83,12 +83,21 @@ class FindingSummary(BaseModel):
     id: int
     severity: str
     title: str
+    description: str | None = None
     scan_type: str
     algorithm: str | None
     quantum_risk: str | None
     file_path: str | None
+    line_number: int | None = None
+    library: str | None = None
     recommendation: str | None
+    # Target/app info
+    target_name: str
+    # Timestamps
     scanned_at: datetime
+    first_detected_at: datetime | None = None
+    resolved_at: datetime | None = None  # When status changed to resolved
+    # Status tracking
     status: str
     status_reason: str | None = None
     is_new: bool = True  # New finding vs recurring from previous scan
@@ -383,12 +392,18 @@ async def list_findings(
             id=finding.id,
             severity=finding.severity.value,
             title=finding.title,
+            description=finding.description,
             scan_type=scan.scan_type.value,
             algorithm=finding.algorithm,
             quantum_risk=finding.quantum_risk,
             file_path=finding.file_path,
+            line_number=finding.line_number,
+            library=finding.library,
             recommendation=finding.recommendation,
+            target_name=scan.target_name,
             scanned_at=scan.scanned_at,
+            first_detected_at=finding.first_detected_at,
+            resolved_at=finding.status_updated_at if finding.status == FindingStatus.RESOLVED else None,
             status=finding.status.value,
             status_reason=finding.status_reason,
             is_new=finding.is_new,

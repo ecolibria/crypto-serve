@@ -230,7 +230,9 @@ async def scan_code(
 
             # Check if this is a recurring finding
             is_new = fingerprint not in previous_findings
-            first_seen_scan_id = scan_record.id if is_new else previous_findings.get(fingerprint, None) and previous_findings[fingerprint].first_seen_scan_id
+            prev_finding = previous_findings.get(fingerprint)
+            first_seen_scan_id = scan_record.id if is_new else (prev_finding.first_seen_scan_id if prev_finding else None)
+            first_detected_at = datetime.now(timezone.utc) if is_new else (prev_finding.first_detected_at if prev_finding else None)
 
             finding_record = SecurityFinding(
                 scan_id=scan_record.id,
@@ -245,6 +247,7 @@ async def scan_code(
                 fingerprint=fingerprint,
                 is_new=is_new,
                 first_seen_scan_id=first_seen_scan_id or scan_record.id,
+                first_detected_at=first_detected_at or datetime.now(timezone.utc),
             )
             db.add(finding_record)
 
@@ -264,6 +267,8 @@ async def scan_code(
                 new_fingerprints.add(fingerprint)
 
                 is_new = fingerprint not in previous_findings
+                prev_finding = previous_findings.get(fingerprint)
+                first_detected_at = datetime.now(timezone.utc) if is_new else (prev_finding.first_detected_at if prev_finding else None)
 
                 finding_record = SecurityFinding(
                     scan_id=scan_record.id,
@@ -281,6 +286,7 @@ async def scan_code(
                     fingerprint=fingerprint,
                     is_new=is_new,
                     first_seen_scan_id=scan_record.id if is_new else None,
+                    first_detected_at=first_detected_at or datetime.now(timezone.utc),
                 )
                 db.add(finding_record)
 

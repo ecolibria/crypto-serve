@@ -926,6 +926,12 @@ export default function SecurityCommandCenter() {
                     {findings.slice(0, 10).map((finding) => {
                       const statusStyle = getStatusStyle(finding.status);
                       const StatusIcon = statusStyle.icon;
+                      const formatDate = (dateStr: string | null) => {
+                        if (!dateStr) return null;
+                        return new Date(dateStr).toLocaleDateString('en-US', {
+                          month: 'short', day: 'numeric', year: 'numeric'
+                        });
+                      };
                       return (
                       <div
                         key={finding.id}
@@ -935,7 +941,7 @@ export default function SecurityCommandCenter() {
                         )}
                       >
                         <div className="flex items-start justify-between">
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className={cn(
                                 "px-2 py-0.5 text-xs font-medium rounded capitalize",
@@ -949,18 +955,47 @@ export default function SecurityCommandCenter() {
                                   New
                                 </span>
                               )}
+                              <span className="text-xs text-slate-400">•</span>
+                              <span className="text-xs text-slate-600 font-medium truncate">{finding.target_name}</span>
                             </div>
                             <p className="font-medium text-slate-900 text-sm mt-1">{finding.title}</p>
-                            {finding.file_path && (
-                              <p className="text-xs text-slate-500 mt-0.5 truncate">{finding.file_path}</p>
+                            {finding.description && (
+                              <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">{finding.description}</p>
                             )}
-                            {finding.algorithm && (
-                              <p className="text-xs text-slate-600 mt-1">
-                                Algorithm: <code className="bg-slate-100 px-1 rounded">{finding.algorithm}</code>
-                              </p>
-                            )}
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-slate-500">
+                              {finding.file_path && (
+                                <span className="truncate max-w-[200px]" title={finding.file_path}>
+                                  {finding.file_path}{finding.line_number ? `:${finding.line_number}` : ''}
+                                </span>
+                              )}
+                              {finding.library && (
+                                <span>
+                                  Library: <code className="bg-slate-100 px-1 rounded">{finding.library}</code>
+                                </span>
+                              )}
+                              {finding.algorithm && (
+                                <span>
+                                  Algorithm: <code className="bg-slate-100 px-1 rounded">{finding.algorithm}</code>
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
+                              {finding.first_detected_at && (
+                                <span title="First detected">
+                                  Detected: {formatDate(finding.first_detected_at)}
+                                </span>
+                              )}
+                              {finding.resolved_at && (
+                                <span title="Resolved date">
+                                  Resolved: {formatDate(finding.resolved_at)}
+                                </span>
+                              )}
+                              {!finding.first_detected_at && !finding.resolved_at && (
+                                <span>Scanned: {formatDate(finding.scanned_at)}</span>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex flex-col items-end gap-1">
+                          <div className="flex flex-col items-end gap-1 ml-2 flex-shrink-0">
                             <div className={cn(
                               "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border",
                               statusStyle.color
