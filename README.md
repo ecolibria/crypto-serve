@@ -19,11 +19,13 @@
 </p>
 
 <p align="center">
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-features">Features</a> •
-  <a href="#-sdk-reference">SDK Reference</a> •
-  <a href="#-post-quantum-cryptography">Post-Quantum</a> •
-  <a href="https://keytum.github.io/crypto-serve/">Docs</a>
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#features">Features</a> •
+  <a href="#sdk-reference">SDK</a> •
+  <a href="#post-quantum-cryptography">Post-Quantum</a> •
+  <a href="docs/security/technical-reference.md">Security</a> •
+  <a href="docs/api-reference/">API</a> •
+  <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
 ---
@@ -549,7 +551,7 @@ pytest tests/test_api/             # API endpoint tests
 | [Concepts](https://keytum.github.io/crypto-serve/concepts/) | Architecture, context model, key management |
 | [SDK Reference](https://keytum.github.io/crypto-serve/sdk/python/) | Complete Python SDK documentation |
 | [API Reference](https://keytum.github.io/crypto-serve/api-reference/) | REST API documentation |
-| [Security Whitepaper](https://keytum.github.io/crypto-serve/security/whitepaper/) | Cryptographic design and threat model |
+| [Technical Reference](docs/security/technical-reference.md) | Cryptographic design and threat model |
 | [Migration Guide](https://keytum.github.io/crypto-serve/guides/migration/) | Migrate from AWS KMS, Vault, or crypto libraries |
 | [Production Guide](https://keytum.github.io/crypto-serve/guides/production/) | Production deployment best practices |
 
@@ -580,7 +582,7 @@ ruff check app/ tests/
 
 **Report vulnerabilities** to security@cryptoserve.io or via [GitHub Security Advisories](https://github.com/keytum/crypto-serve/security/advisories).
 
-See [SECURITY.md](SECURITY.md) and [Security Whitepaper](https://keytum.github.io/crypto-serve/security/whitepaper/).
+See [SECURITY.md](SECURITY.md) and [Technical Reference](docs/security/technical-reference.md).
 
 ---
 
