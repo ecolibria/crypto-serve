@@ -68,3 +68,7 @@ tsconfig.tsbuildinfo
 *.pem
 *.key
 !.env.example
+
+# Internal docs
+docs/plans/
+backend/docs/plans/
