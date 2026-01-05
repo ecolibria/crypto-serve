@@ -29,6 +29,13 @@ except ImportError:
     KMAC_AVAILABLE = False
     CSHAKE_AVAILABLE = False
 
+# TupleHash support (from pycryptodome) - NIST SP 800-185
+try:
+    from Crypto.Hash import TupleHash128, TupleHash256
+    TUPLEHASH_AVAILABLE = True
+except ImportError:
+    TUPLEHASH_AVAILABLE = False
+
 # BLAKE3 support (optional)
 try:
     import blake3
@@ -55,6 +62,10 @@ class HashAlgorithm(str, Enum):
     # cSHAKE (NIST SP 800-185) - customizable SHAKE
     CSHAKE128 = "cshake128"
     CSHAKE256 = "cshake256"
+
+    # TupleHash (NIST SP 800-185) - hash of tuples
+    TUPLEHASH128 = "tuplehash128"
+    TUPLEHASH256 = "tuplehash256"
 
     # BLAKE family
     BLAKE2B = "blake2b"
@@ -127,6 +138,8 @@ class HashEngine:
         HashAlgorithm.SHAKE256: {"bits": 256, "block_size": 136, "xof": True},
         HashAlgorithm.CSHAKE128: {"bits": 128, "block_size": 168, "xof": True, "customizable": True},
         HashAlgorithm.CSHAKE256: {"bits": 256, "block_size": 136, "xof": True, "customizable": True},
+        HashAlgorithm.TUPLEHASH128: {"bits": 128, "block_size": 168, "xof": True, "tuple": True},
+        HashAlgorithm.TUPLEHASH256: {"bits": 256, "block_size": 136, "xof": True, "tuple": True},
         HashAlgorithm.BLAKE2B: {"bits": 512, "block_size": 128},
         HashAlgorithm.BLAKE2S: {"bits": 256, "block_size": 64},
         HashAlgorithm.BLAKE3: {"bits": 256, "block_size": 64},
@@ -203,6 +216,57 @@ class HashEngine:
             digest = blake3.blake3(data).digest(length)
         else:
             raise UnsupportedAlgorithmError(f"Unknown algorithm: {algorithm}")
+
+        return HashResult(
+            digest=digest,
+            algorithm=algorithm,
+            length=len(digest) * 8,
+            hex=digest.hex(),
+            base64=base64.b64encode(digest).decode("ascii"),
+        )
+
+    def tuple_hash(
+        self,
+        items: list[bytes],
+        algorithm: HashAlgorithm = HashAlgorithm.TUPLEHASH128,
+        output_length: int | None = None,
+        customization: bytes = b"",
+    ) -> HashResult:
+        """Compute TupleHash of a list of byte strings (NIST SP 800-185).
+
+        TupleHash is designed for hashing tuples of byte strings in a way that
+        ensures domain separation - the hash of ("ab", "c") differs from ("a", "bc").
+
+        Args:
+            items: List of byte strings to hash as a tuple
+            algorithm: TUPLEHASH128 or TUPLEHASH256
+            output_length: Output length in bytes (default: 16 for 128, 32 for 256)
+            customization: Customization string for domain separation
+
+        Returns:
+            HashResult with digest
+        """
+        if not TUPLEHASH_AVAILABLE:
+            raise UnsupportedAlgorithmError(
+                "TupleHash requires pycryptodome. Install with: pip install pycryptodome"
+            )
+
+        if algorithm == HashAlgorithm.TUPLEHASH128:
+            length = output_length or 16
+            h = TupleHash128.new(digest_bytes=length, custom=customization)
+        elif algorithm == HashAlgorithm.TUPLEHASH256:
+            length = output_length or 32
+            h = TupleHash256.new(digest_bytes=length, custom=customization)
+        else:
+            raise UnsupportedAlgorithmError(
+                f"Algorithm {algorithm} is not a TupleHash algorithm. "
+                f"Use TUPLEHASH128 or TUPLEHASH256."
+            )
+
+        for item in items:
+            h.update(item)
+
+        digest = h.digest()
 
         return HashResult(
             digest=digest,

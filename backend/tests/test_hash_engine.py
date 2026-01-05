@@ -21,6 +21,7 @@ from app.core.hash_engine import (
     MACStreamer,
     BLAKE3_AVAILABLE,
     KMAC_AVAILABLE,
+    TUPLEHASH_AVAILABLE,
 )
 
 
@@ -702,3 +703,112 @@ class TestKMAC:
 
         assert result.hex == result.tag.hex()
         assert fresh_mac_engine.verify(data, key, result.hex, MACAlgorithm.KMAC256)
+
+
+class TestTupleHash:
+    """Tests for TupleHash (NIST SP 800-185)."""
+
+    @pytest.mark.skipif(not TUPLEHASH_AVAILABLE, reason="pycryptodome not installed")
+    def test_tuplehash128_basic(self, fresh_hash_engine):
+        """Test basic TupleHash128."""
+        items = [b"hello", b"world"]
+        result = fresh_hash_engine.tuple_hash(items, HashAlgorithm.TUPLEHASH128)
+
+        assert result.algorithm == HashAlgorithm.TUPLEHASH128
+        assert result.length == 128  # Default 16 bytes
+        assert len(result.digest) == 16
+
+    @pytest.mark.skipif(not TUPLEHASH_AVAILABLE, reason="pycryptodome not installed")
+    def test_tuplehash256_basic(self, fresh_hash_engine):
+        """Test basic TupleHash256."""
+        items = [b"hello", b"world"]
+        result = fresh_hash_engine.tuple_hash(items, HashAlgorithm.TUPLEHASH256)
+
+        assert result.algorithm == HashAlgorithm.TUPLEHASH256
+        assert result.length == 256  # Default 32 bytes
+        assert len(result.digest) == 32
+
+    @pytest.mark.skipif(not TUPLEHASH_AVAILABLE, reason="pycryptodome not installed")
+    def test_tuplehash128_custom_output_length(self, fresh_hash_engine):
+        """Test TupleHash128 with custom output length."""
+        items = [b"test"]
+        result = fresh_hash_engine.tuple_hash(
+            items, HashAlgorithm.TUPLEHASH128, output_length=32
+        )
+
+        assert len(result.digest) == 32
+
+    @pytest.mark.skipif(not TUPLEHASH_AVAILABLE, reason="pycryptodome not installed")
+    def test_tuplehash256_custom_output_length(self, fresh_hash_engine):
+        """Test TupleHash256 with custom output length."""
+        items = [b"test"]
+        result = fresh_hash_engine.tuple_hash(
+            items, HashAlgorithm.TUPLEHASH256, output_length=64
+        )
+
+        assert len(result.digest) == 64
+
+    @pytest.mark.skipif(not TUPLEHASH_AVAILABLE, reason="pycryptodome not installed")
+    def test_tuplehash_domain_separation(self, fresh_hash_engine):
+        """Test that TupleHash provides domain separation.
+
+        The hash of ("ab", "c") should differ from ("a", "bc").
+        """
+        result1 = fresh_hash_engine.tuple_hash([b"ab", b"c"], HashAlgorithm.TUPLEHASH128)
+        result2 = fresh_hash_engine.tuple_hash([b"a", b"bc"], HashAlgorithm.TUPLEHASH128)
+
+        assert result1.digest != result2.digest
+
+    @pytest.mark.skipif(not TUPLEHASH_AVAILABLE, reason="pycryptodome not installed")
+    def test_tuplehash_with_customization(self, fresh_hash_engine):
+        """Test TupleHash with customization string."""
+        items = [b"test"]
+
+        result1 = fresh_hash_engine.tuple_hash(
+            items, HashAlgorithm.TUPLEHASH128, customization=b"context-A"
+        )
+        result2 = fresh_hash_engine.tuple_hash(
+            items, HashAlgorithm.TUPLEHASH128, customization=b"context-B"
+        )
+
+        assert result1.digest != result2.digest
+
+    @pytest.mark.skipif(not TUPLEHASH_AVAILABLE, reason="pycryptodome not installed")
+    def test_tuplehash_deterministic(self, fresh_hash_engine):
+        """Test that TupleHash is deterministic."""
+        items = [b"hello", b"world"]
+
+        result1 = fresh_hash_engine.tuple_hash(items, HashAlgorithm.TUPLEHASH128)
+        result2 = fresh_hash_engine.tuple_hash(items, HashAlgorithm.TUPLEHASH128)
+
+        assert result1.digest == result2.digest
+
+    @pytest.mark.skipif(not TUPLEHASH_AVAILABLE, reason="pycryptodome not installed")
+    def test_tuplehash_empty_items(self, fresh_hash_engine):
+        """Test TupleHash with empty list."""
+        result = fresh_hash_engine.tuple_hash([], HashAlgorithm.TUPLEHASH128)
+
+        assert len(result.digest) == 16
+
+    @pytest.mark.skipif(not TUPLEHASH_AVAILABLE, reason="pycryptodome not installed")
+    def test_tuplehash_single_item(self, fresh_hash_engine):
+        """Test TupleHash with single item."""
+        result = fresh_hash_engine.tuple_hash([b"single"], HashAlgorithm.TUPLEHASH128)
+
+        assert len(result.digest) == 16
+
+    @pytest.mark.skipif(not TUPLEHASH_AVAILABLE, reason="pycryptodome not installed")
+    def test_tuplehash_many_items(self, fresh_hash_engine):
+        """Test TupleHash with many items."""
+        items = [os.urandom(16) for _ in range(100)]
+        result = fresh_hash_engine.tuple_hash(items, HashAlgorithm.TUPLEHASH256)
+
+        assert len(result.digest) == 32
+
+    @pytest.mark.skipif(not TUPLEHASH_AVAILABLE, reason="pycryptodome not installed")
+    def test_tuplehash_hex_encoding(self, fresh_hash_engine):
+        """Test TupleHash hex encoding."""
+        items = [b"test"]
+        result = fresh_hash_engine.tuple_hash(items, HashAlgorithm.TUPLEHASH128)
+
+        assert result.hex == result.digest.hex()
