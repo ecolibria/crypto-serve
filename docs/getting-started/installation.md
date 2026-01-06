@@ -15,7 +15,7 @@ The fastest way to get started is with Docker Compose.
 
 ```bash
 # Clone the repository
-git clone https://github.com/keytum/crypto-serve.git
+git clone https://github.com/ecolibria/crypto-serve.git
 cd crypto-serve
 
 # Copy environment template

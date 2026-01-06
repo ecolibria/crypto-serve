@@ -4,7 +4,7 @@ Thank you for your interest in contributing to CryptoServe! This guide will help
 
 ## Code of Conduct
 
-We are committed to providing a welcoming and inclusive environment. Please read and follow our [Code of Conduct](https://github.com/keytum/crypto-serve/blob/main/CODE_OF_CONDUCT.md).
+We are committed to providing a welcoming and inclusive environment. Please read and follow our [Code of Conduct](https://github.com/ecolibria/crypto-serve/blob/main/CODE_OF_CONDUCT.md).
 
 ## How to Contribute
 
@@ -47,7 +47,7 @@ We will respond within 48 hours.
 
 ```bash
 # Clone the repository
-git clone https://github.com/keytum/crypto-serve.git
+git clone https://github.com/ecolibria/crypto-serve.git
 cd crypto-serve
 
 # Create virtual environment
@@ -277,7 +277,7 @@ Releases are managed by maintainers:
 ## Getting Help
 
 - **Documentation**: [cryptoserve.dev](https://keytum.github.io/crypto-serve/)
-- **Discussions**: [GitHub Discussions](https://github.com/keytum/crypto-serve/discussions)
+- **Discussions**: [GitHub Discussions](https://github.com/ecolibria/crypto-serve/discussions)
 - **Discord**: [Join our community](https://discord.gg/cryptoserve)
 
 Thank you for contributing!

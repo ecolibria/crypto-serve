@@ -354,5 +354,5 @@ Via the dashboard or API, configure a context for post-quantum:
 ## Getting Help
 
 - **Documentation:** [https://keytum.github.io/crypto-serve/](https://keytum.github.io/crypto-serve/)
-- **GitHub Issues:** [https://github.com/keytum/crypto-serve/issues](https://github.com/keytum/crypto-serve/issues)
+- **GitHub Issues:** [https://github.com/ecolibria/crypto-serve/issues](https://github.com/ecolibria/crypto-serve/issues)
 - **Security Issues:** security@cryptoserve.io

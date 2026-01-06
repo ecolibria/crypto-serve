@@ -21,9 +21,9 @@ const config: DocsThemeConfig = {
     </span>
   ),
   project: {
-    link: 'https://github.com/keytum/crypto-serve',
+    link: 'https://github.com/ecolibria/crypto-serve',
   },
-  docsRepositoryBase: 'https://github.com/keytum/crypto-serve/tree/main/docs-site',
+  docsRepositoryBase: 'https://github.com/ecolibria/crypto-serve/tree/main/docs-site',
   useNextSeoProps() {
     return {
       titleTemplate: '%s – CryptoServe'
