@@ -6,7 +6,7 @@ Implements OAuth 2.0 / OIDC flow for Google Workspace authentication.
 from typing import Any
 import httpx
 
-from app.auth.providers.base import OAuthProvider, OAuthConfig, OAuthUserInfo
+from app.auth.providers.base import OAuthProvider, OAuthUserInfo
 
 
 class GoogleProvider(OAuthProvider):

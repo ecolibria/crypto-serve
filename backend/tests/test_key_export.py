@@ -6,7 +6,6 @@ import os
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519
 
 from app.core.key_export import (
-    key_export_engine,
     KeyExportEngine,
     KeyFormat,
     KeyType,
@@ -68,14 +67,13 @@ class TestSymmetricKeyExport:
         key = os.urandom(32)
         password = "test-password-123"
 
-        result = fresh_engine.export_symmetric_key(
-            key, KeyFormat.ENCRYPTED, password=password
-        )
+        result = fresh_engine.export_symmetric_key(key, KeyFormat.ENCRYPTED, password=password)
 
         assert result.format == KeyFormat.ENCRYPTED
         assert isinstance(result.key_data, str)
         # Should be JSON
         import json
+
         data = json.loads(result.key_data)
         assert "salt" in data
         assert "iv" in data
@@ -117,9 +115,7 @@ class TestSymmetricKeyImport:
         kek = os.urandom(32)
         exported = fresh_engine.export_symmetric_key(key, KeyFormat.WRAPPED, kek=kek)
 
-        result = fresh_engine.import_symmetric_key(
-            exported.key_data, KeyFormat.WRAPPED, kek=kek
-        )
+        result = fresh_engine.import_symmetric_key(exported.key_data, KeyFormat.WRAPPED, kek=kek)
 
         assert result.key == key
 
@@ -131,35 +127,25 @@ class TestSymmetricKeyImport:
         exported = fresh_engine.export_symmetric_key(key, KeyFormat.WRAPPED, kek=kek1)
 
         with pytest.raises(KeyImportError):
-            fresh_engine.import_symmetric_key(
-                exported.key_data, KeyFormat.WRAPPED, kek=kek2
-            )
+            fresh_engine.import_symmetric_key(exported.key_data, KeyFormat.WRAPPED, kek=kek2)
 
     def test_import_encrypted(self, fresh_engine):
         """Test importing encrypted symmetric key."""
         key = os.urandom(32)
         password = "test-password"
-        exported = fresh_engine.export_symmetric_key(
-            key, KeyFormat.ENCRYPTED, password=password
-        )
+        exported = fresh_engine.export_symmetric_key(key, KeyFormat.ENCRYPTED, password=password)
 
-        result = fresh_engine.import_symmetric_key(
-            exported.key_data, KeyFormat.ENCRYPTED, password=password
-        )
+        result = fresh_engine.import_symmetric_key(exported.key_data, KeyFormat.ENCRYPTED, password=password)
 
         assert result.key == key
 
     def test_import_encrypted_wrong_password(self, fresh_engine):
         """Test importing encrypted key with wrong password fails."""
         key = os.urandom(32)
-        exported = fresh_engine.export_symmetric_key(
-            key, KeyFormat.ENCRYPTED, password="correct"
-        )
+        exported = fresh_engine.export_symmetric_key(key, KeyFormat.ENCRYPTED, password="correct")
 
         with pytest.raises(KeyImportError):
-            fresh_engine.import_symmetric_key(
-                exported.key_data, KeyFormat.ENCRYPTED, password="wrong"
-            )
+            fresh_engine.import_symmetric_key(exported.key_data, KeyFormat.ENCRYPTED, password="wrong")
 
 
 class TestAsymmetricKeyExport:
@@ -184,9 +170,7 @@ class TestAsymmetricKeyExport:
         """Test exporting Ed25519 private key as JWK."""
         private_key = ed25519.Ed25519PrivateKey.generate()
 
-        result = fresh_engine.export_asymmetric_key(
-            private_key, KeyFormat.JWK, include_private=True
-        )
+        result = fresh_engine.export_asymmetric_key(private_key, KeyFormat.JWK, include_private=True)
 
         assert result.is_private
         assert "d" in result.key_data
@@ -195,9 +179,7 @@ class TestAsymmetricKeyExport:
         """Test exporting EC P-256 public key as JWK."""
         private_key = ec.generate_private_key(ec.SECP256R1())
 
-        result = fresh_engine.export_asymmetric_key(
-            private_key, KeyFormat.JWK, include_private=False
-        )
+        result = fresh_engine.export_asymmetric_key(private_key, KeyFormat.JWK, include_private=False)
 
         assert result.key_type == KeyType.EC_P256
         assert result.key_data["kty"] == "EC"
@@ -208,9 +190,7 @@ class TestAsymmetricKeyExport:
         """Test exporting EC P-384 key."""
         private_key = ec.generate_private_key(ec.SECP384R1())
 
-        result = fresh_engine.export_asymmetric_key(
-            private_key, KeyFormat.JWK, include_private=True
-        )
+        result = fresh_engine.export_asymmetric_key(private_key, KeyFormat.JWK, include_private=True)
 
         assert result.key_type == KeyType.EC_P384
         assert result.key_data["crv"] == "P-384"
@@ -219,9 +199,7 @@ class TestAsymmetricKeyExport:
         """Test exporting public key as PEM."""
         private_key = ed25519.Ed25519PrivateKey.generate()
 
-        result = fresh_engine.export_asymmetric_key(
-            private_key, KeyFormat.PEM, include_private=False
-        )
+        result = fresh_engine.export_asymmetric_key(private_key, KeyFormat.PEM, include_private=False)
 
         assert result.format == KeyFormat.PEM
         assert b"-----BEGIN PUBLIC KEY-----" in result.key_data
@@ -230,9 +208,7 @@ class TestAsymmetricKeyExport:
         """Test exporting private key as PEM."""
         private_key = ed25519.Ed25519PrivateKey.generate()
 
-        result = fresh_engine.export_asymmetric_key(
-            private_key, KeyFormat.PEM, include_private=True
-        )
+        result = fresh_engine.export_asymmetric_key(private_key, KeyFormat.PEM, include_private=True)
 
         assert b"-----BEGIN PRIVATE KEY-----" in result.key_data
 
@@ -253,9 +229,7 @@ class TestAsymmetricKeyImport:
     def test_import_ed25519_public_jwk(self, fresh_engine):
         """Test importing Ed25519 public key from JWK."""
         private_key = ed25519.Ed25519PrivateKey.generate()
-        exported = fresh_engine.export_asymmetric_key(
-            private_key, KeyFormat.JWK, include_private=False, kid="test"
-        )
+        exported = fresh_engine.export_asymmetric_key(private_key, KeyFormat.JWK, include_private=False, kid="test")
 
         result = fresh_engine.import_asymmetric_key(exported.key_data, KeyFormat.JWK)
 
@@ -267,9 +241,7 @@ class TestAsymmetricKeyImport:
     def test_import_ed25519_private_jwk(self, fresh_engine):
         """Test importing Ed25519 private key from JWK."""
         private_key = ed25519.Ed25519PrivateKey.generate()
-        exported = fresh_engine.export_asymmetric_key(
-            private_key, KeyFormat.JWK, include_private=True
-        )
+        exported = fresh_engine.export_asymmetric_key(private_key, KeyFormat.JWK, include_private=True)
 
         result = fresh_engine.import_asymmetric_key(exported.key_data, KeyFormat.JWK)
 
@@ -279,9 +251,7 @@ class TestAsymmetricKeyImport:
     def test_import_ec_jwk(self, fresh_engine):
         """Test importing EC key from JWK."""
         private_key = ec.generate_private_key(ec.SECP256R1())
-        exported = fresh_engine.export_asymmetric_key(
-            private_key, KeyFormat.JWK, include_private=True
-        )
+        exported = fresh_engine.export_asymmetric_key(private_key, KeyFormat.JWK, include_private=True)
 
         result = fresh_engine.import_asymmetric_key(exported.key_data, KeyFormat.JWK)
 
@@ -291,9 +261,7 @@ class TestAsymmetricKeyImport:
     def test_import_public_pem(self, fresh_engine):
         """Test importing public key from PEM."""
         private_key = ed25519.Ed25519PrivateKey.generate()
-        exported = fresh_engine.export_asymmetric_key(
-            private_key, KeyFormat.PEM, include_private=False
-        )
+        exported = fresh_engine.export_asymmetric_key(private_key, KeyFormat.PEM, include_private=False)
 
         result = fresh_engine.import_asymmetric_key(exported.key_data, KeyFormat.PEM)
 
@@ -303,9 +271,7 @@ class TestAsymmetricKeyImport:
     def test_import_private_pem(self, fresh_engine):
         """Test importing private key from PEM."""
         private_key = ec.generate_private_key(ec.SECP256R1())
-        exported = fresh_engine.export_asymmetric_key(
-            private_key, KeyFormat.PEM, include_private=True
-        )
+        exported = fresh_engine.export_asymmetric_key(private_key, KeyFormat.PEM, include_private=True)
 
         result = fresh_engine.import_asymmetric_key(exported.key_data, KeyFormat.PEM)
 
@@ -320,9 +286,7 @@ class TestAsymmetricKeyImport:
             private_key, KeyFormat.PEM, include_private=True, password=password
         )
 
-        result = fresh_engine.import_asymmetric_key(
-            exported.key_data, KeyFormat.PEM, password=password
-        )
+        result = fresh_engine.import_asymmetric_key(exported.key_data, KeyFormat.PEM, password=password)
 
         assert isinstance(result.key, ec.EllipticCurvePrivateKey)
 
@@ -350,9 +314,7 @@ class TestRoundtrip:
             elif format == KeyFormat.ENCRYPTED:
                 import_kwargs["password"] = password
 
-            imported = fresh_engine.import_symmetric_key(
-                exported.key_data, format, **import_kwargs
-            )
+            imported = fresh_engine.import_symmetric_key(exported.key_data, format, **import_kwargs)
 
             assert imported.key == key, f"Roundtrip failed for format {format}"
 
@@ -363,15 +325,11 @@ class TestRoundtrip:
 
         # Test message for signature verification
         message = b"test message"
-        original_sig = private_key.sign(message)
+        private_key.sign(message)
 
         # Export and import private key
-        exported_private = fresh_engine.export_asymmetric_key(
-            private_key, KeyFormat.JWK, include_private=True
-        )
-        imported_private = fresh_engine.import_asymmetric_key(
-            exported_private.key_data, KeyFormat.JWK
-        )
+        exported_private = fresh_engine.export_asymmetric_key(private_key, KeyFormat.JWK, include_private=True)
+        imported_private = fresh_engine.import_asymmetric_key(exported_private.key_data, KeyFormat.JWK)
 
         # Verify imported key can sign
         new_sig = imported_private.key.sign(message)
@@ -382,9 +340,7 @@ class TestRoundtrip:
         private_key = ec.generate_private_key(ec.SECP256R1())
 
         # Export/import via PEM
-        exported = fresh_engine.export_asymmetric_key(
-            private_key, KeyFormat.PEM, include_private=True
-        )
+        exported = fresh_engine.export_asymmetric_key(private_key, KeyFormat.PEM, include_private=True)
         imported = fresh_engine.import_asymmetric_key(exported.key_data, KeyFormat.PEM)
 
         # Verify key is functional

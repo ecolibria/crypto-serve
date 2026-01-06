@@ -13,7 +13,6 @@ import logging
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable
 
 from app.config import get_settings
 
@@ -22,14 +21,16 @@ logger = logging.getLogger(__name__)
 
 class ValidationLevel(str, Enum):
     """Validation strictness levels."""
+
     STRICT = "strict"  # Fail if any check fails
-    WARN = "warn"      # Log warnings, continue
-    SKIP = "skip"      # Skip all validation
+    WARN = "warn"  # Log warnings, continue
+    SKIP = "skip"  # Skip all validation
 
 
 @dataclass
 class ValidationResult:
     """Result of a validation check."""
+
     name: str
     passed: bool
     message: str
@@ -204,8 +205,7 @@ class StartupValidator:
         return self._check(
             "key_ceremony",
             True,
-            f"Key Ceremony enabled ({threshold}-of-{total_shares}) and UNSEALED. "
-            f"Master key is available.",
+            f"Key Ceremony enabled ({threshold}-of-{total_shares}) and UNSEALED. " f"Master key is available.",
             critical=True,
         )
 
@@ -411,7 +411,7 @@ class StartupValidator:
             return self._check(
                 "fips_mode",
                 True,
-                f"FIPS mode preferred but not available - using standard crypto",
+                "FIPS mode preferred but not available - using standard crypto",
                 critical=False,
             )
 

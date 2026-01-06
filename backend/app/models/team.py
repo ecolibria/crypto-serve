@@ -16,6 +16,7 @@ from app.database import Base, GUID
 
 class TeamSource(str, Enum):
     """Source of team definition."""
+
     OIDC = "oidc"  # Extracted from OIDC claims
     GITHUB = "github"  # GitHub organization
     ADMIN = "admin"  # Created by admin
@@ -41,19 +42,10 @@ class Team(Base):
 
     __tablename__ = "teams"
 
-    id: Mapped[str] = mapped_column(
-        GUID(),
-        primary_key=True,
-        default=lambda: str(uuid4())
-    )
+    id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=lambda: str(uuid4()))
 
     # Tenant isolation
-    tenant_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[str] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=False, index=True)
 
     # Team identification
     name: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
@@ -61,41 +53,23 @@ class Team(Base):
     description: Mapped[str | None] = mapped_column(String(1024), nullable=True)
 
     # Source tracking
-    source: Mapped[TeamSource] = mapped_column(
-        String(16),
-        default=TeamSource.OIDC.value,
-        nullable=False
-    )
+    source: Mapped[TeamSource] = mapped_column(String(16), default=TeamSource.OIDC.value, nullable=False)
     external_id: Mapped[str | None] = mapped_column(
-        String(256),
-        nullable=True,
-        doc="External ID from provider (e.g., GitHub org ID)"
+        String(256), nullable=True, doc="External ID from provider (e.g., GitHub org ID)"
     )
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
     )
 
     # Relationships
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="teams")
-    users: Mapped[list["User"]] = relationship(
-        "User",
-        secondary=user_teams,
-        back_populates="teams",
-        lazy="selectin"
-    )
+    users: Mapped[list["User"]] = relationship("User", secondary=user_teams, back_populates="teams", lazy="selectin")
 
     # Unique constraint: team name must be unique within tenant
-    __table_args__ = (
-        UniqueConstraint("tenant_id", "name", name="uq_team_tenant_name"),
-    )
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_team_tenant_name"),)
 
     def __repr__(self) -> str:
         return f"<Team {self.name}>"

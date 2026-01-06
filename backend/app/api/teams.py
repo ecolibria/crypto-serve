@@ -28,6 +28,7 @@ router = APIRouter(prefix="/api/v1/teams", tags=["teams"])
 
 class TeamResponse(BaseModel):
     """Team response schema."""
+
     id: str
     name: str
     display_name: str | None
@@ -42,6 +43,7 @@ class TeamResponse(BaseModel):
 
 class TeamCreate(BaseModel):
     """Team creation schema (admin only)."""
+
     name: str = Field(..., min_length=1, max_length=64, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$")
     display_name: str | None = Field(None, max_length=256)
     description: str | None = Field(None, max_length=1024)
@@ -49,6 +51,7 @@ class TeamCreate(BaseModel):
 
 class UserTeamsResponse(BaseModel):
     """User's teams response."""
+
     teams: list[TeamResponse]
     can_create_for_any_team: bool  # True for admins
 
@@ -90,11 +93,7 @@ async def get_my_teams(
     from sqlalchemy.orm import selectinload
 
     # Reload user with teams eagerly loaded
-    result = await db.execute(
-        select(User)
-        .options(selectinload(User.teams))
-        .where(User.id == user.id)
-    )
+    result = await db.execute(select(User).options(selectinload(User.teams)).where(User.id == user.id))
     user_with_teams = result.scalar_one()
 
     return UserTeamsResponse(
@@ -177,12 +176,8 @@ async def add_team_member(
 
     # Find the team
     from app.models import Team
-    result = await db.execute(
-        select(Team).where(
-            Team.tenant_id == user.tenant_id,
-            Team.name == team_name.lower()
-        )
-    )
+
+    result = await db.execute(select(Team).where(Team.tenant_id == user.tenant_id, Team.name == team_name.lower()))
     team = result.scalar_one_or_none()
     if not team:
         raise HTTPException(
@@ -191,12 +186,7 @@ async def add_team_member(
         )
 
     # Find the user to add
-    result = await db.execute(
-        select(User).where(
-            User.tenant_id == user.tenant_id,
-            User.github_username == username
-        )
-    )
+    result = await db.execute(select(User).where(User.tenant_id == user.tenant_id, User.github_username == username))
     target_user = result.scalar_one_or_none()
     if not target_user:
         raise HTTPException(

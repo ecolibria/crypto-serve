@@ -37,8 +37,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set
-import uuid
+from typing import Any, Callable, Dict, List, Optional
 
 
 class LeaseError(Exception):
@@ -263,14 +262,10 @@ class LeaseEngine:
         effective_client_id = identity_id or client_id
 
         if effective_ttl > effective_max_ttl:
-            raise LeaseMaxDurationError(
-                f"TTL {effective_ttl}s exceeds maximum {effective_max_ttl}s"
-            )
+            raise LeaseMaxDurationError(f"TTL {effective_ttl}s exceeds maximum {effective_max_ttl}s")
 
         if effective_max_ttl > self._max_ttl:
-            raise LeaseMaxDurationError(
-                f"Max TTL {effective_max_ttl}s exceeds system maximum {self._max_ttl}s"
-            )
+            raise LeaseMaxDurationError(f"Max TTL {effective_max_ttl}s exceeds system maximum {self._max_ttl}s")
 
         now = datetime.now(timezone.utc)
         lease_id = self._generate_lease_id()
@@ -421,9 +416,7 @@ class LeaseEngine:
                 if not lease.renewable:
                     raise LeaseError(f"Lease is not renewable: {lease_id}")
                 if lease.max_renewals > 0 and lease.renewals >= lease.max_renewals:
-                    raise LeaseError(
-                        f"Lease has reached max renewals ({lease.max_renewals}): {lease_id}"
-                    )
+                    raise LeaseError(f"Lease has reached max renewals ({lease.max_renewals}): {lease_id}")
                 raise LeaseError(f"Lease cannot be renewed: {lease_id}")
 
             # Calculate new expiration
@@ -437,9 +430,7 @@ class LeaseEngine:
                 # Cap at max TTL
                 new_expires = max_expires
                 if new_expires <= now:
-                    raise LeaseMaxDurationError(
-                        f"Lease has reached maximum lifetime: {lease_id}"
-                    )
+                    raise LeaseMaxDurationError(f"Lease has reached maximum lifetime: {lease_id}")
 
             # Apply renewal
             lease.expires_at = new_expires
@@ -504,9 +495,7 @@ class LeaseEngine:
         """
         with self._lock:
             return [
-                lease
-                for lease in self._leases.values()
-                if lease.status == LeaseStatus.ACTIVE and not lease.is_expired
+                lease for lease in self._leases.values() if lease.status == LeaseStatus.ACTIVE and not lease.is_expired
             ]
 
     def get_stats(self) -> LeaseStats:
@@ -625,7 +614,7 @@ class LeaseEngine:
     def _cleanup_expired(self) -> None:
         """Cleanup expired leases."""
         with self._lock:
-            now = datetime.now(timezone.utc)
+            datetime.now(timezone.utc)
             for lease in list(self._leases.values()):
                 if lease.status == LeaseStatus.ACTIVE and lease.is_expired:
                     self._expire_lease(lease)

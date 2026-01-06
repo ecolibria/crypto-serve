@@ -9,26 +9,19 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.models import Identity
 from app.api.crypto import get_sdk_identity
 from app.core.ct_monitoring import (
     ct_monitor,
-    CTMonitor,
     CTLogEntry,
     CTAlert,
     CTAlertSeverity,
-    CTAlertType,
     CTMonitoringResult,
     DomainConfig,
 )
 from app.core.sct_validator import (
     sct_validator,
-    SCTValidator,
-    SCT,
-    SCTValidationResult,
 )
 
 
@@ -80,6 +73,7 @@ def normalize_domain(domain: str) -> str:
 
 class DomainConfigRequest(BaseModel):
     """Domain monitoring configuration."""
+
     domain: str = Field(..., description="Domain to monitor (e.g., example.com)")
     includeSubdomains: bool = Field(default=True, description="Include subdomains")
     expectedIssuers: list[str] = Field(
@@ -92,6 +86,7 @@ class DomainConfigRequest(BaseModel):
 
 class CTCertificateResponse(BaseModel):
     """Certificate entry from CT logs."""
+
     id: int
     issuerName: str
     commonName: str
@@ -108,6 +103,7 @@ class CTCertificateResponse(BaseModel):
 
 class CTAlertResponse(BaseModel):
     """Alert from CT monitoring."""
+
     alertType: str
     severity: str
     domain: str
@@ -119,6 +115,7 @@ class CTAlertResponse(BaseModel):
 
 class MonitoringResultResponse(BaseModel):
     """Result of monitoring a domain."""
+
     domain: str
     totalCerts: int
     activeCerts: int
@@ -132,6 +129,7 @@ class MonitoringResultResponse(BaseModel):
 
 class ScanDomainResponse(BaseModel):
     """Full scan results for a domain."""
+
     summary: MonitoringResultResponse
     certificates: list[CTCertificateResponse]
     alerts: list[CTAlertResponse]
@@ -139,11 +137,13 @@ class ScanDomainResponse(BaseModel):
 
 class BulkScanRequest(BaseModel):
     """Request to scan multiple domains."""
+
     domains: list[DomainConfigRequest]
 
 
 class BulkScanResponse(BaseModel):
     """Response from bulk domain scan."""
+
     results: list[MonitoringResultResponse]
     totalDomains: int
     totalCerts: int
@@ -153,6 +153,7 @@ class BulkScanResponse(BaseModel):
 
 class RecentCertsResponse(BaseModel):
     """Recent certificates for a domain."""
+
     domain: str
     days: int
     certificates: list[CTCertificateResponse]
@@ -319,11 +320,7 @@ async def scan_domains_bulk(
     summaries = [_result_to_summary(r) for r in results]
     total_certs = sum(r.total_certs for r in results)
     total_alerts = sum(len(r.alerts) for r in results)
-    critical_alerts = sum(
-        1 for r in results
-        for a in r.alerts
-        if a.severity == CTAlertSeverity.CRITICAL
-    )
+    critical_alerts = sum(1 for r in results for a in r.alerts if a.severity == CTAlertSeverity.CRITICAL)
 
     return BulkScanResponse(
         results=summaries,
@@ -507,6 +504,7 @@ async def search_certificates(
 
 class SCTResponse(BaseModel):
     """Signed Certificate Timestamp response."""
+
     logId: str
     logName: str | None
     timestamp: datetime
@@ -516,6 +514,7 @@ class SCTResponse(BaseModel):
 
 class SCTValidationResponse(BaseModel):
     """SCT validation result for a certificate."""
+
     certificateSubject: str
     totalScts: int
     validScts: int
@@ -527,6 +526,7 @@ class SCTValidationResponse(BaseModel):
 
 class ValidateSCTRequest(BaseModel):
     """Request to validate SCTs in a certificate."""
+
     certificate: str = Field(..., description="PEM-encoded certificate")
     minScts: int = Field(default=2, ge=1, le=5, description="Minimum SCTs required")
 
@@ -568,6 +568,7 @@ async def validate_certificate_scts(
 
         # Load certificate
         from cryptography import x509
+
         try:
             cert = x509.load_pem_x509_certificate(cert_pem)
         except Exception as e:
@@ -586,13 +587,15 @@ async def validate_certificate_scts(
         # Convert to response
         sct_responses = []
         for sct_result in result["results"]:
-            sct_responses.append(SCTResponse(
-                logId=sct_result.sct.log_id_hex,
-                logName=sct_result.log_name,
-                timestamp=sct_result.sct.timestamp,
-                valid=sct_result.valid,
-                error=sct_result.error,
-            ))
+            sct_responses.append(
+                SCTResponse(
+                    logId=sct_result.sct.log_id_hex,
+                    logName=sct_result.log_name,
+                    timestamp=sct_result.sct.timestamp,
+                    valid=sct_result.valid,
+                    error=sct_result.error,
+                )
+            )
 
         return SCTValidationResponse(
             certificateSubject=result["certificate_subject"],
@@ -624,13 +627,15 @@ async def get_sct_info(
     """
     logs = []
     for log_id, log_info in sct_validator.known_logs.items():
-        logs.append({
-            "logId": log_id,
-            "name": log_info.name,
-            "url": log_info.url,
-            "operator": log_info.operator,
-            "status": log_info.status,
-        })
+        logs.append(
+            {
+                "logId": log_id,
+                "name": log_info.name,
+                "url": log_info.url,
+                "operator": log_info.operator,
+                "status": log_info.status,
+            }
+        )
 
     return {
         "knownLogs": logs,

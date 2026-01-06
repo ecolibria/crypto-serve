@@ -11,6 +11,7 @@ from app.database import Base, GUID
 
 class KeyStatus(str, Enum):
     """Status of encryption key."""
+
     ACTIVE = "active"
     ROTATED = "rotated"
     RETIRED = "retired"
@@ -18,9 +19,10 @@ class KeyStatus(str, Enum):
 
 class KeyType(str, Enum):
     """Type of cryptographic key."""
+
     SYMMETRIC = "symmetric"  # AES, ChaCha20
-    PQC_KEM = "pqc_kem"      # ML-KEM for key encapsulation
-    PQC_SIG = "pqc_sig"      # ML-DSA for signatures
+    PQC_KEM = "pqc_kem"  # ML-KEM for key encapsulation
+    PQC_SIG = "pqc_sig"  # ML-DSA for signatures
 
 
 class Key(Base):
@@ -31,27 +33,12 @@ class Key(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
 
     # Tenant isolation
-    tenant_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[str] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=False, index=True)
 
-    context: Mapped[str] = mapped_column(
-        String(64),
-        ForeignKey("contexts.name"),
-        nullable=False
-    )
+    context: Mapped[str] = mapped_column(String(64), ForeignKey("contexts.name"), nullable=False)
     version: Mapped[int] = mapped_column(Integer, default=1)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
-    )
-    status: Mapped[KeyStatus] = mapped_column(
-        SQLEnum(KeyStatus),
-        default=KeyStatus.ACTIVE
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    status: Mapped[KeyStatus] = mapped_column(SQLEnum(KeyStatus), default=KeyStatus.ACTIVE)
 
     def __repr__(self) -> str:
         return f"<Key {self.id}>"
@@ -75,53 +62,23 @@ class PQCKey(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
 
     # Tenant isolation
-    tenant_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[str] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=False, index=True)
 
-    context: Mapped[str] = mapped_column(
-        String(64),
-        ForeignKey("contexts.name"),
-        nullable=False
-    )
-    key_type: Mapped[KeyType] = mapped_column(
-        SQLEnum(KeyType),
-        default=KeyType.PQC_KEM
-    )
-    algorithm: Mapped[str] = mapped_column(
-        String(32),
-        nullable=False
-    )  # e.g., "ML-KEM-768", "ML-DSA-65"
+    context: Mapped[str] = mapped_column(String(64), ForeignKey("contexts.name"), nullable=False)
+    key_type: Mapped[KeyType] = mapped_column(SQLEnum(KeyType), default=KeyType.PQC_KEM)
+    algorithm: Mapped[str] = mapped_column(String(32), nullable=False)  # e.g., "ML-KEM-768", "ML-DSA-65"
 
     # Public key (stored plaintext - it's public)
-    public_key: Mapped[bytes] = mapped_column(
-        LargeBinary,
-        nullable=False
-    )
+    public_key: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
 
     # Private key (encrypted with context's derived key)
-    encrypted_private_key: Mapped[bytes] = mapped_column(
-        LargeBinary,
-        nullable=False
-    )
+    encrypted_private_key: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
 
     # Nonce used for private key encryption
-    private_key_nonce: Mapped[bytes] = mapped_column(
-        LargeBinary,
-        nullable=False
-    )
+    private_key_nonce: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
-    )
-    status: Mapped[KeyStatus] = mapped_column(
-        SQLEnum(KeyStatus),
-        default=KeyStatus.ACTIVE
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    status: Mapped[KeyStatus] = mapped_column(SQLEnum(KeyStatus), default=KeyStatus.ACTIVE)
 
     def __repr__(self) -> str:
         return f"<PQCKey {self.id} algorithm={self.algorithm}>"

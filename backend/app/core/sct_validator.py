@@ -15,7 +15,6 @@ Standards:
 - RFC 9162: Certificate Transparency Version 2.0
 """
 
-import hashlib
 import struct
 import logging
 from dataclasses import dataclass
@@ -24,9 +23,6 @@ from enum import IntEnum
 from typing import Any
 
 from cryptography import x509
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec, rsa, padding
-from cryptography.x509.oid import ExtensionOID
 
 logger = logging.getLogger(__name__)
 
@@ -36,17 +32,20 @@ SCT_EXTENSION_OID = x509.ObjectIdentifier("1.3.6.1.4.1.11129.2.4.2")
 
 class SCTVersion(IntEnum):
     """SCT version (RFC 6962)."""
+
     V1 = 0
 
 
 class SignatureType(IntEnum):
     """CT signature type."""
+
     CERTIFICATE_TIMESTAMP = 0
     TREE_HASH = 1
 
 
 class HashAlgorithm(IntEnum):
     """Hash algorithm for SCT signatures."""
+
     NONE = 0
     MD5 = 1
     SHA1 = 2
@@ -58,6 +57,7 @@ class HashAlgorithm(IntEnum):
 
 class SignatureAlgorithm(IntEnum):
     """Signature algorithm for SCT."""
+
     ANONYMOUS = 0
     RSA = 1
     DSA = 2
@@ -67,6 +67,7 @@ class SignatureAlgorithm(IntEnum):
 @dataclass
 class SCT:
     """Signed Certificate Timestamp."""
+
     version: SCTVersion
     log_id: bytes  # 32-byte SHA-256 hash of log's public key
     timestamp: datetime
@@ -89,6 +90,7 @@ class SCT:
 @dataclass
 class SCTValidationResult:
     """Result of SCT validation."""
+
     valid: bool
     sct: SCT
     log_name: str | None = None
@@ -99,6 +101,7 @@ class SCTValidationResult:
 @dataclass
 class CTLogInfo:
     """Information about a CT log."""
+
     log_id: str  # hex-encoded
     name: str
     url: str
@@ -171,13 +174,13 @@ class SCTParser:
             if offset + 2 > end:
                 break
 
-            sct_length = struct.unpack(">H", data[offset:offset+2])[0]
+            sct_length = struct.unpack(">H", data[offset : offset + 2])[0]
             offset += 2
 
             if offset + sct_length > len(data):
                 break
 
-            sct_data = data[offset:offset + sct_length]
+            sct_data = data[offset : offset + sct_length]
             offset += sct_length
 
             try:
@@ -216,20 +219,20 @@ class SCTParser:
         offset += 1
 
         # Log ID (32 bytes)
-        log_id = data[offset:offset + 32]
+        log_id = data[offset : offset + 32]
         offset += 32
 
         # Timestamp (8 bytes, ms since epoch)
-        timestamp_ms = struct.unpack(">Q", data[offset:offset + 8])[0]
+        timestamp_ms = struct.unpack(">Q", data[offset : offset + 8])[0]
         timestamp = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
         offset += 8
 
         # Extensions (2-byte length prefix)
         if offset + 2 > len(data):
             return None
-        ext_length = struct.unpack(">H", data[offset:offset + 2])[0]
+        ext_length = struct.unpack(">H", data[offset : offset + 2])[0]
         offset += 2
-        extensions = data[offset:offset + ext_length]
+        extensions = data[offset : offset + ext_length]
         offset += ext_length
 
         # Signature
@@ -239,9 +242,9 @@ class SCTParser:
         sig_alg = SignatureAlgorithm(data[offset + 1])
         offset += 2
 
-        sig_length = struct.unpack(">H", data[offset:offset + 2])[0]
+        sig_length = struct.unpack(">H", data[offset : offset + 2])[0]
         offset += 2
-        signature = data[offset:offset + sig_length]
+        signature = data[offset : offset + sig_length]
 
         return SCT(
             version=version,

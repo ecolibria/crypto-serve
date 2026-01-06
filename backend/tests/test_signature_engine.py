@@ -4,12 +4,10 @@ import pytest
 import base64
 
 from app.core.signature_engine import (
-    signature_engine,
     SignatureEngine,
     SignatureAlgorithm,
     SignatureFormat,
     KeyNotFoundError,
-    UnsupportedAlgorithmError,
 )
 
 
@@ -158,9 +156,7 @@ class TestSigningAndVerification:
         key_pair = fresh_engine.generate_key_pair(context="test")
 
         message = b"Hello, World!"
-        result = fresh_engine.sign(
-            message, key_pair.key_id, output_format=SignatureFormat.BASE64
-        )
+        result = fresh_engine.sign(message, key_pair.key_id, output_format=SignatureFormat.BASE64)
 
         assert result.format == SignatureFormat.BASE64
         # Should be valid base64
@@ -184,9 +180,7 @@ class TestSigningAndVerification:
         )
 
         message = b"Hello, World!"
-        result = fresh_engine.sign(
-            message, key_pair.key_id, output_format=SignatureFormat.DER
-        )
+        result = fresh_engine.sign(message, key_pair.key_id, output_format=SignatureFormat.DER)
 
         assert result.format == SignatureFormat.DER
         # DER format starts with 0x30 (SEQUENCE)

@@ -9,9 +9,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.models import Identity
 from app.core.secret_sharing_engine import (
     SecretSharingEngine,
@@ -44,8 +42,10 @@ lease_engine = LeaseEngine()
 # Shamir Secret Sharing
 # ============================================================================
 
+
 class ShamirSplitRequest(BaseModel):
     """Shamir split request."""
+
     secret: str = Field(..., description="Secret to split (base64 encoded)")
     threshold: int = Field(..., ge=2, le=255, description="Minimum shares needed to reconstruct")
     total_shares: int = Field(..., ge=2, le=255, description="Total shares to generate")
@@ -53,6 +53,7 @@ class ShamirSplitRequest(BaseModel):
 
 class ShamirShare(BaseModel):
     """A single Shamir share."""
+
     index: int
     value: str = Field(..., description="Share value (base64 encoded)")
     threshold: int = Field(..., description="Minimum shares needed to reconstruct")
@@ -60,6 +61,7 @@ class ShamirShare(BaseModel):
 
 class ShamirSplitResponse(BaseModel):
     """Shamir split response."""
+
     shares: list[ShamirShare]
     threshold: int
     total_shares: int
@@ -67,11 +69,13 @@ class ShamirSplitResponse(BaseModel):
 
 class ShamirCombineRequest(BaseModel):
     """Shamir combine request."""
+
     shares: list[ShamirShare]
 
 
 class ShamirCombineResponse(BaseModel):
     """Shamir combine response."""
+
     secret: str = Field(..., description="Reconstructed secret (base64 encoded)")
 
 
@@ -151,8 +155,7 @@ async def shamir_combine(
 
         threshold = data.shares[0].threshold
         shares = [
-            Share(x=s.index, y=base64.b64decode(s.value), threshold=threshold, total=threshold)
-            for s in data.shares
+            Share(x=s.index, y=base64.b64decode(s.value), threshold=threshold, total=threshold) for s in data.shares
         ]
     except HTTPException:
         raise
@@ -176,8 +179,10 @@ async def shamir_combine(
 # Threshold Cryptography
 # ============================================================================
 
+
 class ThresholdKeyGenRequest(BaseModel):
     """Threshold key generation request."""
+
     threshold: int = Field(..., ge=2, description="Signing threshold")
     total_parties: int = Field(..., ge=2, description="Total parties")
     curve: str = Field(default="secp256k1", description="Curve: secp256k1, p256")
@@ -185,6 +190,7 @@ class ThresholdKeyGenRequest(BaseModel):
 
 class ThresholdKeyShare(BaseModel):
     """A threshold key share."""
+
     party_id: int
     private_share: str = Field(..., description="Private key share (base64)")
     public_share: str = Field(..., description="Public key share (base64)")
@@ -193,6 +199,7 @@ class ThresholdKeyShare(BaseModel):
 
 class ThresholdKeyGenResponse(BaseModel):
     """Threshold key generation response."""
+
     shares: list[ThresholdKeyShare]
     group_public_key: str = Field(..., description="Combined public key (base64)")
     threshold: int
@@ -201,6 +208,7 @@ class ThresholdKeyGenResponse(BaseModel):
 
 class ThresholdSignRequest(BaseModel):
     """Threshold signing request."""
+
     message: str = Field(..., description="Message to sign (base64)")
     party_shares: list[dict] = Field(..., description="Participating party shares")
     group_public_key: str = Field(..., description="Group public key (base64)")
@@ -208,6 +216,7 @@ class ThresholdSignRequest(BaseModel):
 
 class ThresholdSignResponse(BaseModel):
     """Threshold signing response."""
+
     signature: str = Field(..., description="Combined signature (base64)")
     signers: list[int] = Field(..., description="Party IDs that contributed")
 
@@ -352,8 +361,10 @@ async def threshold_sign(
 # Lease Management (Time-Limited Secrets)
 # ============================================================================
 
+
 class LeaseCreateRequest(BaseModel):
     """Lease creation request."""
+
     secret: str = Field(..., description="Secret data (base64)")
     ttl_seconds: int = Field(default=3600, description="Time to live in seconds")
     max_ttl_seconds: int | None = Field(default=None, description="Maximum TTL (limits renewals)")
@@ -363,6 +374,7 @@ class LeaseCreateRequest(BaseModel):
 
 class LeaseResponse(BaseModel):
     """Lease response."""
+
     lease_id: str
     secret: str = Field(..., description="Secret data (base64)")
     ttl_seconds: int
@@ -373,12 +385,14 @@ class LeaseResponse(BaseModel):
 
 class LeaseRenewRequest(BaseModel):
     """Lease renewal request."""
+
     lease_id: str
     increment_seconds: int = Field(default=3600, description="TTL extension")
 
 
 class LeaseRevokeRequest(BaseModel):
     """Lease revocation request."""
+
     lease_id: str
 
 
@@ -538,5 +552,5 @@ async def get_lease_audit(
                 "details": event.details,
             }
             for event in audit_events
-        ]
+        ],
     }

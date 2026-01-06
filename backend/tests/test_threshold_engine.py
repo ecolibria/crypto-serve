@@ -8,9 +8,7 @@ from app.core.threshold_engine import (
     ThresholdEngine,
     ThresholdScheme,
     ThresholdKeyShare,
-    ThresholdSignature,
     ThresholdError,
-    InsufficientParticipantsError,
     Point,
     FieldElement,
 )
@@ -189,9 +187,7 @@ class TestThresholdSignatures:
         signature = engine.combine_signature_shares(sig_shares, nonce_commitments)
 
         # Verify signature
-        assert engine.verify_threshold_signature(
-            result.public_key, message, signature
-        )
+        assert engine.verify_threshold_signature(result.public_key, message, signature)
 
     def test_create_and_verify_signature_2_of_3(self, engine):
         """Test 2-of-3 threshold signature."""
@@ -219,9 +215,7 @@ class TestThresholdSignatures:
 
         signature = engine.combine_signature_shares(sig_shares, nonce_commitments)
 
-        assert engine.verify_threshold_signature(
-            result.public_key, message, signature
-        )
+        assert engine.verify_threshold_signature(result.public_key, message, signature)
 
     def test_any_threshold_subset_works(self, engine):
         """Test that any t participants can sign."""
@@ -282,9 +276,7 @@ class TestThresholdSignatures:
 
         signature = engine.combine_signature_shares(sig_shares, nonce_commitments)
 
-        assert not engine.verify_threshold_signature(
-            result.public_key, wrong_message, signature
-        )
+        assert not engine.verify_threshold_signature(result.public_key, wrong_message, signature)
 
     def test_wrong_public_key_fails_verification(self, engine):
         """Test that signature fails with different public key."""
@@ -314,9 +306,7 @@ class TestThresholdSignatures:
         signature = engine.combine_signature_shares(sig_shares, nonce_commitments)
 
         # Verify with wrong public key
-        assert not engine.verify_threshold_signature(
-            result2.public_key, message, signature
-        )
+        assert not engine.verify_threshold_signature(result2.public_key, message, signature)
 
     def test_more_than_threshold_works(self, engine):
         """Test that using more than threshold participants works."""
@@ -345,9 +335,7 @@ class TestThresholdSignatures:
 
         signature = engine.combine_signature_shares(sig_shares, nonce_commitments)
 
-        assert engine.verify_threshold_signature(
-            result.public_key, message, signature
-        )
+        assert engine.verify_threshold_signature(result.public_key, message, signature)
 
 
 class TestThresholdDecryption:
@@ -401,6 +389,7 @@ class TestDKGProtocol:
 
         # Tamper with proof
         from app.core.threshold_engine import DKGRound1Output
+
         tampered = DKGRound1Output(
             participant_id=output.participant_id,
             commitment=output.commitment,
@@ -507,10 +496,7 @@ class TestLagrangeCoefficients:
         # For participants [1, 2, 3], coefficients should allow reconstruction
         participant_ids = [1, 2, 3]
 
-        coeffs = [
-            engine._lagrange_coefficient(i, participant_ids)
-            for i in participant_ids
-        ]
+        coeffs = [engine._lagrange_coefficient(i, participant_ids) for i in participant_ids]
 
         # Sum of Lagrange coefficients evaluated at 0 should equal 1
         # But we're computing them for interpolation at 0, so we just
@@ -529,9 +515,7 @@ class TestSingletonInstance:
 
     def test_singleton_generates_keys(self):
         """Test that singleton can generate keys."""
-        result = threshold_engine.generate_threshold_key(
-            threshold=2, total_participants=3
-        )
+        result = threshold_engine.generate_threshold_key(threshold=2, total_participants=3)
 
         assert result is not None
         assert len(result.shares) == 3
@@ -571,9 +555,7 @@ class TestEdgeCases:
 
         signature = engine.combine_signature_shares(sig_shares, nonce_commitments)
 
-        assert engine.verify_threshold_signature(
-            result.public_key, message, signature
-        )
+        assert engine.verify_threshold_signature(result.public_key, message, signature)
 
     def test_binary_message(self, engine):
         """Test signing binary message."""
@@ -601,6 +583,4 @@ class TestEdgeCases:
 
         signature = engine.combine_signature_shares(sig_shares, nonce_commitments)
 
-        assert engine.verify_threshold_signature(
-            result.public_key, message, signature
-        )
+        assert engine.verify_threshold_signature(result.public_key, message, signature)

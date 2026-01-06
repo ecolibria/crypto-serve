@@ -117,50 +117,73 @@ class Role(str, Enum):
 # Permission sets for each role
 ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     Role.OWNER: set(Permission),  # All permissions
-
     Role.ADMIN: {
         # All except billing and tenant deletion
-        Permission.CONTEXTS_READ, Permission.CONTEXTS_CREATE,
-        Permission.CONTEXTS_UPDATE, Permission.CONTEXTS_DELETE,
-        Permission.KEYS_READ, Permission.KEYS_CREATE,
-        Permission.KEYS_ROTATE, Permission.KEYS_DELETE,
-        Permission.APPS_READ, Permission.APPS_CREATE,
-        Permission.APPS_UPDATE, Permission.APPS_DELETE,
-        Permission.POLICIES_READ, Permission.POLICIES_CREATE,
-        Permission.POLICIES_UPDATE, Permission.POLICIES_DELETE,
-        Permission.AUDIT_READ, Permission.AUDIT_EXPORT,
-        Permission.USERS_READ, Permission.USERS_INVITE,
-        Permission.USERS_UPDATE, Permission.USERS_DELETE,
-        Permission.USERS_MANAGE_ROLES,
-        Permission.TENANTS_READ, Permission.TENANTS_UPDATE,
-        Permission.COMPLIANCE_READ, Permission.COMPLIANCE_EXPORT,
-        Permission.CEREMONY_READ, Permission.CEREMONY_INITIALIZE,
-        Permission.CEREMONY_SEAL, Permission.CEREMONY_UNSEAL,
-        Permission.BACKUPS_CREATE, Permission.BACKUPS_RESTORE,
-        Permission.BACKUPS_DELETE,
-        Permission.CRYPTO_ENCRYPT, Permission.CRYPTO_DECRYPT,
-        Permission.CRYPTO_SIGN, Permission.CRYPTO_VERIFY,
-        Permission.SECRETS_SPLIT, Permission.SECRETS_COMBINE,
-    },
-
-    Role.DEVELOPER: {
-        Permission.CONTEXTS_READ, Permission.CONTEXTS_CREATE,
+        Permission.CONTEXTS_READ,
+        Permission.CONTEXTS_CREATE,
         Permission.CONTEXTS_UPDATE,
-        Permission.KEYS_READ, Permission.KEYS_CREATE,
+        Permission.CONTEXTS_DELETE,
+        Permission.KEYS_READ,
+        Permission.KEYS_CREATE,
         Permission.KEYS_ROTATE,
-        Permission.APPS_READ, Permission.APPS_CREATE,
-        Permission.APPS_UPDATE, Permission.APPS_DELETE,
+        Permission.KEYS_DELETE,
+        Permission.APPS_READ,
+        Permission.APPS_CREATE,
+        Permission.APPS_UPDATE,
+        Permission.APPS_DELETE,
+        Permission.POLICIES_READ,
+        Permission.POLICIES_CREATE,
+        Permission.POLICIES_UPDATE,
+        Permission.POLICIES_DELETE,
+        Permission.AUDIT_READ,
+        Permission.AUDIT_EXPORT,
+        Permission.USERS_READ,
+        Permission.USERS_INVITE,
+        Permission.USERS_UPDATE,
+        Permission.USERS_DELETE,
+        Permission.USERS_MANAGE_ROLES,
+        Permission.TENANTS_READ,
+        Permission.TENANTS_UPDATE,
+        Permission.COMPLIANCE_READ,
+        Permission.COMPLIANCE_EXPORT,
+        Permission.CEREMONY_READ,
+        Permission.CEREMONY_INITIALIZE,
+        Permission.CEREMONY_SEAL,
+        Permission.CEREMONY_UNSEAL,
+        Permission.BACKUPS_CREATE,
+        Permission.BACKUPS_RESTORE,
+        Permission.BACKUPS_DELETE,
+        Permission.CRYPTO_ENCRYPT,
+        Permission.CRYPTO_DECRYPT,
+        Permission.CRYPTO_SIGN,
+        Permission.CRYPTO_VERIFY,
+        Permission.SECRETS_SPLIT,
+        Permission.SECRETS_COMBINE,
+    },
+    Role.DEVELOPER: {
+        Permission.CONTEXTS_READ,
+        Permission.CONTEXTS_CREATE,
+        Permission.CONTEXTS_UPDATE,
+        Permission.KEYS_READ,
+        Permission.KEYS_CREATE,
+        Permission.KEYS_ROTATE,
+        Permission.APPS_READ,
+        Permission.APPS_CREATE,
+        Permission.APPS_UPDATE,
+        Permission.APPS_DELETE,
         Permission.POLICIES_READ,
         Permission.AUDIT_READ,
         Permission.USERS_READ,
         Permission.TENANTS_READ,
         Permission.COMPLIANCE_READ,
         Permission.CEREMONY_READ,
-        Permission.CRYPTO_ENCRYPT, Permission.CRYPTO_DECRYPT,
-        Permission.CRYPTO_SIGN, Permission.CRYPTO_VERIFY,
-        Permission.SECRETS_SPLIT, Permission.SECRETS_COMBINE,
+        Permission.CRYPTO_ENCRYPT,
+        Permission.CRYPTO_DECRYPT,
+        Permission.CRYPTO_SIGN,
+        Permission.CRYPTO_VERIFY,
+        Permission.SECRETS_SPLIT,
+        Permission.SECRETS_COMBINE,
     },
-
     Role.VIEWER: {
         Permission.CONTEXTS_READ,
         Permission.KEYS_READ,
@@ -172,12 +195,13 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.COMPLIANCE_READ,
         Permission.CEREMONY_READ,
     },
-
     Role.SERVICE_ACCOUNT: {
         # Minimal permissions for API access
         Permission.CONTEXTS_READ,
-        Permission.CRYPTO_ENCRYPT, Permission.CRYPTO_DECRYPT,
-        Permission.CRYPTO_SIGN, Permission.CRYPTO_VERIFY,
+        Permission.CRYPTO_ENCRYPT,
+        Permission.CRYPTO_DECRYPT,
+        Permission.CRYPTO_SIGN,
+        Permission.CRYPTO_VERIFY,
     },
 }
 
@@ -218,7 +242,7 @@ def get_user_role(user) -> Role:
     for the role field when added.
     """
     # Check for explicit role field first (future-proofing)
-    if hasattr(user, 'role') and user.role:
+    if hasattr(user, "role") and user.role:
         try:
             return Role(user.role)
         except ValueError:
@@ -239,14 +263,14 @@ def get_user_permissions(user) -> UserPermissions:
     custom = set()
     denied = set()
 
-    if hasattr(user, 'custom_permissions') and user.custom_permissions:
+    if hasattr(user, "custom_permissions") and user.custom_permissions:
         for p in user.custom_permissions:
             try:
                 custom.add(Permission(p))
             except ValueError:
                 pass
 
-    if hasattr(user, 'denied_permissions') and user.denied_permissions:
+    if hasattr(user, "denied_permissions") and user.denied_permissions:
         for p in user.denied_permissions:
             try:
                 denied.add(Permission(p))
@@ -276,11 +300,12 @@ def require_permission(permission: Permission):
         async def list_contexts(user: User = Depends(get_current_user)):
             ...
     """
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
             # Find the user in kwargs (injected by Depends)
-            user = kwargs.get('current_user') or kwargs.get('user')
+            user = kwargs.get("current_user") or kwargs.get("user")
             if not user:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -294,16 +319,19 @@ def require_permission(permission: Permission):
                 )
 
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
 def require_any_permission(*permissions: Permission):
     """Decorator to require any of the listed permissions."""
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            user = kwargs.get('current_user') or kwargs.get('user')
+            user = kwargs.get("current_user") or kwargs.get("user")
             if not user:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -318,16 +346,19 @@ def require_any_permission(*permissions: Permission):
                 )
 
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
 def require_all_permissions(*permissions: Permission):
     """Decorator to require all listed permissions."""
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            user = kwargs.get('current_user') or kwargs.get('user')
+            user = kwargs.get("current_user") or kwargs.get("user")
             if not user:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -343,7 +374,9 @@ def require_all_permissions(*permissions: Permission):
                 )
 
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -365,8 +398,6 @@ class PermissionChecker:
         self.require_all = require_all
 
     async def __call__(self, current_user=None):
-        from app.auth.jwt import get_current_user
-        from fastapi import Depends
 
         if current_user is None:
             raise HTTPException(
@@ -444,12 +475,11 @@ def list_permissions() -> list[dict]:
         action = perm.value.split(":")[1]
         if resource not in resources:
             resources[resource] = []
-        resources[resource].append({
-            "permission": perm.value,
-            "action": action,
-        })
+        resources[resource].append(
+            {
+                "permission": perm.value,
+                "action": action,
+            }
+        )
 
-    return [
-        {"resource": resource, "actions": actions}
-        for resource, actions in sorted(resources.items())
-    ]
+    return [{"resource": resource, "actions": actions} for resource, actions in sorted(resources.items())]

@@ -3,15 +3,12 @@
 import os
 import tempfile
 
-import pytest
 
 from app.core.binary_scanner import (
     BinaryScanner,
     CryptoCategory,
     CryptoConstant,
-    CryptoFinding,
     CryptoSeverity,
-    ScanResult,
     binary_scanner,
 )
 
@@ -41,11 +38,7 @@ class TestScannerBasics:
         """Test that weak algorithm patterns are included."""
         scanner = BinaryScanner()
         patterns = scanner.get_patterns()
-        weak_patterns = [
-            p
-            for p in patterns
-            if p.severity in (CryptoSeverity.CRITICAL, CryptoSeverity.HIGH)
-        ]
+        weak_patterns = [p for p in patterns if p.severity in (CryptoSeverity.CRITICAL, CryptoSeverity.HIGH)]
         assert len(weak_patterns) >= 1
 
 
@@ -132,7 +125,7 @@ class TestScanBytes:
             ]
         )
 
-        data = b"\xFF" * 50 + md5_h + b"\xFF" * 50
+        data = b"\xff" * 50 + md5_h + b"\xff" * 50
 
         result = scanner.scan_bytes(data)
         assert "MD5" in result.algorithms_detected
@@ -158,9 +151,7 @@ class TestScanBytes:
         scanner = BinaryScanner()
 
         # DES initial permutation table (first 16 values)
-        des_ip = bytes(
-            [58, 50, 42, 34, 26, 18, 10, 2, 60, 52, 44, 36, 28, 20, 12, 4]
-        )
+        des_ip = bytes([58, 50, 42, 34, 26, 18, 10, 2, 60, 52, 44, 36, 28, 20, 12, 4])
         data = b"\x00" * 100 + des_ip + b"\x00" * 100
 
         result = scanner.scan_bytes(data)
@@ -209,12 +200,10 @@ class TestScanBytes:
 
         # All zeros (potential null key)
         null_key = bytes([0x00] * 16)
-        data = b"\xFF" * 100 + null_key + b"\xFF" * 100
+        data = b"\xff" * 100 + null_key + b"\xff" * 100
 
         result = scanner.scan_bytes(data)
-        key_findings = [
-            f for f in result.findings if f.category == CryptoCategory.KEY_MATERIAL
-        ]
+        key_findings = [f for f in result.findings if f.category == CryptoCategory.KEY_MATERIAL]
         assert len(key_findings) >= 1
 
 
@@ -306,7 +295,7 @@ class TestFindingDetails:
         scanner = BinaryScanner()
 
         chacha_sigma = b"expand 32-byte k"
-        data = b"\xAA" * 50 + chacha_sigma + b"\xBB" * 50
+        data = b"\xaa" * 50 + chacha_sigma + b"\xbb" * 50
 
         result = scanner.scan_bytes(data)
         finding = [f for f in result.findings if f.algorithm == "ChaCha20"][0]
@@ -417,9 +406,7 @@ class TestScanResult:
         scanner = BinaryScanner()
 
         # DES is weak
-        des_ip = bytes(
-            [58, 50, 42, 34, 26, 18, 10, 2, 60, 52, 44, 36, 28, 20, 12, 4]
-        )
+        des_ip = bytes([58, 50, 42, 34, 26, 18, 10, 2, 60, 52, 44, 36, 28, 20, 12, 4])
         data = b"\x00" * 100 + des_ip + b"\x00" * 100
 
         result = scanner.scan_bytes(data)

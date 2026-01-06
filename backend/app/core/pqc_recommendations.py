@@ -20,20 +20,19 @@ Usage:
     result = pqc_recommendation_service.recommend(inventory)
 """
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
 
 from app.core.crypto_inventory import (
     CryptoInventory,
-    DetectedLibrary,
     QuantumRisk,
 )
 
 
 class ThreatUrgency(str, Enum):
     """Migration urgency level based on SNDL analysis."""
+
     CRITICAL = "critical"  # Already at risk, immediate action required
     HIGH = "high"  # At risk within migration timeline
     MEDIUM = "medium"  # Should plan migration soon
@@ -43,6 +42,7 @@ class ThreatUrgency(str, Enum):
 
 class DataProfile(str, Enum):
     """Common data sensitivity profiles with different lifespans."""
+
     NATIONAL_SECURITY = "national_security"  # 75 years
     HEALTHCARE_RECORDS = "healthcare_records"  # 100 years (lifetime)
     FINANCIAL_LONG_TERM = "financial_long_term"  # 25 years
@@ -200,6 +200,7 @@ PQC_ALGORITHMS = {
 @dataclass
 class SNDLAssessment:
     """SNDL (Store Now, Decrypt Later) risk assessment."""
+
     is_at_risk: bool
     urgency: ThreatUrgency
     years_margin: int  # Positive = safe margin, Negative = already at risk
@@ -210,6 +211,7 @@ class SNDLAssessment:
 @dataclass
 class AlgorithmRecommendation:
     """A recommended PQC algorithm."""
+
     algorithm_id: str
     name: str
     fips: str | None
@@ -224,6 +226,7 @@ class AlgorithmRecommendation:
 @dataclass
 class MigrationStep:
     """A step in the migration plan."""
+
     order: int
     action: str
     description: str
@@ -236,6 +239,7 @@ class MigrationStep:
 @dataclass
 class PQCRecommendationResult:
     """Complete PQC recommendation result."""
+
     generated_at: str
     identity_id: str
     identity_name: str
@@ -334,19 +338,12 @@ class PQCRecommendationService:
     def _analyze_current_crypto(self, inventory: CryptoInventory) -> dict:
         """Analyze current cryptographic state."""
         vulnerable_libs = [
-            lib for lib in inventory.libraries
-            if lib.quantum_risk in [QuantumRisk.HIGH, QuantumRisk.CRITICAL]
+            lib for lib in inventory.libraries if lib.quantum_risk in [QuantumRisk.HIGH, QuantumRisk.CRITICAL]
         ]
 
-        deprecated_libs = [
-            lib for lib in inventory.libraries
-            if lib.is_deprecated
-        ]
+        deprecated_libs = [lib for lib in inventory.libraries if lib.is_deprecated]
 
-        pqc_libs = [
-            lib for lib in inventory.libraries
-            if lib.category == "pqc"
-        ]
+        pqc_libs = [lib for lib in inventory.libraries if lib.category == "pqc"]
 
         # Categorize algorithms
         asymmetric_algos = []
@@ -437,14 +434,10 @@ class PQCRecommendationService:
             )
             action = "Plan PQC migration within 12 months. Evaluate hybrid deployment options."
         elif years_margin < 10:
-            explanation = (
-                f"MEDIUM RISK: {years_margin} years margin. Time to plan migration."
-            )
+            explanation = f"MEDIUM RISK: {years_margin} years margin. Time to plan migration."
             action = "Begin PQC pilot projects. Test ML-KEM/ML-DSA in non-production environments."
         else:
-            explanation = (
-                f"LOW RISK: {years_margin} years margin. Monitor quantum computing developments."
-            )
+            explanation = f"LOW RISK: {years_margin} years margin. Monitor quantum computing developments."
             action = "Stay informed about PQC standards. Plan long-term crypto agility."
 
         return SNDLAssessment(
@@ -461,8 +454,7 @@ class PQCRecommendationService:
 
         # Check if KEM is needed
         has_asymmetric = any(
-            lib.category in ["general", "token", "tls"]
-            and lib.quantum_risk in [QuantumRisk.HIGH, QuantumRisk.CRITICAL]
+            lib.category in ["general", "token", "tls"] and lib.quantum_risk in [QuantumRisk.HIGH, QuantumRisk.CRITICAL]
             for lib in inventory.libraries
         )
 
@@ -474,17 +466,19 @@ class PQCRecommendationService:
             reasons = self._generate_reasons(algo, inventory, "kem")
             warnings = self._generate_warnings(algo, inventory)
 
-            recommendations.append(AlgorithmRecommendation(
-                algorithm_id=algo["id"],
-                name=algo["name"],
-                fips=algo.get("fips"),
-                security_level=algo["security_level"],
-                type="kem",
-                score=score,
-                reasons=reasons,
-                warnings=warnings,
-                hybrid_option=algo.get("hybrid_with"),
-            ))
+            recommendations.append(
+                AlgorithmRecommendation(
+                    algorithm_id=algo["id"],
+                    name=algo["name"],
+                    fips=algo.get("fips"),
+                    security_level=algo["security_level"],
+                    type="kem",
+                    score=score,
+                    reasons=reasons,
+                    warnings=warnings,
+                    hybrid_option=algo.get("hybrid_with"),
+                )
+            )
 
         # Sort by score
         recommendations.sort(key=lambda r: r.score, reverse=True)
@@ -496,8 +490,7 @@ class PQCRecommendationService:
 
         # Check if signatures are needed
         has_signing = any(
-            lib.category in ["token", "tls"]
-            or any(algo in ["RSA", "ECDSA", "Ed25519"] for algo in lib.algorithms)
+            lib.category in ["token", "tls"] or any(algo in ["RSA", "ECDSA", "Ed25519"] for algo in lib.algorithms)
             for lib in inventory.libraries
         )
 
@@ -509,16 +502,18 @@ class PQCRecommendationService:
             reasons = self._generate_reasons(algo, inventory, "signature")
             warnings = self._generate_warnings(algo, inventory)
 
-            recommendations.append(AlgorithmRecommendation(
-                algorithm_id=algo["id"],
-                name=algo["name"],
-                fips=algo.get("fips"),
-                security_level=algo["security_level"],
-                type="signature",
-                score=score,
-                reasons=reasons,
-                warnings=warnings,
-            ))
+            recommendations.append(
+                AlgorithmRecommendation(
+                    algorithm_id=algo["id"],
+                    name=algo["name"],
+                    fips=algo.get("fips"),
+                    security_level=algo["security_level"],
+                    type="signature",
+                    score=score,
+                    reasons=reasons,
+                    warnings=warnings,
+                )
+            )
 
         recommendations.sort(key=lambda r: r.score, reverse=True)
         return recommendations
@@ -532,10 +527,7 @@ class PQCRecommendationService:
             score += 25
 
         # Security level alignment
-        has_high_security = any(
-            lib.quantum_risk == QuantumRisk.CRITICAL
-            for lib in inventory.libraries
-        )
+        has_high_security = any(lib.quantum_risk == QuantumRisk.CRITICAL for lib in inventory.libraries)
 
         if has_high_security and algo["security_level"] >= 3:
             score += 15
@@ -594,47 +586,52 @@ class PQCRecommendationService:
         # Step 1: Address deprecated libraries first (always)
         deprecated = [lib for lib in inventory.libraries if lib.is_deprecated]
         if deprecated:
-            steps.append(MigrationStep(
-                order=step_order,
-                action="Replace deprecated libraries",
-                description=f"Remove {', '.join(lib.name for lib in deprecated)} - these have known vulnerabilities",
-                priority="critical",
-                affected_libraries=[lib.name for lib in deprecated],
-                target_algorithm=None,
-                estimated_effort="medium",
-            ))
+            steps.append(
+                MigrationStep(
+                    order=step_order,
+                    action="Replace deprecated libraries",
+                    description=f"Remove {', '.join(lib.name for lib in deprecated)} - these have known vulnerabilities",
+                    priority="critical",
+                    affected_libraries=[lib.name for lib in deprecated],
+                    target_algorithm=None,
+                    estimated_effort="medium",
+                )
+            )
             step_order += 1
 
         # Step 2: Enable crypto agility
         if not inventory.quantum_summary.get("has_pqc", False):
-            steps.append(MigrationStep(
-                order=step_order,
-                action="Enable cryptographic agility",
-                description="Refactor to support algorithm negotiation and easy swapping",
-                priority="high" if sndl.urgency in [ThreatUrgency.CRITICAL, ThreatUrgency.HIGH] else "medium",
-                affected_libraries=[],
-                target_algorithm=None,
-                estimated_effort="high",
-            ))
+            steps.append(
+                MigrationStep(
+                    order=step_order,
+                    action="Enable cryptographic agility",
+                    description="Refactor to support algorithm negotiation and easy swapping",
+                    priority="high" if sndl.urgency in [ThreatUrgency.CRITICAL, ThreatUrgency.HIGH] else "medium",
+                    affected_libraries=[],
+                    target_algorithm=None,
+                    estimated_effort="high",
+                )
+            )
             step_order += 1
 
         # Step 3: Deploy hybrid for key exchange (if asymmetric crypto detected)
         has_asymmetric = any(
-            lib.category in ["general", "token", "tls"]
-            and "RSA" in lib.algorithms or "ECDSA" in lib.algorithms
+            lib.category in ["general", "token", "tls"] and "RSA" in lib.algorithms or "ECDSA" in lib.algorithms
             for lib in inventory.libraries
         )
 
         if has_asymmetric:
-            steps.append(MigrationStep(
-                order=step_order,
-                action="Deploy hybrid key exchange",
-                description="Implement X25519Kyber768 for TLS and key exchange",
-                priority="high" if sndl.is_at_risk else "medium",
-                affected_libraries=[lib.name for lib in inventory.libraries if lib.category == "tls"],
-                target_algorithm="X25519Kyber768",
-                estimated_effort="medium",
-            ))
+            steps.append(
+                MigrationStep(
+                    order=step_order,
+                    action="Deploy hybrid key exchange",
+                    description="Implement X25519Kyber768 for TLS and key exchange",
+                    priority="high" if sndl.is_at_risk else "medium",
+                    affected_libraries=[lib.name for lib in inventory.libraries if lib.category == "tls"],
+                    target_algorithm="X25519Kyber768",
+                    estimated_effort="medium",
+                )
+            )
             step_order += 1
 
         # Step 4: Migrate signatures
@@ -644,27 +641,31 @@ class PQCRecommendationService:
         )
 
         if has_signing:
-            steps.append(MigrationStep(
-                order=step_order,
-                action="Migrate to PQC signatures",
-                description="Replace RSA/ECDSA signatures with ML-DSA-65",
-                priority="medium",
-                affected_libraries=[lib.name for lib in inventory.libraries if lib.category == "token"],
-                target_algorithm="ML-DSA-65",
-                estimated_effort="medium",
-            ))
+            steps.append(
+                MigrationStep(
+                    order=step_order,
+                    action="Migrate to PQC signatures",
+                    description="Replace RSA/ECDSA signatures with ML-DSA-65",
+                    priority="medium",
+                    affected_libraries=[lib.name for lib in inventory.libraries if lib.category == "token"],
+                    target_algorithm="ML-DSA-65",
+                    estimated_effort="medium",
+                )
+            )
             step_order += 1
 
         # Step 5: Full PQC migration
-        steps.append(MigrationStep(
-            order=step_order,
-            action="Complete PQC migration",
-            description="Remove classical-only crypto, verify quantum resistance",
-            priority="low",
-            affected_libraries=[],
-            target_algorithm=None,
-            estimated_effort="low",
-        ))
+        steps.append(
+            MigrationStep(
+                order=step_order,
+                action="Complete PQC migration",
+                description="Remove classical-only crypto, verify quantum resistance",
+                priority="low",
+                affected_libraries=[],
+                target_algorithm=None,
+                estimated_effort="low",
+            )
+        )
 
         return steps
 
@@ -722,7 +723,7 @@ class PQCRecommendationService:
             findings.append(f"Found {deprecated_count} deprecated libraries requiring immediate attention")
 
         if sndl.is_at_risk:
-            findings.append(f"SNDL risk: Data may be decryptable before confidentiality period expires")
+            findings.append("SNDL risk: Data may be decryptable before confidentiality period expires")
 
         if inventory.quantum_summary.get("has_pqc", False):
             findings.append("Post-quantum cryptography already in use - good progress")

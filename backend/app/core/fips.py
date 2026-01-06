@@ -21,12 +21,10 @@ Non-FIPS Algorithms (blocked in FIPS mode):
 - Bcrypt (not NIST approved)
 """
 
-import os
 import ssl
 from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache
-from typing import Optional
 
 from app.config import get_settings
 from app.core.logging import get_logger
@@ -66,52 +64,62 @@ class FIPSStatus:
 
 
 # FIPS-approved algorithms
-FIPS_APPROVED_CIPHERS = frozenset([
-    "AES",
-])
+FIPS_APPROVED_CIPHERS = frozenset(
+    [
+        "AES",
+    ]
+)
 
-FIPS_APPROVED_MODES = frozenset([
-    "gcm",
-    "cbc",
-    "ctr",
-    "ccm",
-    "hybrid",  # Hybrid uses AES-GCM internally
-])
+FIPS_APPROVED_MODES = frozenset(
+    [
+        "gcm",
+        "cbc",
+        "ctr",
+        "ccm",
+        "hybrid",  # Hybrid uses AES-GCM internally
+    ]
+)
 
 FIPS_APPROVED_KEY_SIZES = frozenset([128, 192, 256])
 
-FIPS_APPROVED_HASHES = frozenset([
-    "SHA-256",
-    "SHA-384",
-    "SHA-512",
-    "SHA3-256",
-    "SHA3-384",
-    "SHA3-512",
-])
+FIPS_APPROVED_HASHES = frozenset(
+    [
+        "SHA-256",
+        "SHA-384",
+        "SHA-512",
+        "SHA3-256",
+        "SHA3-384",
+        "SHA3-512",
+    ]
+)
 
-FIPS_APPROVED_PQC = frozenset([
-    "ML-KEM-512",
-    "ML-KEM-768",
-    "ML-KEM-1024",
-    "ML-DSA-44",
-    "ML-DSA-65",
-    "ML-DSA-87",
-    "SLH-DSA-128f",
-    "SLH-DSA-192f",
-    "SLH-DSA-256f",
-])
+FIPS_APPROVED_PQC = frozenset(
+    [
+        "ML-KEM-512",
+        "ML-KEM-768",
+        "ML-KEM-1024",
+        "ML-DSA-44",
+        "ML-DSA-65",
+        "ML-DSA-87",
+        "SLH-DSA-128f",
+        "SLH-DSA-192f",
+        "SLH-DSA-256f",
+    ]
+)
 
 # Non-FIPS algorithms (blocked in FIPS mode)
-NON_FIPS_ALGORITHMS = frozenset([
-    "ChaCha20-Poly1305",
-    "ChaCha20",
-    "AES-256-GCM-SIV",
-    "AES-128-GCM-SIV",
-    "Argon2id",
-    "Argon2i",
-    "Argon2d",
-    "Bcrypt",
-])
+NON_FIPS_ALGORITHMS = frozenset(
+    [
+        "ChaCha20-Poly1305",
+        "ChaCha20",
+        "AES-256-GCM-SIV",
+        "AES-128-GCM-SIV",
+        "Argon2id",
+        "Argon2i",
+        "Argon2d",
+        "Bcrypt",
+    ]
+)
 
 
 def check_openssl_fips_available() -> tuple[bool, str]:
@@ -129,11 +137,12 @@ def check_openssl_fips_available() -> tuple[bool, str]:
             # OpenSSL 3.x - check if FIPS provider can be loaded
             try:
                 from cryptography.hazmat.backends.openssl import backend
+
                 # Check if FIPS mode is enabled in OpenSSL
                 # This is a heuristic - actual FIPS validation requires
                 # proper FIPS provider configuration
-                fips_enabled = getattr(backend, '_fips_enabled', False)
-                if hasattr(backend, '_lib'):
+                fips_enabled = getattr(backend, "_fips_enabled", False)
+                if hasattr(backend, "_lib"):
                     # Try to check FIPS_mode() if available
                     try:
                         fips_enabled = backend._lib.FIPS_mode() == 1

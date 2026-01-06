@@ -6,16 +6,11 @@ Tests real ML-KEM (FIPS 203) and ML-DSA (FIPS 204) using liboqs.
 import pytest
 
 from app.core.hybrid_crypto import (
-    MLKEM,
-    MLDSA,
-    SLHDSA,
     HybridCryptoEngine,
     HybridCiphertext,
-    HybridKeyPair,
     HybridMode,
     PQCSignatureEngine,
     SignatureAlgorithm,
-    SignatureKeyPair,
     is_pqc_available,
     get_mlkem,
     get_mldsa,
@@ -32,10 +27,7 @@ from app.core.hybrid_crypto import (
 
 
 # Skip all tests if liboqs is not available
-pytestmark = pytest.mark.skipif(
-    not is_pqc_available(),
-    reason="liboqs not installed"
-)
+pytestmark = pytest.mark.skipif(not is_pqc_available(), reason="liboqs not installed")
 
 
 class TestMLKEM:
@@ -130,7 +122,7 @@ class TestMLDSA:
             ("ML-DSA-87", 4627),
         ]:
             sig = get_mldsa(algo)
-            public_key = sig.generate_keypair()
+            sig.generate_keypair()
             signature = sig.sign(b"test")
             assert len(signature) == expected_sig_len, f"{algo} signature size mismatch"
 
@@ -193,7 +185,7 @@ class TestSLHDSA:
         ]
         for algo, expected_sig_len in test_cases:
             sig = get_slhdsa(algo)
-            public_key = sig.generate_keypair()
+            sig.generate_keypair()
             signature = sig.sign(b"test")
             assert len(signature) == expected_sig_len, f"{algo} signature size mismatch"
 
@@ -259,14 +251,17 @@ class TestSLHDSA:
 class TestSLHDSAEngine:
     """Tests for PQCSignatureEngine with SLH-DSA algorithms."""
 
-    @pytest.mark.parametrize("algorithm", [
-        SignatureAlgorithm.SLH_DSA_SHA2_128F,
-        SignatureAlgorithm.SLH_DSA_SHA2_128S,
-        SignatureAlgorithm.SLH_DSA_SHA2_192F,
-        SignatureAlgorithm.SLH_DSA_SHA2_192S,
-        SignatureAlgorithm.SLH_DSA_SHA2_256F,
-        SignatureAlgorithm.SLH_DSA_SHA2_256S,
-    ])
+    @pytest.mark.parametrize(
+        "algorithm",
+        [
+            SignatureAlgorithm.SLH_DSA_SHA2_128F,
+            SignatureAlgorithm.SLH_DSA_SHA2_128S,
+            SignatureAlgorithm.SLH_DSA_SHA2_192F,
+            SignatureAlgorithm.SLH_DSA_SHA2_192S,
+            SignatureAlgorithm.SLH_DSA_SHA2_256F,
+            SignatureAlgorithm.SLH_DSA_SHA2_256S,
+        ],
+    )
     def test_engine_sign_verify_roundtrip(self, algorithm: SignatureAlgorithm):
         """Test PQCSignatureEngine sign/verify with all SLH-DSA variants."""
         engine = PQCSignatureEngine(algorithm)
@@ -383,11 +378,14 @@ class TestHybridCryptoEngine:
 class TestPQCSignatureEngine:
     """Tests for the PQC signature engine."""
 
-    @pytest.mark.parametrize("algorithm", [
-        SignatureAlgorithm.ML_DSA_44,
-        SignatureAlgorithm.ML_DSA_65,
-        SignatureAlgorithm.ML_DSA_87,
-    ])
+    @pytest.mark.parametrize(
+        "algorithm",
+        [
+            SignatureAlgorithm.ML_DSA_44,
+            SignatureAlgorithm.ML_DSA_65,
+            SignatureAlgorithm.ML_DSA_87,
+        ],
+    )
     def test_signature_roundtrip(self, algorithm: SignatureAlgorithm):
         """Test sign/verify roundtrip for all algorithms."""
         engine = PQCSignatureEngine(algorithm)

@@ -1,7 +1,7 @@
 """Tests for the AST-based Code Scanner engine."""
 
 import pytest
-from app.core.code_scanner import CodeScanner, Language, QuantumRisk, Severity
+from app.core.code_scanner import CodeScanner, QuantumRisk
 
 
 @pytest.fixture
@@ -104,7 +104,7 @@ hashlib.md5(b"data")
         result = scanner.scan_code(code, language="python")
         cbom = result.cbom
 
-        algo_names = [a["name"] for a in cbom.algorithms]
+        [a["name"] for a in cbom.algorithms]
         # Should have both algorithms
         assert len(cbom.algorithms) >= 1
 
@@ -222,10 +222,7 @@ print(error_msg)
 
     def test_large_file(self, scanner):
         """Should handle large files efficiently."""
-        code = "\n".join([
-            "import hashlib",
-            *[f"h{i} = hashlib.sha256(b'data{i}')" for i in range(100)]
-        ])
+        code = "\n".join(["import hashlib", *[f"h{i} = hashlib.sha256(b'data{i}')" for i in range(100)]])
         result = scanner.scan_code(code, language="python")
         # Should complete without timeout
         assert len(result.usages) >= 1

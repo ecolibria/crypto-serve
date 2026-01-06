@@ -15,7 +15,6 @@ Use Cases:
 """
 
 import os
-import struct
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
@@ -74,11 +73,13 @@ class MultiKeyResult:
 
 class KDFError(Exception):
     """Key derivation error."""
+
     pass
 
 
 class InvalidKeyMaterialError(KDFError):
     """Invalid input key material."""
+
     pass
 
 

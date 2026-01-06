@@ -58,13 +58,15 @@ def ec_p521_key():
 
 def create_self_signed_cert(private_key, subject_name="Test Cert"):
     """Create a self-signed certificate for testing."""
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "California"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, "San Francisco"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test Org"),
-        x509.NameAttribute(NameOID.COMMON_NAME, subject_name),
-    ])
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+            x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "California"),
+            x509.NameAttribute(NameOID.LOCALITY_NAME, "San Francisco"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test Org"),
+            x509.NameAttribute(NameOID.COMMON_NAME, subject_name),
+        ]
+    )
 
     builder = x509.CertificateBuilder()
     builder = builder.subject_name(subject)
@@ -91,12 +93,14 @@ def create_self_signed_cert(private_key, subject_name="Test Cert"):
 
 def create_ca_cert(private_key, subject_name="Test CA"):
     """Create a CA certificate for testing."""
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "California"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test CA Org"),
-        x509.NameAttribute(NameOID.COMMON_NAME, subject_name),
-    ])
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+            x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "California"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test CA Org"),
+            x509.NameAttribute(NameOID.COMMON_NAME, subject_name),
+        ]
+    )
 
     builder = x509.CertificateBuilder()
     builder = builder.subject_name(subject)

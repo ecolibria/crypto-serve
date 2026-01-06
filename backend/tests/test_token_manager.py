@@ -9,11 +9,9 @@ Tests cover:
 - Token hashing
 """
 
-import time
 from datetime import datetime, timezone
 
 import jwt
-import pytest
 from cryptography.hazmat.primitives import serialization
 
 from app.core.token_manager import (
@@ -78,7 +76,7 @@ class TestPrivateKeyEncryption:
 
         encrypted = tm.encrypt_private_key(private_pem)
 
-        assert encrypted != private_pem.decode('utf-8')
+        assert encrypted != private_pem.decode("utf-8")
         assert encrypted != private_pem
 
     def test_encrypted_key_is_base64_string(self):

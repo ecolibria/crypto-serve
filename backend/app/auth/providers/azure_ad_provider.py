@@ -7,7 +7,7 @@ Supports both single-tenant and multi-tenant applications.
 from typing import Any
 import httpx
 
-from app.auth.providers.base import OAuthProvider, OAuthConfig, OAuthUserInfo
+from app.auth.providers.base import OAuthProvider, OAuthUserInfo
 
 
 class AzureADProvider(OAuthProvider):
@@ -152,11 +152,7 @@ class AzureADProvider(OAuthProvider):
                 )
                 if groups_response.status_code == 200:
                     groups_data = groups_response.json()
-                    groups = [
-                        g.get("displayName")
-                        for g in groups_data.get("value", [])
-                        if g.get("displayName")
-                    ]
+                    groups = [g.get("displayName") for g in groups_data.get("value", []) if g.get("displayName")]
             except Exception:
                 pass
 

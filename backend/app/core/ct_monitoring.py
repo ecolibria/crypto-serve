@@ -36,15 +36,17 @@ logger = logging.getLogger(__name__)
 
 class CTAlertSeverity(str, Enum):
     """Severity levels for CT alerts."""
-    CRITICAL = "critical"   # Likely rogue cert, immediate action needed
-    HIGH = "high"           # Unexpected cert, investigate
-    MEDIUM = "medium"       # Anomaly detected
-    LOW = "low"             # Informational
-    INFO = "info"           # Normal issuance
+
+    CRITICAL = "critical"  # Likely rogue cert, immediate action needed
+    HIGH = "high"  # Unexpected cert, investigate
+    MEDIUM = "medium"  # Anomaly detected
+    LOW = "low"  # Informational
+    INFO = "info"  # Normal issuance
 
 
 class CTAlertType(str, Enum):
     """Types of CT alerts."""
+
     UNEXPECTED_ISSUER = "unexpected_issuer"
     UNEXPECTED_DOMAIN = "unexpected_domain"
     EXPIRED_CERT = "expired_cert"
@@ -59,6 +61,7 @@ class CTAlertType(str, Enum):
 @dataclass
 class CTLogEntry:
     """A certificate entry from CT logs."""
+
     id: int
     issuer_name: str
     issuer_ca_id: int | None
@@ -95,6 +98,7 @@ class CTLogEntry:
 @dataclass
 class CTAlert:
     """An alert generated from CT monitoring."""
+
     alert_type: CTAlertType
     severity: CTAlertSeverity
     domain: str
@@ -107,6 +111,7 @@ class CTAlert:
 @dataclass
 class DomainConfig:
     """Configuration for monitoring a domain."""
+
     domain: str
     include_subdomains: bool = True
     expected_issuers: list[str] = field(default_factory=list)
@@ -117,6 +122,7 @@ class DomainConfig:
 @dataclass
 class CTMonitoringResult:
     """Result of CT monitoring scan."""
+
     domain: str
     certificates: list[CTLogEntry]
     alerts: list[CTAlert]
@@ -256,9 +262,7 @@ class CTMonitor:
                     parsed = parsed.replace(tzinfo=timezone.utc)
                 return parsed
             else:
-                return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S").replace(
-                    tzinfo=timezone.utc
-                )
+                return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
         except ValueError:
             return datetime.now(timezone.utc)
 
@@ -301,29 +305,32 @@ class CTMonitor:
             if not cert.is_expired and cert.days_until_expiry <= config.expiry_warning_days:
                 if cert.common_name not in seen_expiring:
                     seen_expiring.add(cert.common_name)
-                    alerts.append(CTAlert(
-                        alert_type=CTAlertType.EXPIRING_SOON,
-                        severity=CTAlertSeverity.MEDIUM,
-                        domain=config.domain,
-                        message=f"Certificate expiring in {cert.days_until_expiry} days: {cert.common_name}",
-                        certificate=cert,
-                    ))
+                    alerts.append(
+                        CTAlert(
+                            alert_type=CTAlertType.EXPIRING_SOON,
+                            severity=CTAlertSeverity.MEDIUM,
+                            domain=config.domain,
+                            message=f"Certificate expiring in {cert.days_until_expiry} days: {cert.common_name}",
+                            certificate=cert,
+                        )
+                    )
 
             # Check unexpected issuers
             if config.expected_issuers:
                 issuer_matched = any(
-                    expected.lower() in cert.issuer_name.lower()
-                    for expected in config.expected_issuers
+                    expected.lower() in cert.issuer_name.lower() for expected in config.expected_issuers
                 )
                 if not issuer_matched:
-                    alerts.append(CTAlert(
-                        alert_type=CTAlertType.UNEXPECTED_ISSUER,
-                        severity=CTAlertSeverity.HIGH,
-                        domain=config.domain,
-                        message=f"Unexpected issuer '{cert.issuer_name}' for {cert.common_name}",
-                        certificate=cert,
-                        details={"expected_issuers": config.expected_issuers},
-                    ))
+                    alerts.append(
+                        CTAlert(
+                            alert_type=CTAlertType.UNEXPECTED_ISSUER,
+                            severity=CTAlertSeverity.HIGH,
+                            domain=config.domain,
+                            message=f"Unexpected issuer '{cert.issuer_name}' for {cert.common_name}",
+                            certificate=cert,
+                            details={"expected_issuers": config.expected_issuers},
+                        )
+                    )
 
             # Check wildcard issuance (only alert once per unique wildcard CN)
             if config.alert_on_wildcard and cert.is_wildcard:
@@ -331,26 +338,30 @@ class CTMonitor:
                     seen_wildcards.add(cert.common_name)
                     # Only alert on active wildcards
                     if not cert.is_expired:
-                        alerts.append(CTAlert(
-                            alert_type=CTAlertType.WILDCARD_ISSUED,
-                            severity=CTAlertSeverity.INFO,  # Informational, not a problem
-                            domain=config.domain,
-                            message=f"Active wildcard certificate: {cert.common_name}",
-                            certificate=cert,
-                        ))
+                        alerts.append(
+                            CTAlert(
+                                alert_type=CTAlertType.WILDCARD_ISSUED,
+                                severity=CTAlertSeverity.INFO,  # Informational, not a problem
+                                domain=config.domain,
+                                message=f"Active wildcard certificate: {cert.common_name}",
+                                certificate=cert,
+                            )
+                        )
 
             # Check for weak algorithms in issuer name (only once per issuer)
             issuer_lower = cert.issuer_name.lower()
             if ("sha1" in issuer_lower or "md5" in issuer_lower) and not cert.is_expired:
                 if cert.issuer_name not in seen_weak_issuers:
                     seen_weak_issuers.add(cert.issuer_name)
-                    alerts.append(CTAlert(
-                        alert_type=CTAlertType.WEAK_ALGORITHM,
-                        severity=CTAlertSeverity.HIGH,
-                        domain=config.domain,
-                        message=f"Active certificate from weak-algorithm CA: {cert.issuer_name}",
-                        certificate=cert,
-                    ))
+                    alerts.append(
+                        CTAlert(
+                            alert_type=CTAlertType.WEAK_ALGORITHM,
+                            severity=CTAlertSeverity.HIGH,
+                            domain=config.domain,
+                            message=f"Active certificate from weak-algorithm CA: {cert.issuer_name}",
+                            certificate=cert,
+                        )
+                    )
 
         return alerts
 
@@ -426,10 +437,7 @@ class CTMonitor:
         all_certs = await self.search_certificates(domain, exclude_expired=True)
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
-        return [
-            cert for cert in all_certs
-            if cert.entry_timestamp and cert.entry_timestamp >= cutoff
-        ]
+        return [cert for cert in all_certs if cert.entry_timestamp and cert.entry_timestamp >= cutoff]
 
     async def get_certificate_details(self, cert_id: int) -> dict[str, Any] | None:
         """Get detailed certificate information from crt.sh.

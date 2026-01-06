@@ -409,9 +409,7 @@ class TestThreadSafety:
         for i in range(4):
             offset = i * 32
             threads.append(threading.Thread(target=reader, args=(offset,)))
-            threads.append(
-                threading.Thread(target=writer, args=(offset + 16, b"X" * 16))
-            )
+            threads.append(threading.Thread(target=writer, args=(offset + 16, b"X" * 16)))
 
         for t in threads:
             t.start()

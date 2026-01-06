@@ -78,7 +78,7 @@ class ApplicationManager:
             status=ApplicationStatus.ACTIVE.value,
             created_at=now,
             expires_at=now + timedelta(days=expires_in_days),
-            public_key=public_key_pem.decode('utf-8'),
+            public_key=public_key_pem.decode("utf-8"),
             private_key_encrypted=private_key_encrypted,
             key_created_at=now,
             refresh_token_hash=refresh_token_hash,
@@ -125,9 +125,7 @@ class ApplicationManager:
             return None
 
         # Look up application
-        result = await db.execute(
-            select(Application).where(Application.id == app_id)
-        )
+        result = await db.execute(select(Application).where(Application.id == app_id))
         application = result.scalar_one_or_none()
 
         if not application:
@@ -148,9 +146,7 @@ class ApplicationManager:
             return None
 
         # Decrypt private key
-        private_key_pem = token_manager.decrypt_private_key(
-            application.private_key_encrypted
-        )
+        private_key_pem = token_manager.decrypt_private_key(application.private_key_encrypted)
 
         # Create new access token
         access_token, expires_at = token_manager.create_access_token(
@@ -185,9 +181,7 @@ class ApplicationManager:
         now = datetime.now(timezone.utc)
 
         # Generate new refresh token
-        refresh_token, refresh_token_hash, refresh_expires = token_manager.create_refresh_token(
-            application.id
-        )
+        refresh_token, refresh_token_hash, refresh_expires = token_manager.create_refresh_token(application.id)
 
         # Update application
         application.refresh_token_hash = refresh_token_hash
@@ -242,9 +236,7 @@ class ApplicationManager:
             return None
 
         # Look up application
-        result = await db.execute(
-            select(Application).where(Application.id == app_id)
-        )
+        result = await db.execute(select(Application).where(Application.id == app_id))
         application = result.scalar_one_or_none()
 
         if not application:
@@ -256,7 +248,7 @@ class ApplicationManager:
         # Verify token with application's public key
         verified = token_manager.verify_access_token(
             access_token,
-            application.public_key.encode('utf-8'),
+            application.public_key.encode("utf-8"),
         )
         if not verified:
             return None
@@ -284,9 +276,7 @@ class ApplicationManager:
             True if revoked, False if not found
         """
         result = await db.execute(
-            select(Application)
-            .where(Application.id == app_id)
-            .where(Application.user_id == user.id)
+            select(Application).where(Application.id == app_id).where(Application.user_id == user.id)
         )
         application = result.scalar_one_or_none()
 

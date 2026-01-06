@@ -2,7 +2,7 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, Response, Depends
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 # Initialize structured logging early
 from app.core.logging import setup_logging, RequestLoggingMiddleware, get_logger
+
 setup_logging(json_output=False, level="INFO")  # Set json_output=True in production
 
 # Rate limiting (optional - graceful fallback if not installed)
@@ -17,6 +18,7 @@ try:
     from slowapi import Limiter, _rate_limit_exceeded_handler
     from slowapi.util import get_remote_address
     from slowapi.errors import RateLimitExceeded
+
     RATE_LIMITING_ENABLED = True
 except ImportError:
     RATE_LIMITING_ENABLED = False
@@ -144,16 +146,18 @@ def build_default_contexts() -> list[dict]:
         ),
     )
     user_pii_derived = resolve_algorithm(user_pii_config)
-    contexts.append({
-        "name": "user-pii",
-        "display_name": "User Personal Data",
-        "description": "Personally identifiable information that can identify an individual",
-        "config": user_pii_config.model_dump(),
-        "derived": user_pii_derived.model_dump(),
-        "algorithm": user_pii_derived.resolved_algorithm,
-        "data_examples": user_pii_config.data_identity.examples,
-        "compliance_tags": user_pii_config.regulatory.frameworks,
-    })
+    contexts.append(
+        {
+            "name": "user-pii",
+            "display_name": "User Personal Data",
+            "description": "Personally identifiable information that can identify an individual",
+            "config": user_pii_config.model_dump(),
+            "derived": user_pii_derived.model_dump(),
+            "algorithm": user_pii_derived.resolved_algorithm,
+            "data_examples": user_pii_config.data_identity.examples,
+            "compliance_tags": user_pii_config.regulatory.frameworks,
+        }
+    )
 
     # 2. Payment Data Context
     payment_config = ContextConfig(
@@ -183,16 +187,18 @@ def build_default_contexts() -> list[dict]:
         ),
     )
     payment_derived = resolve_algorithm(payment_config)
-    contexts.append({
-        "name": "payment-data",
-        "display_name": "Payment & Financial",
-        "description": "Payment card data and financial account information",
-        "config": payment_config.model_dump(),
-        "derived": payment_derived.model_dump(),
-        "algorithm": payment_derived.resolved_algorithm,
-        "data_examples": payment_config.data_identity.examples,
-        "compliance_tags": payment_config.regulatory.frameworks,
-    })
+    contexts.append(
+        {
+            "name": "payment-data",
+            "display_name": "Payment & Financial",
+            "description": "Payment card data and financial account information",
+            "config": payment_config.model_dump(),
+            "derived": payment_derived.model_dump(),
+            "algorithm": payment_derived.resolved_algorithm,
+            "data_examples": payment_config.data_identity.examples,
+            "compliance_tags": payment_config.regulatory.frameworks,
+        }
+    )
 
     # 3. Session Tokens Context
     session_config = ContextConfig(
@@ -220,16 +226,18 @@ def build_default_contexts() -> list[dict]:
         ),
     )
     session_derived = resolve_algorithm(session_config)
-    contexts.append({
-        "name": "session-tokens",
-        "display_name": "Session & Auth Tokens",
-        "description": "Temporary authentication and session data",
-        "config": session_config.model_dump(),
-        "derived": session_derived.model_dump(),
-        "algorithm": session_derived.resolved_algorithm,
-        "data_examples": session_config.data_identity.examples,
-        "compliance_tags": session_config.regulatory.frameworks,
-    })
+    contexts.append(
+        {
+            "name": "session-tokens",
+            "display_name": "Session & Auth Tokens",
+            "description": "Temporary authentication and session data",
+            "config": session_config.model_dump(),
+            "derived": session_derived.model_dump(),
+            "algorithm": session_derived.resolved_algorithm,
+            "data_examples": session_config.data_identity.examples,
+            "compliance_tags": session_config.regulatory.frameworks,
+        }
+    )
 
     # 4. Health Data Context (HIPAA)
     health_config = ContextConfig(
@@ -257,16 +265,18 @@ def build_default_contexts() -> list[dict]:
         ),
     )
     health_derived = resolve_algorithm(health_config)
-    contexts.append({
-        "name": "health-data",
-        "display_name": "Health Information",
-        "description": "Protected health information and medical records",
-        "config": health_config.model_dump(),
-        "derived": health_derived.model_dump(),
-        "algorithm": health_derived.resolved_algorithm,
-        "data_examples": health_config.data_identity.examples,
-        "compliance_tags": health_config.regulatory.frameworks,
-    })
+    contexts.append(
+        {
+            "name": "health-data",
+            "display_name": "Health Information",
+            "description": "Protected health information and medical records",
+            "config": health_config.model_dump(),
+            "derived": health_derived.model_dump(),
+            "algorithm": health_derived.resolved_algorithm,
+            "data_examples": health_config.data_identity.examples,
+            "compliance_tags": health_config.regulatory.frameworks,
+        }
+    )
 
     # 5. General Purpose Context
     general_config = ContextConfig(
@@ -287,16 +297,18 @@ def build_default_contexts() -> list[dict]:
         ),
     )
     general_derived = resolve_algorithm(general_config)
-    contexts.append({
-        "name": "general",
-        "display_name": "General Purpose",
-        "description": "General purpose encryption for miscellaneous sensitive data",
-        "config": general_config.model_dump(),
-        "derived": general_derived.model_dump(),
-        "algorithm": general_derived.resolved_algorithm,
-        "data_examples": general_config.data_identity.examples,
-        "compliance_tags": general_config.regulatory.frameworks,
-    })
+    contexts.append(
+        {
+            "name": "general",
+            "display_name": "General Purpose",
+            "description": "General purpose encryption for miscellaneous sensitive data",
+            "config": general_config.model_dump(),
+            "derived": general_derived.model_dump(),
+            "algorithm": general_derived.resolved_algorithm,
+            "data_examples": general_config.data_identity.examples,
+            "compliance_tags": general_config.regulatory.frameworks,
+        }
+    )
 
     # 6. Internal Logs Context (SOC2)
     logs_config = ContextConfig(
@@ -327,16 +339,18 @@ def build_default_contexts() -> list[dict]:
         ),
     )
     logs_derived = resolve_algorithm(logs_config)
-    contexts.append({
-        "name": "internal-logs",
-        "display_name": "Application Logs",
-        "description": "System logs, audit trails, and application metrics",
-        "config": logs_config.model_dump(),
-        "derived": logs_derived.model_dump(),
-        "algorithm": logs_derived.resolved_algorithm,
-        "data_examples": logs_config.data_identity.examples,
-        "compliance_tags": logs_config.regulatory.frameworks,
-    })
+    contexts.append(
+        {
+            "name": "internal-logs",
+            "display_name": "Application Logs",
+            "description": "System logs, audit trails, and application metrics",
+            "config": logs_config.model_dump(),
+            "derived": logs_derived.model_dump(),
+            "algorithm": logs_derived.resolved_algorithm,
+            "data_examples": logs_config.data_identity.examples,
+            "compliance_tags": logs_config.regulatory.frameworks,
+        }
+    )
 
     # 7. API Secrets Context
     api_secrets_config = ContextConfig(
@@ -365,16 +379,18 @@ def build_default_contexts() -> list[dict]:
         ),
     )
     api_secrets_derived = resolve_algorithm(api_secrets_config)
-    contexts.append({
-        "name": "api-secrets",
-        "display_name": "API & Service Secrets",
-        "description": "API keys, service credentials, and integration secrets",
-        "config": api_secrets_config.model_dump(),
-        "derived": api_secrets_derived.model_dump(),
-        "algorithm": api_secrets_derived.resolved_algorithm,
-        "data_examples": api_secrets_config.data_identity.examples,
-        "compliance_tags": api_secrets_config.regulatory.frameworks,
-    })
+    contexts.append(
+        {
+            "name": "api-secrets",
+            "display_name": "API & Service Secrets",
+            "description": "API keys, service credentials, and integration secrets",
+            "config": api_secrets_config.model_dump(),
+            "derived": api_secrets_derived.model_dump(),
+            "algorithm": api_secrets_derived.resolved_algorithm,
+            "data_examples": api_secrets_config.data_identity.examples,
+            "compliance_tags": api_secrets_config.regulatory.frameworks,
+        }
+    )
 
     # 8. Business Documents Context
     business_config = ContextConfig(
@@ -402,16 +418,18 @@ def build_default_contexts() -> list[dict]:
         ),
     )
     business_derived = resolve_algorithm(business_config)
-    contexts.append({
-        "name": "business-documents",
-        "display_name": "Business Confidential",
-        "description": "Contracts, reports, IP, and other business-sensitive documents",
-        "config": business_config.model_dump(),
-        "derived": business_derived.model_dump(),
-        "algorithm": business_derived.resolved_algorithm,
-        "data_examples": business_config.data_identity.examples,
-        "compliance_tags": business_config.regulatory.frameworks,
-    })
+    contexts.append(
+        {
+            "name": "business-documents",
+            "display_name": "Business Confidential",
+            "description": "Contracts, reports, IP, and other business-sensitive documents",
+            "config": business_config.model_dump(),
+            "derived": business_derived.model_dump(),
+            "algorithm": business_derived.resolved_algorithm,
+            "data_examples": business_config.data_identity.examples,
+            "compliance_tags": business_config.regulatory.frameworks,
+        }
+    )
 
     # 9. Backup Data Context
     backup_config = ContextConfig(
@@ -445,16 +463,18 @@ def build_default_contexts() -> list[dict]:
         ),
     )
     backup_derived = resolve_algorithm(backup_config)
-    contexts.append({
-        "name": "backup-data",
-        "display_name": "Backup & Archives",
-        "description": "Database backups, file archives, and disaster recovery data",
-        "config": backup_config.model_dump(),
-        "derived": backup_derived.model_dump(),
-        "algorithm": backup_derived.resolved_algorithm,
-        "data_examples": backup_config.data_identity.examples,
-        "compliance_tags": backup_config.regulatory.frameworks,
-    })
+    contexts.append(
+        {
+            "name": "backup-data",
+            "display_name": "Backup & Archives",
+            "description": "Database backups, file archives, and disaster recovery data",
+            "config": backup_config.model_dump(),
+            "derived": backup_derived.model_dump(),
+            "algorithm": backup_derived.resolved_algorithm,
+            "data_examples": backup_config.data_identity.examples,
+            "compliance_tags": backup_config.regulatory.frameworks,
+        }
+    )
 
     # 10. Quantum-Ready Context
     quantum_config = ContextConfig(
@@ -483,16 +503,18 @@ def build_default_contexts() -> list[dict]:
         ),
     )
     quantum_derived = resolve_algorithm(quantum_config)
-    contexts.append({
-        "name": "quantum-ready",
-        "display_name": "Quantum-Ready Secrets",
-        "description": "Long-term secrets requiring post-quantum cryptography protection",
-        "config": quantum_config.model_dump(),
-        "derived": quantum_derived.model_dump(),
-        "algorithm": quantum_derived.resolved_algorithm,
-        "data_examples": quantum_config.data_identity.examples,
-        "compliance_tags": quantum_config.regulatory.frameworks,
-    })
+    contexts.append(
+        {
+            "name": "quantum-ready",
+            "display_name": "Quantum-Ready Secrets",
+            "description": "Long-term secrets requiring post-quantum cryptography protection",
+            "config": quantum_config.model_dump(),
+            "derived": quantum_derived.model_dump(),
+            "algorithm": quantum_derived.resolved_algorithm,
+            "data_examples": quantum_config.data_identity.examples,
+            "compliance_tags": quantum_config.regulatory.frameworks,
+        }
+    )
 
     return contexts
 
@@ -508,9 +530,7 @@ async def seed_default_contexts():
         default_tenant = await get_or_create_default_tenant(db)
 
         for ctx_data in default_contexts:
-            result = await db.execute(
-                select(Context).where(Context.name == ctx_data["name"])
-            )
+            result = await db.execute(select(Context).where(Context.name == ctx_data["name"]))
             existing = result.scalar_one_or_none()
 
             if not existing:
@@ -530,11 +550,11 @@ async def lifespan(app: FastAPI):
     - Startup: Initialize DB, seed defaults, log readiness
     - Shutdown: Close DB connections, cleanup rate limiter
     """
-    import signal
     import os
 
     # Validate startup configuration
     from app.core.startup import validate_startup
+
     validate_startup()  # Raises RuntimeError in STRICT mode if validation fails
 
     # Initialize OAuth providers
@@ -711,6 +731,7 @@ async def health_liveness():
     Quick check that the service is running.
     """
     from app.core.health import health_checker
+
     return await health_checker.liveness()
 
 

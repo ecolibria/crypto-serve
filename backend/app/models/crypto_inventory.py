@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum
 
-from sqlalchemy import String, DateTime, ForeignKey, Integer, Boolean, Text, JSON
+from sqlalchemy import String, DateTime, ForeignKey, Integer, Boolean, JSON
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,6 +19,7 @@ def generate_scan_ref() -> str:
 
 class QuantumRisk(str, Enum):
     """Quantum computing risk level."""
+
     NONE = "none"
     LOW = "low"
     HIGH = "high"
@@ -27,6 +28,7 @@ class QuantumRisk(str, Enum):
 
 class EnforcementAction(str, Enum):
     """Policy enforcement action taken."""
+
     ALLOW = "allow"
     WARN = "warn"
     BLOCK = "block"
@@ -34,6 +36,7 @@ class EnforcementAction(str, Enum):
 
 class ScanSource(str, Enum):
     """Source of the inventory scan."""
+
     SDK_INIT = "sdk_init"  # From SDK init() at runtime
     CICD_GATE = "cicd_gate"  # From CI/CD pipeline gate
     MANUAL_SCAN = "manual_scan"  # Manual API call
@@ -54,38 +57,19 @@ class CryptoInventoryReport(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Tenant isolation
-    tenant_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[str] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=False, index=True)
 
     # Human-readable reference ID for tracking (e.g., CBOM-A7B3C9D2)
     scan_ref: Mapped[str] = mapped_column(
-        String(16),
-        default=generate_scan_ref,
-        unique=True,
-        index=True,
-        nullable=False
+        String(16), default=generate_scan_ref, unique=True, index=True, nullable=False
     )
 
     # User who uploaded (for CLI uploads without identity)
-    user_id: Mapped[str | None] = mapped_column(
-        String(36),
-        ForeignKey("users.id"),
-        nullable=True,
-        index=True
-    )
+    user_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True, index=True)
 
     # Identity that reported (links to app/developer)
     # Nullable for CLI scans without a registered application
-    identity_id: Mapped[str | None] = mapped_column(
-        String(64),
-        ForeignKey("identities.id"),
-        nullable=True,
-        index=True
-    )
+    identity_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("identities.id"), nullable=True, index=True)
     identity_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
 
     # Team/department for aggregation
@@ -93,21 +77,13 @@ class CryptoInventoryReport(Base):
     department: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
 
     # Scan metadata
-    scan_source: Mapped[ScanSource] = mapped_column(
-        SQLEnum(ScanSource),
-        default=ScanSource.SDK_INIT
-    )
+    scan_source: Mapped[ScanSource] = mapped_column(SQLEnum(ScanSource), default=ScanSource.SDK_INIT)
     scanned_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        index=True
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
 
     # Enforcement result
-    action: Mapped[EnforcementAction] = mapped_column(
-        SQLEnum(EnforcementAction),
-        default=EnforcementAction.ALLOW
-    )
+    action: Mapped[EnforcementAction] = mapped_column(SQLEnum(EnforcementAction), default=EnforcementAction.ALLOW)
 
     # Counts for quick queries
     library_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -204,12 +180,7 @@ class CryptoLibraryUsage(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Tenant isolation
-    tenant_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[str] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=False, index=True)
 
     # Library identification
     library_name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
@@ -217,10 +188,7 @@ class CryptoLibraryUsage(Base):
 
     # Classification
     category: Mapped[str] = mapped_column(String(64), nullable=False)
-    quantum_risk: Mapped[QuantumRisk] = mapped_column(
-        SQLEnum(QuantumRisk),
-        default=QuantumRisk.NONE
-    )
+    quantum_risk: Mapped[QuantumRisk] = mapped_column(SQLEnum(QuantumRisk), default=QuantumRisk.NONE)
     is_deprecated: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Usage counts
@@ -228,14 +196,8 @@ class CryptoLibraryUsage(Base):
     team_count: Mapped[int] = mapped_column(Integer, default=0)  # How many teams
 
     # Last seen
-    first_seen_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
-    )
-    last_seen_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
-    )
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # List of identity IDs using this library (for drill-down)
     identity_ids: Mapped[dict] = mapped_column(JSON, default=list)

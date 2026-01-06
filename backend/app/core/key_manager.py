@@ -19,7 +19,6 @@ In development:
 
 import secrets
 import logging
-from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -72,10 +71,7 @@ class KeyManager:
                 self._kms = get_kms_provider()
                 await self._kms.initialize()
                 self._initialized = True
-                logger.info(
-                    f"KeyManager initialized with KMS backend: "
-                    f"{self._kms.config.backend.value}"
-                )
+                logger.info(f"KeyManager initialized with KMS backend: " f"{self._kms.config.backend.value}")
             except KMSError as e:
                 logger.error(f"Failed to initialize KMS: {e}")
                 raise
@@ -290,8 +286,7 @@ class KeyManager:
         key = await self.derive_key(context, new_version, key_size)
 
         logger.info(
-            f"Key rotated for context '{context}': "
-            f"v{new_version - 1 if new_version > 1 else 0} -> v{new_version}"
+            f"Key rotated for context '{context}': " f"v{new_version - 1 if new_version > 1 else 0} -> v{new_version}"
         )
 
         return key, key_id
@@ -370,9 +365,7 @@ class KeyManager:
         nonce = secrets.token_bytes(12)  # 96-bit nonce for AES-GCM
         aesgcm = AESGCM(encryption_key)
         encrypted_private_key = aesgcm.encrypt(
-            nonce,
-            private_key,
-            associated_data=f"{context}:{key_id}:{algorithm}".encode()
+            nonce, private_key, associated_data=f"{context}:{key_id}:{algorithm}".encode()
         )
 
         # Store in database
@@ -390,10 +383,7 @@ class KeyManager:
         db.add(pqc_key)
         await db.commit()
 
-        logger.info(
-            f"Stored PQC key: id={key_id}, algorithm={algorithm}, "
-            f"context={context}, type={key_type.value}"
-        )
+        logger.info(f"Stored PQC key: id={key_id}, algorithm={algorithm}, " f"context={context}, type={key_type.value}")
 
     async def get_pqc_key(
         self,
@@ -411,9 +401,7 @@ class KeyManager:
         Returns:
             Decrypted private key bytes, or None if not found
         """
-        result = await db.execute(
-            select(PQCKey).where(PQCKey.id == key_id)
-        )
+        result = await db.execute(select(PQCKey).where(PQCKey.id == key_id))
         pqc_key = result.scalar_one_or_none()
 
         if not pqc_key:
@@ -429,7 +417,7 @@ class KeyManager:
             private_key = aesgcm.decrypt(
                 pqc_key.private_key_nonce,
                 pqc_key.encrypted_private_key,
-                associated_data=f"{context}:{key_id}:{pqc_key.algorithm}".encode()
+                associated_data=f"{context}:{key_id}:{pqc_key.algorithm}".encode(),
             )
             return private_key
         except Exception as e:
@@ -450,9 +438,7 @@ class KeyManager:
         Returns:
             Public key bytes, or None if not found
         """
-        result = await db.execute(
-            select(PQCKey).where(PQCKey.id == key_id)
-        )
+        result = await db.execute(select(PQCKey).where(PQCKey.id == key_id))
         pqc_key = result.scalar_one_or_none()
 
         if not pqc_key:

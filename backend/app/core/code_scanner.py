@@ -8,15 +8,14 @@ Supports: Python, JavaScript/TypeScript, Go, Java, C/C++
 
 import ast
 import re
-import json
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
 
 class Language(str, Enum):
     """Supported programming languages."""
+
     PYTHON = "python"
     JAVASCRIPT = "javascript"
     TYPESCRIPT = "typescript"
@@ -29,6 +28,7 @@ class Language(str, Enum):
 
 class QuantumRisk(str, Enum):
     """Quantum computing risk level."""
+
     NONE = "none"  # Symmetric algorithms with adequate key size
     LOW = "low"  # Hash functions (Grover's gives sqrt speedup)
     HIGH = "high"  # RSA, ECC, DH - broken by Shor's algorithm
@@ -37,6 +37,7 @@ class QuantumRisk(str, Enum):
 
 class Severity(str, Enum):
     """Finding severity."""
+
     INFO = "info"
     LOW = "low"
     MEDIUM = "medium"
@@ -47,6 +48,7 @@ class Severity(str, Enum):
 @dataclass
 class CryptoUsage:
     """A detected cryptographic usage."""
+
     algorithm: str
     category: str  # encryption, signing, hashing, kdf, mac, key_exchange
     library: str
@@ -66,6 +68,7 @@ class CryptoUsage:
 @dataclass
 class CryptoFinding:
     """A security finding related to crypto usage."""
+
     severity: Severity
     title: str
     description: str
@@ -79,6 +82,7 @@ class CryptoFinding:
 @dataclass
 class CBOM:
     """Cryptographic Bill of Materials."""
+
     version: str = "1.0"
     scan_timestamp: str = ""
     files_scanned: int = 0
@@ -91,6 +95,7 @@ class CBOM:
 @dataclass
 class ScanResult:
     """Code scan result."""
+
     usages: list[CryptoUsage]
     findings: list[CryptoFinding]
     cbom: CBOM
@@ -100,6 +105,7 @@ class ScanResult:
 
 class CodeScannerError(Exception):
     """Code scanner error."""
+
     pass
 
 
@@ -115,49 +121,103 @@ ALGORITHM_DB = {
     "chacha20": {"category": "encryption", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
     "chacha20-poly1305": {"category": "encryption", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
     "xchacha20": {"category": "encryption", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
-
     # Weak/Broken Symmetric
-    "des": {"category": "encryption", "quantum_risk": QuantumRisk.CRITICAL, "is_weak": True,
-            "weakness_reason": "56-bit key is trivially brutable", "cwe": "CWE-327"},
-    "3des": {"category": "encryption", "quantum_risk": QuantumRisk.LOW, "is_weak": True,
-             "weakness_reason": "Deprecated, vulnerable to Sweet32 attack", "cwe": "CWE-327"},
-    "triple-des": {"category": "encryption", "quantum_risk": QuantumRisk.LOW, "is_weak": True,
-                  "weakness_reason": "Deprecated, vulnerable to Sweet32 attack", "cwe": "CWE-327"},
-    "rc4": {"category": "encryption", "quantum_risk": QuantumRisk.CRITICAL, "is_weak": True,
-            "weakness_reason": "Biased keystream, prohibited by RFC 7465", "cwe": "CWE-327"},
-    "rc2": {"category": "encryption", "quantum_risk": QuantumRisk.CRITICAL, "is_weak": True,
-            "weakness_reason": "Weak algorithm with known attacks", "cwe": "CWE-327"},
-    "blowfish": {"category": "encryption", "quantum_risk": QuantumRisk.LOW, "is_weak": True,
-                 "weakness_reason": "64-bit block size vulnerable to birthday attacks", "cwe": "CWE-327"},
-    "idea": {"category": "encryption", "quantum_risk": QuantumRisk.LOW, "is_weak": True,
-             "weakness_reason": "Deprecated, use AES instead", "cwe": "CWE-327"},
-    "cast5": {"category": "encryption", "quantum_risk": QuantumRisk.LOW, "is_weak": True,
-              "weakness_reason": "64-bit block size, deprecated", "cwe": "CWE-327"},
-
+    "des": {
+        "category": "encryption",
+        "quantum_risk": QuantumRisk.CRITICAL,
+        "is_weak": True,
+        "weakness_reason": "56-bit key is trivially brutable",
+        "cwe": "CWE-327",
+    },
+    "3des": {
+        "category": "encryption",
+        "quantum_risk": QuantumRisk.LOW,
+        "is_weak": True,
+        "weakness_reason": "Deprecated, vulnerable to Sweet32 attack",
+        "cwe": "CWE-327",
+    },
+    "triple-des": {
+        "category": "encryption",
+        "quantum_risk": QuantumRisk.LOW,
+        "is_weak": True,
+        "weakness_reason": "Deprecated, vulnerable to Sweet32 attack",
+        "cwe": "CWE-327",
+    },
+    "rc4": {
+        "category": "encryption",
+        "quantum_risk": QuantumRisk.CRITICAL,
+        "is_weak": True,
+        "weakness_reason": "Biased keystream, prohibited by RFC 7465",
+        "cwe": "CWE-327",
+    },
+    "rc2": {
+        "category": "encryption",
+        "quantum_risk": QuantumRisk.CRITICAL,
+        "is_weak": True,
+        "weakness_reason": "Weak algorithm with known attacks",
+        "cwe": "CWE-327",
+    },
+    "blowfish": {
+        "category": "encryption",
+        "quantum_risk": QuantumRisk.LOW,
+        "is_weak": True,
+        "weakness_reason": "64-bit block size vulnerable to birthday attacks",
+        "cwe": "CWE-327",
+    },
+    "idea": {
+        "category": "encryption",
+        "quantum_risk": QuantumRisk.LOW,
+        "is_weak": True,
+        "weakness_reason": "Deprecated, use AES instead",
+        "cwe": "CWE-327",
+    },
+    "cast5": {
+        "category": "encryption",
+        "quantum_risk": QuantumRisk.LOW,
+        "is_weak": True,
+        "weakness_reason": "64-bit block size, deprecated",
+        "cwe": "CWE-327",
+    },
     # Asymmetric Encryption (Quantum Vulnerable)
-    "rsa": {"category": "encryption", "quantum_risk": QuantumRisk.HIGH, "is_weak": False,
-            "recommendation": "Plan migration to post-quantum algorithms"},
+    "rsa": {
+        "category": "encryption",
+        "quantum_risk": QuantumRisk.HIGH,
+        "is_weak": False,
+        "recommendation": "Plan migration to post-quantum algorithms",
+    },
     "rsa-2048": {"category": "encryption", "quantum_risk": QuantumRisk.HIGH, "is_weak": False},
     "rsa-4096": {"category": "encryption", "quantum_risk": QuantumRisk.HIGH, "is_weak": False},
-    "rsa-1024": {"category": "encryption", "quantum_risk": QuantumRisk.CRITICAL, "is_weak": True,
-                 "weakness_reason": "Key too small, can be factored", "cwe": "CWE-326"},
-    "rsa-512": {"category": "encryption", "quantum_risk": QuantumRisk.CRITICAL, "is_weak": True,
-                "weakness_reason": "Trivially breakable key size", "cwe": "CWE-326"},
-
+    "rsa-1024": {
+        "category": "encryption",
+        "quantum_risk": QuantumRisk.CRITICAL,
+        "is_weak": True,
+        "weakness_reason": "Key too small, can be factored",
+        "cwe": "CWE-326",
+    },
+    "rsa-512": {
+        "category": "encryption",
+        "quantum_risk": QuantumRisk.CRITICAL,
+        "is_weak": True,
+        "weakness_reason": "Trivially breakable key size",
+        "cwe": "CWE-326",
+    },
     # Signatures (Quantum Vulnerable)
     "ecdsa": {"category": "signing", "quantum_risk": QuantumRisk.HIGH, "is_weak": False},
     "ed25519": {"category": "signing", "quantum_risk": QuantumRisk.HIGH, "is_weak": False},
     "ed448": {"category": "signing", "quantum_risk": QuantumRisk.HIGH, "is_weak": False},
-    "dsa": {"category": "signing", "quantum_risk": QuantumRisk.HIGH, "is_weak": True,
-            "weakness_reason": "Deprecated in favor of ECDSA/EdDSA", "cwe": "CWE-327"},
-
+    "dsa": {
+        "category": "signing",
+        "quantum_risk": QuantumRisk.HIGH,
+        "is_weak": True,
+        "weakness_reason": "Deprecated in favor of ECDSA/EdDSA",
+        "cwe": "CWE-327",
+    },
     # Key Exchange (Quantum Vulnerable)
     "ecdh": {"category": "key_exchange", "quantum_risk": QuantumRisk.HIGH, "is_weak": False},
     "x25519": {"category": "key_exchange", "quantum_risk": QuantumRisk.HIGH, "is_weak": False},
     "x448": {"category": "key_exchange", "quantum_risk": QuantumRisk.HIGH, "is_weak": False},
     "dh": {"category": "key_exchange", "quantum_risk": QuantumRisk.HIGH, "is_weak": False},
     "diffie-hellman": {"category": "key_exchange", "quantum_risk": QuantumRisk.HIGH, "is_weak": False},
-
     # Post-Quantum (Safe)
     "kyber": {"category": "key_exchange", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
     "ml-kem": {"category": "key_exchange", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
@@ -165,14 +225,16 @@ ALGORITHM_DB = {
     "ml-dsa": {"category": "signing", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
     "sphincs": {"category": "signing", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
     "slh-dsa": {"category": "signing", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
-
     # HPKE (RFC 9180 - Hybrid Public Key Encryption)
-    "hpke": {"category": "encryption", "quantum_risk": QuantumRisk.HIGH, "is_weak": False,
-             "recommendation": "Plan migration to post-quantum variants"},
+    "hpke": {
+        "category": "encryption",
+        "quantum_risk": QuantumRisk.HIGH,
+        "is_weak": False,
+        "recommendation": "Plan migration to post-quantum variants",
+    },
     "hpke-x25519": {"category": "encryption", "quantum_risk": QuantumRisk.HIGH, "is_weak": False},
     "hpke-p256": {"category": "encryption", "quantum_risk": QuantumRisk.HIGH, "is_weak": False},
     "hpke-p384": {"category": "encryption", "quantum_risk": QuantumRisk.HIGH, "is_weak": False},
-
     # Hash Functions
     "sha256": {"category": "hashing", "quantum_risk": QuantumRisk.LOW, "is_weak": False},
     "sha-256": {"category": "hashing", "quantum_risk": QuantumRisk.LOW, "is_weak": False},
@@ -185,7 +247,6 @@ ALGORITHM_DB = {
     "blake2b": {"category": "hashing", "quantum_risk": QuantumRisk.LOW, "is_weak": False},
     "blake2s": {"category": "hashing", "quantum_risk": QuantumRisk.LOW, "is_weak": False},
     "blake3": {"category": "hashing", "quantum_risk": QuantumRisk.LOW, "is_weak": False},
-
     # SP 800-185 SHA-3 Derived Functions
     "cshake128": {"category": "hashing", "quantum_risk": QuantumRisk.LOW, "is_weak": False},
     "cshake256": {"category": "hashing", "quantum_risk": QuantumRisk.LOW, "is_weak": False},
@@ -195,19 +256,42 @@ ALGORITHM_DB = {
     "parallelhash256": {"category": "hashing", "quantum_risk": QuantumRisk.LOW, "is_weak": False},
     "kmac128": {"category": "mac", "quantum_risk": QuantumRisk.LOW, "is_weak": False},
     "kmac256": {"category": "mac", "quantum_risk": QuantumRisk.LOW, "is_weak": False},
-
     # Weak Hash Functions
-    "md5": {"category": "hashing", "quantum_risk": QuantumRisk.CRITICAL, "is_weak": True,
-            "weakness_reason": "Collision attacks demonstrated, never use for security", "cwe": "CWE-328"},
-    "md4": {"category": "hashing", "quantum_risk": QuantumRisk.CRITICAL, "is_weak": True,
-            "weakness_reason": "Completely broken, trivial collisions", "cwe": "CWE-328"},
-    "sha1": {"category": "hashing", "quantum_risk": QuantumRisk.CRITICAL, "is_weak": True,
-             "weakness_reason": "Collision attacks demonstrated (SHAttered)", "cwe": "CWE-328"},
-    "sha-1": {"category": "hashing", "quantum_risk": QuantumRisk.CRITICAL, "is_weak": True,
-              "weakness_reason": "Collision attacks demonstrated (SHAttered)", "cwe": "CWE-328"},
-    "ripemd160": {"category": "hashing", "quantum_risk": QuantumRisk.LOW, "is_weak": True,
-                  "weakness_reason": "Deprecated, use SHA-256 or better", "cwe": "CWE-328"},
-
+    "md5": {
+        "category": "hashing",
+        "quantum_risk": QuantumRisk.CRITICAL,
+        "is_weak": True,
+        "weakness_reason": "Collision attacks demonstrated, never use for security",
+        "cwe": "CWE-328",
+    },
+    "md4": {
+        "category": "hashing",
+        "quantum_risk": QuantumRisk.CRITICAL,
+        "is_weak": True,
+        "weakness_reason": "Completely broken, trivial collisions",
+        "cwe": "CWE-328",
+    },
+    "sha1": {
+        "category": "hashing",
+        "quantum_risk": QuantumRisk.CRITICAL,
+        "is_weak": True,
+        "weakness_reason": "Collision attacks demonstrated (SHAttered)",
+        "cwe": "CWE-328",
+    },
+    "sha-1": {
+        "category": "hashing",
+        "quantum_risk": QuantumRisk.CRITICAL,
+        "is_weak": True,
+        "weakness_reason": "Collision attacks demonstrated (SHAttered)",
+        "cwe": "CWE-328",
+    },
+    "ripemd160": {
+        "category": "hashing",
+        "quantum_risk": QuantumRisk.LOW,
+        "is_weak": True,
+        "weakness_reason": "Deprecated, use SHA-256 or better",
+        "cwe": "CWE-328",
+    },
     # Password Hashing / KDFs
     "argon2": {"category": "kdf", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
     "argon2id": {"category": "kdf", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
@@ -215,10 +299,13 @@ ALGORITHM_DB = {
     "argon2d": {"category": "kdf", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
     "bcrypt": {"category": "kdf", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
     "scrypt": {"category": "kdf", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
-    "pbkdf2": {"category": "kdf", "quantum_risk": QuantumRisk.NONE, "is_weak": False,
-               "recommendation": "Use high iteration count (600k+ for SHA-256)"},
+    "pbkdf2": {
+        "category": "kdf",
+        "quantum_risk": QuantumRisk.NONE,
+        "is_weak": False,
+        "recommendation": "Use high iteration count (600k+ for SHA-256)",
+    },
     "hkdf": {"category": "kdf", "quantum_risk": QuantumRisk.NONE, "is_weak": False},
-
     # MACs
     "hmac": {"category": "mac", "quantum_risk": QuantumRisk.LOW, "is_weak": False},
     "hmac-sha256": {"category": "mac", "quantum_risk": QuantumRisk.LOW, "is_weak": False},
@@ -390,8 +477,17 @@ LIBRARY_PATTERNS = {
     },
     Language.GO: {
         "crypto": {
-            "imports": ["crypto/aes", "crypto/des", "crypto/sha256", "crypto/sha1", "crypto/md5",
-                       "crypto/rsa", "crypto/ecdsa", "crypto/ed25519", "golang.org/x/crypto"],
+            "imports": [
+                "crypto/aes",
+                "crypto/des",
+                "crypto/sha256",
+                "crypto/sha1",
+                "crypto/md5",
+                "crypto/rsa",
+                "crypto/ecdsa",
+                "crypto/ed25519",
+                "golang.org/x/crypto",
+            ],
             "patterns": [
                 (r"aes\.NewCipher", "aes", "encryption"),
                 (r"des\.NewCipher", "des", "encryption"),
@@ -556,6 +652,7 @@ class CodeScanner:
     ) -> ScanResult:
         """Scan a single code string."""
         import time
+
         start = time.perf_counter()
 
         if language is None and filename:
@@ -609,6 +706,7 @@ class CodeScanner:
     ) -> ScanResult:
         """Scan all supported files in a directory."""
         import time
+
         start = time.perf_counter()
 
         directory = Path(directory)
@@ -734,27 +832,31 @@ class CodeScanner:
         for usage in usages:
             if usage.is_weak:
                 severity = Severity.CRITICAL if "CRITICAL" in str(usage.quantum_risk) else Severity.HIGH
-                findings.append(CryptoFinding(
-                    severity=severity,
-                    title=f"Weak Algorithm: {usage.algorithm.upper()}",
-                    description=usage.weakness_reason or f"The algorithm {usage.algorithm} is considered weak",
-                    file_path=usage.file_path,
-                    line_number=usage.line_number,
-                    algorithm=usage.algorithm,
-                    cwe=usage.cwe,
-                    recommendation=usage.recommendation or f"Replace {usage.algorithm} with a secure alternative",
-                ))
+                findings.append(
+                    CryptoFinding(
+                        severity=severity,
+                        title=f"Weak Algorithm: {usage.algorithm.upper()}",
+                        description=usage.weakness_reason or f"The algorithm {usage.algorithm} is considered weak",
+                        file_path=usage.file_path,
+                        line_number=usage.line_number,
+                        algorithm=usage.algorithm,
+                        cwe=usage.cwe,
+                        recommendation=usage.recommendation or f"Replace {usage.algorithm} with a secure alternative",
+                    )
+                )
 
             if usage.quantum_risk == QuantumRisk.HIGH:
-                findings.append(CryptoFinding(
-                    severity=Severity.MEDIUM,
-                    title=f"Quantum Vulnerable: {usage.algorithm.upper()}",
-                    description=f"{usage.algorithm} is vulnerable to quantum attacks (Shor's algorithm)",
-                    file_path=usage.file_path,
-                    line_number=usage.line_number,
-                    algorithm=usage.algorithm,
-                    recommendation="Plan migration to post-quantum algorithms (ML-KEM, ML-DSA)",
-                ))
+                findings.append(
+                    CryptoFinding(
+                        severity=Severity.MEDIUM,
+                        title=f"Quantum Vulnerable: {usage.algorithm.upper()}",
+                        description=f"{usage.algorithm} is vulnerable to quantum attacks (Shor's algorithm)",
+                        file_path=usage.file_path,
+                        line_number=usage.line_number,
+                        algorithm=usage.algorithm,
+                        recommendation="Plan migration to post-quantum algorithms (ML-KEM, ML-DSA)",
+                    )
+                )
 
         return findings
 
@@ -828,8 +930,7 @@ class CodeScanner:
                 "high_risk_usages": quantum_high,
                 "critical_risk_usages": quantum_critical,
                 "quantum_safe_percentage": (
-                    100 * (len(usages) - quantum_high - quantum_critical) / len(usages)
-                    if usages else 100
+                    100 * (len(usages) - quantum_high - quantum_critical) / len(usages) if usages else 100
                 ),
             },
             findings_summary=finding_counts,
@@ -843,10 +944,7 @@ class CodeScanner:
                 lang_ext[lang] = []
             lang_ext[lang].append(ext)
 
-        return [
-            {"language": lang.value, "extensions": exts}
-            for lang, exts in lang_ext.items()
-        ]
+        return [{"language": lang.value, "extensions": exts} for lang, exts in lang_ext.items()]
 
     def get_detectable_algorithms(self) -> dict:
         """Return all detectable algorithms and their properties."""

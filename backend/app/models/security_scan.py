@@ -18,6 +18,7 @@ def generate_scan_id() -> str:
 
 class ScanType(str, Enum):
     """Type of security scan."""
+
     CODE = "code"
     DEPENDENCY = "dependency"
     CERTIFICATE = "certificate"
@@ -25,6 +26,7 @@ class ScanType(str, Enum):
 
 class SeverityLevel(str, Enum):
     """Severity level of findings."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -34,6 +36,7 @@ class SeverityLevel(str, Enum):
 
 class FindingStatus(str, Enum):
     """Status of a security finding."""
+
     OPEN = "open"
     ACCEPTED = "accepted"  # Risk accepted, won't fix
     RESOLVED = "resolved"  # Fixed
@@ -53,44 +56,19 @@ class SecurityScan(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Tenant isolation
-    tenant_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[str] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=False, index=True)
 
     # Scan identifier
-    scan_id: Mapped[str] = mapped_column(
-        String(16),
-        default=generate_scan_id,
-        unique=True,
-        index=True,
-        nullable=False
-    )
+    scan_id: Mapped[str] = mapped_column(String(16), default=generate_scan_id, unique=True, index=True, nullable=False)
 
     # Scan metadata
-    scan_type: Mapped[ScanType] = mapped_column(
-        SQLEnum(ScanType),
-        nullable=False,
-        index=True
-    )
+    scan_type: Mapped[ScanType] = mapped_column(SQLEnum(ScanType), nullable=False, index=True)
 
     # User who performed the scan
-    user_id: Mapped[str | None] = mapped_column(
-        String(36),
-        ForeignKey("users.id"),
-        nullable=True,
-        index=True
-    )
+    user_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True, index=True)
 
     # Application/identity that was scanned (if known)
-    identity_id: Mapped[str | None] = mapped_column(
-        String(64),
-        ForeignKey("identities.id"),
-        nullable=True,
-        index=True
-    )
+    identity_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("identities.id"), nullable=True, index=True)
 
     # Scan target info
     target_name: Mapped[str] = mapped_column(String(256), nullable=False)
@@ -98,9 +76,7 @@ class SecurityScan(Base):
 
     # Timestamps
     scanned_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        index=True
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
 
     # Aggregate results
@@ -123,9 +99,7 @@ class SecurityScan(Base):
 
     # Relationships
     findings: Mapped[list["SecurityFinding"]] = relationship(
-        "SecurityFinding",
-        back_populates="scan",
-        cascade="all, delete-orphan"
+        "SecurityFinding", back_populates="scan", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
@@ -141,18 +115,11 @@ class SecurityFinding(Base):
 
     # Link to scan
     scan_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("security_scans.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
+        Integer, ForeignKey("security_scans.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     # Finding details
-    severity: Mapped[SeverityLevel] = mapped_column(
-        SQLEnum(SeverityLevel),
-        nullable=False,
-        index=True
-    )
+    severity: Mapped[SeverityLevel] = mapped_column(SQLEnum(SeverityLevel), nullable=False, index=True)
 
     title: Mapped[str] = mapped_column(String(256), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True)
@@ -176,10 +143,7 @@ class SecurityFinding(Base):
 
     # Status tracking
     status: Mapped[FindingStatus] = mapped_column(
-        SQLEnum(FindingStatus),
-        default=FindingStatus.OPEN,
-        nullable=False,
-        index=True
+        SQLEnum(FindingStatus), default=FindingStatus.OPEN, nullable=False, index=True
     )
     status_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     status_updated_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
@@ -200,6 +164,7 @@ class SecurityFinding(Base):
     def compute_fingerprint(self, target_name: str) -> str:
         """Compute a fingerprint for deduplication."""
         import hashlib
+
         data = f"{target_name}|{self.file_path or ''}|{self.algorithm or ''}|{self.title}|{self.line_number or ''}"
         return hashlib.sha256(data.encode()).hexdigest()[:32]
 
@@ -215,12 +180,7 @@ class CertificateInventory(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Tenant isolation
-    tenant_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[str] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=False, index=True)
 
     # Certificate identification
     common_name: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
@@ -251,14 +211,8 @@ class CertificateInventory(Base):
     san_domains: Mapped[list] = mapped_column(JSON, default=list)
 
     # Tracking
-    first_seen: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
-    )
-    last_seen: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
-    )
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Source tracking
     source: Mapped[str | None] = mapped_column(String(64), nullable=True)  # manual, scan, etc.

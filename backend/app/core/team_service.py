@@ -41,12 +41,7 @@ class TeamService:
         normalized_name = name.lower().strip()
 
         # Check if team exists
-        result = await db.execute(
-            select(Team).where(
-                Team.tenant_id == tenant_id,
-                Team.name == normalized_name
-            )
-        )
+        result = await db.execute(select(Team).where(Team.tenant_id == tenant_id, Team.name == normalized_name))
         team = result.scalar_one_or_none()
 
         if team:
@@ -130,9 +125,7 @@ class TeamService:
 
         # Reload user with teams eagerly loaded
         result = await db.execute(
-            select(UserModel)
-            .options(selectinload(UserModel.teams))
-            .where(UserModel.id == user.id)
+            select(UserModel).options(selectinload(UserModel.teams)).where(UserModel.id == user.id)
         )
         user_with_teams = result.scalar_one_or_none()
         if not user_with_teams:
@@ -206,14 +199,11 @@ class TeamService:
         # Get user's teams for error message
         user_teams = await self.get_user_team_names(db, user)
         if user_teams:
-            return False, (
-                f"You are not a member of team '{team_name}'. "
-                f"Your teams: {', '.join(user_teams)}"
-            )
+            return False, (f"You are not a member of team '{team_name}'. " f"Your teams: {', '.join(user_teams)}")
         else:
             return False, (
-                f"You are not a member of any team. "
-                f"Teams are synced from your identity provider (GitHub organizations, OIDC groups)."
+                "You are not a member of any team. "
+                "Teams are synced from your identity provider (GitHub organizations, OIDC groups)."
             )
 
     async def get_or_create_dev_team(
@@ -252,11 +242,7 @@ class TeamService:
         Returns:
             List of all teams
         """
-        result = await db.execute(
-            select(Team)
-            .where(Team.tenant_id == tenant_id)
-            .order_by(Team.name)
-        )
+        result = await db.execute(select(Team).where(Team.tenant_id == tenant_id).order_by(Team.name))
         return list(result.scalars().all())
 
 

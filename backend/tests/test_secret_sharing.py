@@ -19,9 +19,6 @@ from app.core.key_ceremony import (
     CeremonyState,
     CeremonyError,
     AlreadyInitializedError,
-    NotInitializedError,
-    AlreadySealedError,
-    AlreadyUnsealedError,
     InvalidShareError as CeremonyInvalidShareError,
 )
 
@@ -114,7 +111,7 @@ class TestSecretSharingEngine:
             (3, 7),  # 3-of-7
             (4, 7),  # 4-of-7
             (5, 5),  # 5-of-5
-            (5, 10), # 5-of-10
+            (5, 10),  # 5-of-10
         ]
 
         for threshold, total in configs:
@@ -131,6 +128,7 @@ class TestSecretSharingEngine:
 
         # Try all possible 3-combinations
         from itertools import combinations
+
         for subset in combinations(shares, 3):
             recovered = engine.combine(list(subset))
             assert recovered == secret
@@ -150,7 +148,7 @@ class TestSecretSharingEngine:
         shares1 = engine.split(secret, threshold=3, total_shares=5)
 
         different_secret = b"Y"
-        shares2 = engine.split(different_secret, threshold=3, total_shares=5)
+        engine.split(different_secret, threshold=3, total_shares=5)
 
         # With only 2 shares, the third share value is uniformly random
         # for any possible secret - we can't distinguish which secret it was
@@ -196,7 +194,7 @@ class TestSecretSharingEngine:
         secret2 = b"Secret 2"
 
         shares1 = engine.split(secret1, threshold=2, total_shares=3)
-        shares2 = engine.split(secret2, threshold=2, total_shares=3)
+        engine.split(secret2, threshold=2, total_shares=3)
 
         # Mixing shares from different splits - different thresholds won't match
         shares1_modified = engine.split(secret1, threshold=3, total_shares=5)
@@ -533,9 +531,9 @@ class TestSecretSharingIntegration:
             ceremony.get_master_key()
 
         # 5. Unseal with 3 custodians (any 3 of 5)
-        ceremony.unseal(shares[0], actor="alice@corp.com")   # 1/3
-        ceremony.unseal(shares[2], actor="charlie@corp.com") # 2/3
-        ceremony.unseal(shares[4], actor="eve@corp.com")     # 3/3 - unlocked!
+        ceremony.unseal(shares[0], actor="alice@corp.com")  # 1/3
+        ceremony.unseal(shares[2], actor="charlie@corp.com")  # 2/3
+        ceremony.unseal(shares[4], actor="eve@corp.com")  # 3/3 - unlocked!
 
         # 6. Master key is now available
         recovered_key = ceremony.get_master_key()

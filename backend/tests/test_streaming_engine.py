@@ -6,7 +6,6 @@ import io
 import tempfile
 
 from app.core.streaming_engine import (
-    streaming_engine,
     StreamingEngine,
     StreamingAlgorithm,
     StreamingConfig,
@@ -14,7 +13,6 @@ from app.core.streaming_engine import (
     StreamingDecryptor,
     StreamingError,
     ChunkAuthenticationError,
-    ChunkSequenceError,
 )
 
 
@@ -257,19 +255,23 @@ class TestIteratorEncryption:
         """Test encrypting from an iterator."""
         chunks = [b"Hello, ", b"World!", b" How are you?"]
 
-        encrypted_chunks = list(fresh_engine.encrypt_iterator(
-            iter(chunks),
-            encryption_key,
-        ))
+        encrypted_chunks = list(
+            fresh_engine.encrypt_iterator(
+                iter(chunks),
+                encryption_key,
+            )
+        )
 
         # Should have header + data chunks
         assert len(encrypted_chunks) >= 2
 
         # Decrypt
-        decrypted_chunks = list(fresh_engine.decrypt_iterator(
-            iter(encrypted_chunks),
-            encryption_key,
-        ))
+        decrypted_chunks = list(
+            fresh_engine.decrypt_iterator(
+                iter(encrypted_chunks),
+                encryption_key,
+            )
+        )
 
         # Combine and verify
         decrypted = b"".join(decrypted_chunks)
@@ -281,17 +283,21 @@ class TestIteratorEncryption:
         chunks = [b"Secret ", b"data"]
         aad = b"context-id"
 
-        encrypted = list(fresh_engine.encrypt_iterator(
-            iter(chunks),
-            encryption_key,
-            associated_data=aad,
-        ))
+        encrypted = list(
+            fresh_engine.encrypt_iterator(
+                iter(chunks),
+                encryption_key,
+                associated_data=aad,
+            )
+        )
 
-        decrypted = list(fresh_engine.decrypt_iterator(
-            iter(encrypted),
-            encryption_key,
-            associated_data=aad,
-        ))
+        decrypted = list(
+            fresh_engine.decrypt_iterator(
+                iter(encrypted),
+                encryption_key,
+                associated_data=aad,
+            )
+        )
 
         assert b"".join(decrypted) == b"".join(chunks)
 
@@ -450,7 +456,7 @@ class TestErrorHandling:
 
         # Truncate the encrypted data
         encrypted_data = encrypted_stream.getvalue()
-        truncated = io.BytesIO(encrypted_data[:len(encrypted_data) // 2])
+        truncated = io.BytesIO(encrypted_data[: len(encrypted_data) // 2])
 
         with pytest.raises(StreamingError):
             fresh_engine.decrypt_stream(

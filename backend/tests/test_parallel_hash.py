@@ -19,10 +19,7 @@ from app.core.parallel_hash import (
 
 
 # Skip all tests if pycryptodome cSHAKE is not available
-pytestmark = pytest.mark.skipif(
-    not CSHAKE_AVAILABLE,
-    reason="pycryptodome cSHAKE not installed"
-)
+pytestmark = pytest.mark.skipif(not CSHAKE_AVAILABLE, reason="pycryptodome cSHAKE not installed")
 
 
 # =============================================================================
@@ -47,48 +44,48 @@ class TestEncodingFunctions:
     def test_left_encode_zero(self):
         """Test left_encode(0)."""
         result = _left_encode(0)
-        assert result == b'\x01\x00'
+        assert result == b"\x01\x00"
 
     def test_left_encode_small(self):
         """Test left_encode for small values."""
         # 1 byte values
-        assert _left_encode(1) == b'\x01\x01'
-        assert _left_encode(255) == b'\x01\xff'
+        assert _left_encode(1) == b"\x01\x01"
+        assert _left_encode(255) == b"\x01\xff"
 
     def test_left_encode_large(self):
         """Test left_encode for larger values."""
         # 2 byte value
-        assert _left_encode(256) == b'\x02\x01\x00'
+        assert _left_encode(256) == b"\x02\x01\x00"
         # Value that needs 2 bytes
-        assert _left_encode(65535) == b'\x02\xff\xff'
+        assert _left_encode(65535) == b"\x02\xff\xff"
 
     def test_right_encode_zero(self):
         """Test right_encode(0)."""
         result = _right_encode(0)
-        assert result == b'\x00\x01'
+        assert result == b"\x00\x01"
 
     def test_right_encode_small(self):
         """Test right_encode for small values."""
-        assert _right_encode(1) == b'\x01\x01'
-        assert _right_encode(255) == b'\xff\x01'
+        assert _right_encode(1) == b"\x01\x01"
+        assert _right_encode(255) == b"\xff\x01"
 
     def test_right_encode_large(self):
         """Test right_encode for larger values."""
-        assert _right_encode(256) == b'\x01\x00\x02'
-        assert _right_encode(65535) == b'\xff\xff\x02'
+        assert _right_encode(256) == b"\x01\x00\x02"
+        assert _right_encode(65535) == b"\xff\xff\x02"
 
     def test_encode_string_empty(self):
         """Test encode_string with empty string."""
         result = _encode_string(b"")
         # left_encode(0) = \x01\x00
-        assert result == b'\x01\x00'
+        assert result == b"\x01\x00"
 
     def test_encode_string_short(self):
         """Test encode_string with short string."""
         result = _encode_string(b"test")
         # len("test") = 4 bytes = 32 bits
         # left_encode(32) = \x01\x20
-        assert result == b'\x01\x20' + b"test"
+        assert result == b"\x01\x20" + b"test"
 
 
 # =============================================================================

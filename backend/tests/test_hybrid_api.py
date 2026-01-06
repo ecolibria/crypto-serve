@@ -6,10 +6,7 @@ from app.schemas.context import AlgorithmOverride, CipherMode
 
 
 # Skip all tests if liboqs is not available
-pytestmark = pytest.mark.skipif(
-    not is_pqc_available(),
-    reason="liboqs not installed"
-)
+pytestmark = pytest.mark.skipif(not is_pqc_available(), reason="liboqs not installed")
 
 
 class TestHybridEncryptionAPI:
@@ -52,11 +49,7 @@ class TestHybridEncryptionAPI:
             plaintext=plaintext,
             context_name="user-pii",
             identity=identity,
-            algorithm_override=AlgorithmOverride(
-                cipher="AES",
-                mode=CipherMode.HYBRID,
-                key_bits=256
-            ),
+            algorithm_override=AlgorithmOverride(cipher="AES", mode=CipherMode.HYBRID, key_bits=256),
         )
 
         assert result.ciphertext is not None
@@ -107,11 +100,7 @@ class TestHybridEncryptionAPI:
             plaintext=plaintext,
             context_name="user-pii",
             identity=identity,
-            algorithm_override=AlgorithmOverride(
-                cipher="AES",
-                mode=CipherMode.HYBRID,
-                key_bits=256
-            ),
+            algorithm_override=AlgorithmOverride(cipher="AES", mode=CipherMode.HYBRID, key_bits=256),
             associated_data=aad,
         )
 
@@ -162,11 +151,7 @@ class TestHybridEncryptionAPI:
             plaintext=plaintext,
             context_name="user-pii",
             identity=identity,
-            algorithm_override=AlgorithmOverride(
-                cipher="AES",
-                mode=CipherMode.HYBRID,
-                key_bits=256
-            ),
+            algorithm_override=AlgorithmOverride(cipher="AES", mode=CipherMode.HYBRID, key_bits=256),
             associated_data=aad,
         )
 
@@ -213,17 +198,13 @@ class TestHybridEncryptionAPI:
             plaintext=plaintext,
             context_name="user-pii",
             identity=identity,
-            algorithm_override=AlgorithmOverride(
-                cipher="AES",
-                mode=CipherMode.HYBRID,
-                key_bits=256
-            ),
+            algorithm_override=AlgorithmOverride(cipher="AES", mode=CipherMode.HYBRID, key_bits=256),
         )
 
         # Hybrid ciphertext format: 2-byte length + JSON header + kem_ct + classical_ct
         ct = result.ciphertext
-        header_len = int.from_bytes(ct[:2], 'big')
-        header = json.loads(ct[2:2 + header_len].decode())
+        header_len = int.from_bytes(ct[:2], "big")
+        header = json.loads(ct[2 : 2 + header_len].decode())
 
         # Header should have required fields for hybrid mode
         assert header.get("v") == 1
@@ -270,11 +251,7 @@ class TestHybridEncryptionAPI:
             plaintext=plaintext,
             context_name="user-pii",
             identity=identity,
-            algorithm_override=AlgorithmOverride(
-                cipher="AES",
-                mode=CipherMode.GCM,
-                key_bits=256
-            ),
+            algorithm_override=AlgorithmOverride(cipher="AES", mode=CipherMode.GCM, key_bits=256),
         )
 
         # Hybrid encryption
@@ -283,11 +260,7 @@ class TestHybridEncryptionAPI:
             plaintext=plaintext,
             context_name="user-pii",
             identity=identity,
-            algorithm_override=AlgorithmOverride(
-                cipher="AES",
-                mode=CipherMode.HYBRID,
-                key_bits=256
-            ),
+            algorithm_override=AlgorithmOverride(cipher="AES", mode=CipherMode.HYBRID, key_bits=256),
         )
 
         # Hybrid should be larger due to ML-KEM ciphertext

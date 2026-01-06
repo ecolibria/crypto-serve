@@ -251,18 +251,15 @@ class AlgorithmResolver:
         key_rotation_days = sensitivity_req["key_rotation_days"]
 
         self.factors.append(
-            f"Data sensitivity: {self.config.data_identity.sensitivity.value.upper()} "
-            f"→ {min_bits}-bit minimum"
+            f"Data sensitivity: {self.config.data_identity.sensitivity.value.upper()} " f"→ {min_bits}-bit minimum"
         )
 
         # Step 2: Determine usage context and preferred mode
         usage_context = self.config.data_identity.usage_context
         preferred_mode = USAGE_CONTEXT_MODE_MAP.get(usage_context, CipherMode.GCM)
-        context_algorithm = USAGE_CONTEXT_ALGORITHM_MAP.get(usage_context, DEFAULT_ALGORITHM)
+        USAGE_CONTEXT_ALGORITHM_MAP.get(usage_context, DEFAULT_ALGORITHM)
 
-        self.factors.append(
-            f"Usage context: {usage_context.value} → {preferred_mode.value.upper()} mode recommended"
-        )
+        self.factors.append(f"Usage context: {usage_context.value} → {preferred_mode.value.upper()} mode recommended")
 
         # Step 3: Check for quantum resistance requirement
         quantum_resistant = self._needs_quantum_resistance()
@@ -318,9 +315,7 @@ class AlgorithmResolver:
         """Determine if quantum-resistant algorithms are needed."""
         # Explicit quantum adversary
         if Adversary.QUANTUM in self.config.threat_model.adversaries:
-            self.factors.append(
-                "Threat model: Quantum computer adversary → post-quantum algorithms required"
-            )
+            self.factors.append("Threat model: Quantum computer adversary → post-quantum algorithms required")
             return True
 
         # Long protection lifetime (harvest now, decrypt later)
@@ -336,9 +331,7 @@ class AlgorithmResolver:
             Adversary.NATION_STATE in self.config.threat_model.adversaries
             and self.config.threat_model.protection_lifetime_years > 5
         ):
-            self.factors.append(
-                "Threat model: Nation-state with 5+ year protection → quantum resistance recommended"
-            )
+            self.factors.append("Threat model: Nation-state with 5+ year protection → quantum resistance recommended")
             return True
 
         return False
@@ -347,9 +340,7 @@ class AlgorithmResolver:
         """Determine if hardware acceleration should be used."""
         # High frequency access benefits from AES-NI
         if self.config.access_patterns.frequency == AccessFrequency.HIGH:
-            self.factors.append(
-                "Access pattern: High frequency → hardware acceleration beneficial"
-            )
+            self.factors.append("Access pattern: High frequency → hardware acceleration beneficial")
             return True
 
         # Low latency requirements need hardware acceleration
@@ -420,9 +411,7 @@ class AlgorithmResolver:
 
         if not candidates:
             # Fallback to strongest available
-            self.factors.append(
-                "No algorithm meets all requirements, using strongest available"
-            )
+            self.factors.append("No algorithm meets all requirements, using strongest available")
             fallback = "AES-256-GCM+ML-KEM-1024" if quantum_resistant else "AES-256-GCM"
             props = ALGORITHMS[fallback]
             return fallback, props["mode"], props["key_bits"]
@@ -440,15 +429,11 @@ class AlgorithmResolver:
         # Add specific alternatives based on context
         self._add_contextual_alternatives(selected_name, usage_context, hw_acceleration)
 
-        self.factors.append(
-            f"Selected: {selected_name} ({selected_props['description']})"
-        )
+        self.factors.append(f"Selected: {selected_name} ({selected_props['description']})")
 
         return selected_name, selected_props["mode"], selected_props["key_bits"]
 
-    def _get_alternative_reason(
-        self, alt_name: str, alt_props: dict, selected_name: str
-    ) -> str:
+    def _get_alternative_reason(self, alt_name: str, alt_props: dict, selected_name: str) -> str:
         """Generate reason for considering an alternative algorithm."""
         if "ChaCha20" in alt_name and "AES" in selected_name:
             return "Better on systems without AES-NI hardware acceleration"

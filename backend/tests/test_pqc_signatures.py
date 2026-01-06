@@ -21,10 +21,7 @@ from app.core.hybrid_crypto import (
 
 
 # Skip all tests if liboqs is not available
-pytestmark = pytest.mark.skipif(
-    not LIBOQS_AVAILABLE,
-    reason="liboqs not installed"
-)
+pytestmark = pytest.mark.skipif(not LIBOQS_AVAILABLE, reason="liboqs not installed")
 
 
 class TestPQCAvailability:
@@ -62,10 +59,13 @@ class TestPQCAvailability:
 class TestSLHDSA:
     """Tests for SLH-DSA (FIPS 205) implementation."""
 
-    @pytest.mark.parametrize("algorithm", [
-        "SLH-DSA-SHA2-128f",
-        "SLH-DSA-SHA2-128s",
-    ])
+    @pytest.mark.parametrize(
+        "algorithm",
+        [
+            "SLH-DSA-SHA2-128f",
+            "SLH-DSA-SHA2-128s",
+        ],
+    )
     def test_slhdsa_keypair_generation(self, algorithm):
         """Test SLH-DSA key pair generation."""
         slhdsa = get_slhdsa(algorithm)
@@ -77,10 +77,13 @@ class TestSLHDSA:
         assert len(public_key) == SLHDSA.PARAMS[algorithm]["pk_len"]
         assert len(slhdsa.private_key) == SLHDSA.PARAMS[algorithm]["sk_len"]
 
-    @pytest.mark.parametrize("algorithm", [
-        "SLH-DSA-SHA2-128f",
-        "SLH-DSA-SHA2-128s",
-    ])
+    @pytest.mark.parametrize(
+        "algorithm",
+        [
+            "SLH-DSA-SHA2-128f",
+            "SLH-DSA-SHA2-128s",
+        ],
+    )
     def test_slhdsa_sign_verify(self, algorithm):
         """Test SLH-DSA sign and verify roundtrip."""
         slhdsa = get_slhdsa(algorithm)
@@ -130,7 +133,7 @@ class TestSLHDSA:
         slhdsa1 = get_slhdsa("SLH-DSA-SHA2-128f")
         slhdsa2 = get_slhdsa("SLH-DSA-SHA2-128f")
 
-        public_key1 = slhdsa1.generate_keypair()
+        slhdsa1.generate_keypair()
         public_key2 = slhdsa2.generate_keypair()
 
         message = b"Test message"
@@ -189,11 +192,14 @@ class TestSLHDSA:
 class TestMLDSA:
     """Tests for ML-DSA (FIPS 204) implementation."""
 
-    @pytest.mark.parametrize("algorithm", [
-        "ML-DSA-44",
-        "ML-DSA-65",
-        "ML-DSA-87",
-    ])
+    @pytest.mark.parametrize(
+        "algorithm",
+        [
+            "ML-DSA-44",
+            "ML-DSA-65",
+            "ML-DSA-87",
+        ],
+    )
     def test_mldsa_keypair_generation(self, algorithm):
         """Test ML-DSA key pair generation."""
         mldsa = get_mldsa(algorithm)
@@ -205,11 +211,14 @@ class TestMLDSA:
         assert len(public_key) == MLDSA.PARAMS[algorithm]["pk_len"]
         assert len(mldsa.private_key) == MLDSA.PARAMS[algorithm]["sk_len"]
 
-    @pytest.mark.parametrize("algorithm", [
-        "ML-DSA-44",
-        "ML-DSA-65",
-        "ML-DSA-87",
-    ])
+    @pytest.mark.parametrize(
+        "algorithm",
+        [
+            "ML-DSA-44",
+            "ML-DSA-65",
+            "ML-DSA-87",
+        ],
+    )
     def test_mldsa_sign_verify(self, algorithm):
         """Test ML-DSA sign and verify roundtrip."""
         mldsa = get_mldsa(algorithm)
@@ -296,25 +305,31 @@ class TestFactoryFunctions:
 class TestSecurityLevels:
     """Tests for NIST security levels."""
 
-    @pytest.mark.parametrize("algorithm,expected_level", [
-        ("SLH-DSA-SHA2-128f", 1),
-        ("SLH-DSA-SHA2-128s", 1),
-        ("SLH-DSA-SHA2-192f", 3),
-        ("SLH-DSA-SHA2-192s", 3),
-        ("SLH-DSA-SHA2-256f", 5),
-        ("SLH-DSA-SHA2-256s", 5),
-    ])
+    @pytest.mark.parametrize(
+        "algorithm,expected_level",
+        [
+            ("SLH-DSA-SHA2-128f", 1),
+            ("SLH-DSA-SHA2-128s", 1),
+            ("SLH-DSA-SHA2-192f", 3),
+            ("SLH-DSA-SHA2-192s", 3),
+            ("SLH-DSA-SHA2-256f", 5),
+            ("SLH-DSA-SHA2-256s", 5),
+        ],
+    )
     def test_slhdsa_security_levels(self, algorithm, expected_level):
         """Test SLH-DSA security level mapping."""
         slhdsa = get_slhdsa(algorithm)
         details = slhdsa.get_details()
         assert details["nist_level"] == expected_level
 
-    @pytest.mark.parametrize("algorithm,expected_level", [
-        ("ML-DSA-44", 2),
-        ("ML-DSA-65", 3),
-        ("ML-DSA-87", 5),
-    ])
+    @pytest.mark.parametrize(
+        "algorithm,expected_level",
+        [
+            ("ML-DSA-44", 2),
+            ("ML-DSA-65", 3),
+            ("ML-DSA-87", 5),
+        ],
+    )
     def test_mldsa_security_levels(self, algorithm, expected_level):
         """Test ML-DSA security level mapping."""
         mldsa = get_mldsa(algorithm)

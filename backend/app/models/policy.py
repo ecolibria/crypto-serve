@@ -23,28 +23,17 @@ class Policy(Base):
     """
 
     __tablename__ = "policies"
-    __table_args__ = (
-        UniqueConstraint("tenant_id", "name", name="uq_policy_tenant_name"),
-    )
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_policy_tenant_name"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     # Tenant isolation
-    tenant_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[str] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=False, index=True)
 
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True)
     rule: Mapped[str] = mapped_column(Text, nullable=False)
-    severity: Mapped[str] = mapped_column(
-        String(16),
-        default="warn",
-        nullable=False
-    )  # block, warn, info
+    severity: Mapped[str] = mapped_column(String(16), default="warn", nullable=False)  # block, warn, info
     message: Mapped[str] = mapped_column(Text, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -53,50 +42,33 @@ class Policy(Base):
         String(16),
         default="published",
         nullable=False,
-        comment="draft or published - controls visibility to developers"
+        comment="draft or published - controls visibility to developers",
     )
 
     # Link to the context created by this policy (for wizard-created policies)
     linked_context: Mapped[str | None] = mapped_column(
-        String(64),
-        nullable=True,
-        comment="Context name created by this policy via wizard"
+        String(64), nullable=True, comment="Context name created by this policy via wizard"
     )
 
     # Scope restrictions
     contexts: Mapped[list[str] | None] = mapped_column(
-        StringList(),
-        nullable=True,
-        comment="Contexts this policy applies to (null = all)"
+        StringList(), nullable=True, comment="Contexts this policy applies to (null = all)"
     )
     operations: Mapped[list[str] | None] = mapped_column(
-        StringList(),
-        nullable=True,
-        comment="Operations this applies to (null = all)"
+        StringList(), nullable=True, comment="Operations this applies to (null = all)"
     )
 
     # Metadata for policy management
     policy_metadata: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONType(),
-        nullable=True,
-        comment="Additional policy metadata"
+        JSONType(), nullable=True, comment="Additional policy metadata"
     )
 
     # Audit fields
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-        onupdate=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc)
     )
-    created_by: Mapped[str | None] = mapped_column(
-        String(64),
-        nullable=True,
-        comment="User who created the policy"
-    )
+    created_by: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="User who created the policy")
 
     # Relationships
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="policies")
@@ -128,12 +100,7 @@ class PolicyViolationLog(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     # Tenant isolation
-    tenant_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[str] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=False, index=True)
 
     policy_name: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     severity: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -150,9 +117,7 @@ class PolicyViolationLog(Base):
     # Rule evaluation details
     rule: Mapped[str] = mapped_column(Text, nullable=False)
     evaluation_context: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONType(),
-        nullable=True,
-        comment="Snapshot of evaluation context"
+        JSONType(), nullable=True, comment="Snapshot of evaluation context"
     )
 
     # Request metadata
@@ -160,9 +125,7 @@ class PolicyViolationLog(Base):
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        index=True
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
 
     def __repr__(self) -> str:

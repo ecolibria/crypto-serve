@@ -3,16 +3,13 @@
 import pytest
 
 from app.core.password_engine import (
-    password_engine,
     PasswordEngine,
     PasswordAlgorithm,
     Argon2Params,
     BcryptParams,
     ScryptParams,
     PBKDF2Params,
-    PasswordHashError,
     PasswordVerifyError,
-    UnsupportedAlgorithmError,
     ARGON2_AVAILABLE,
     BCRYPT_AVAILABLE,
 )

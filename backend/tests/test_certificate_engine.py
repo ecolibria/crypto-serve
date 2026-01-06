@@ -4,15 +4,12 @@ import pytest
 from datetime import datetime, timezone, timedelta
 
 from app.core.certificate_engine import (
-    certificate_engine,
     CertificateEngine,
     CertificateType,
     SubjectInfo,
     KeyUsage,
-    ExtendedKeyUsage,
     CertificateError,
     CSRError,
-    ValidationError,
 )
 
 

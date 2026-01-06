@@ -248,7 +248,7 @@ class TestDeprecatedPackages:
 """
         result = scanner.scan(content, "package.json")
         # Check if any deprecated packages are detected
-        deprecated = [d for d in result.dependencies if d.is_deprecated]
+        [d for d in result.dependencies if d.is_deprecated]
         # This depends on the knowledge base
 
 

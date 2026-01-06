@@ -19,10 +19,6 @@ from app.core.cms_engine import (
     CMSDecryptionError,
     CMSVerificationError,
     CMSFormatError,
-    SignedDataResult,
-    EnvelopedDataResult,
-    EncryptedDataResult,
-    AuthenticatedDataResult,
 )
 
 
@@ -35,13 +31,15 @@ def generate_rsa_key_and_cert():
     )
 
     # Generate certificate
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "California"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, "San Francisco"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test Org"),
-        x509.NameAttribute(NameOID.COMMON_NAME, "test.example.com"),
-    ])
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+            x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "California"),
+            x509.NameAttribute(NameOID.LOCALITY_NAME, "San Francisco"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test Org"),
+            x509.NameAttribute(NameOID.COMMON_NAME, "test.example.com"),
+        ]
+    )
 
     cert = (
         x509.CertificateBuilder()
@@ -74,11 +72,13 @@ def generate_ec_key_and_cert():
     """Generate an EC key pair and self-signed certificate."""
     private_key = ec.generate_private_key(ec.SECP256R1())
 
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test Org EC"),
-        x509.NameAttribute(NameOID.COMMON_NAME, "ec.test.example.com"),
-    ])
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test Org EC"),
+            x509.NameAttribute(NameOID.COMMON_NAME, "ec.test.example.com"),
+        ]
+    )
 
     cert = (
         x509.CertificateBuilder()
@@ -275,9 +275,7 @@ class TestEnvelopedData:
 
         assert result.plaintext == content
 
-    def test_encrypt_decrypt_multiple_recipients(
-        self, engine, rsa_credentials, second_rsa_credentials
-    ):
+    def test_encrypt_decrypt_multiple_recipients(self, engine, rsa_credentials, second_rsa_credentials):
         """Test encrypting for multiple recipients."""
         key1, cert1 = rsa_credentials
         key2, cert2 = second_rsa_credentials
@@ -373,9 +371,7 @@ class TestEnvelopedData:
 
         assert result.plaintext == content
 
-    def test_decrypt_wrong_recipient_fails(
-        self, engine, rsa_credentials, second_rsa_credentials
-    ):
+    def test_decrypt_wrong_recipient_fails(self, engine, rsa_credentials, second_rsa_credentials):
         """Test that decryption with wrong recipient fails."""
         _, cert1 = rsa_credentials
         key2, cert2 = second_rsa_credentials
@@ -562,9 +558,7 @@ class TestAuthenticatedData:
             )
             assert result.verified is True
 
-    def test_multiple_recipients(
-        self, engine, rsa_credentials, second_rsa_credentials
-    ):
+    def test_multiple_recipients(self, engine, rsa_credentials, second_rsa_credentials):
         """Test with multiple recipients."""
         key1, cert1 = rsa_credentials
         key2, cert2 = second_rsa_credentials
@@ -610,9 +604,7 @@ class TestAuthenticatedData:
 
         assert result.verified is True
 
-    def test_wrong_recipient_fails(
-        self, engine, rsa_credentials, second_rsa_credentials
-    ):
+    def test_wrong_recipient_fails(self, engine, rsa_credentials, second_rsa_credentials):
         """Test that verification with wrong recipient fails."""
         _, cert1 = rsa_credentials
         key2, cert2 = second_rsa_credentials

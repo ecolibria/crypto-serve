@@ -80,10 +80,7 @@ def get_default_policies() -> dict[DataClassification, ClassificationAlgorithmPo
     }
 
 
-def get_policy_for_tenant(
-    tenant_id: str,
-    classification: DataClassification
-) -> ClassificationAlgorithmPolicy:
+def get_policy_for_tenant(tenant_id: str, classification: DataClassification) -> ClassificationAlgorithmPolicy:
     """Get policy for a tenant and classification, with overrides."""
     # Check for tenant-specific override
     key = (tenant_id, classification)
@@ -98,6 +95,7 @@ def get_policy_for_tenant(
 # =============================================================================
 # Admin Check
 # =============================================================================
+
 
 async def require_admin(
     user: Annotated[User, Depends(get_current_user)],
@@ -114,6 +112,7 @@ async def require_admin(
 # =============================================================================
 # API Endpoints
 # =============================================================================
+
 
 @router.get("/algorithm-policies", response_model=AlgorithmPoliciesResponse)
 async def get_algorithm_policies(
@@ -137,10 +136,7 @@ async def get_algorithm_policies(
     return AlgorithmPoliciesResponse(policies=policies)
 
 
-@router.get(
-    "/algorithm-policies/{classification}",
-    response_model=ClassificationAlgorithmPolicy
-)
+@router.get("/algorithm-policies/{classification}", response_model=ClassificationAlgorithmPolicy)
 async def get_algorithm_policy(
     classification: DataClassification,
     admin: Annotated[User, Depends(require_admin)],
@@ -152,10 +148,7 @@ async def get_algorithm_policy(
     return get_policy_for_tenant(admin.tenant_id, classification)
 
 
-@router.put(
-    "/algorithm-policies/{classification}",
-    response_model=ClassificationAlgorithmPolicy
-)
+@router.put("/algorithm-policies/{classification}", response_model=ClassificationAlgorithmPolicy)
 async def update_algorithm_policy(
     classification: DataClassification,
     request: UpdateClassificationPolicyRequest,
@@ -188,31 +181,15 @@ async def update_algorithm_policy(
             if request.default_signing_algorithm is not None
             else current.default_signing_algorithm
         ),
-        min_key_bits=(
-            request.min_key_bits
-            if request.min_key_bits is not None
-            else current.min_key_bits
-        ),
+        min_key_bits=(request.min_key_bits if request.min_key_bits is not None else current.min_key_bits),
         key_rotation_days=(
-            request.key_rotation_days
-            if request.key_rotation_days is not None
-            else current.key_rotation_days
+            request.key_rotation_days if request.key_rotation_days is not None else current.key_rotation_days
         ),
         require_quantum_safe=(
-            request.require_quantum_safe
-            if request.require_quantum_safe is not None
-            else current.require_quantum_safe
+            request.require_quantum_safe if request.require_quantum_safe is not None else current.require_quantum_safe
         ),
-        allowed_ciphers=(
-            request.allowed_ciphers
-            if request.allowed_ciphers is not None
-            else current.allowed_ciphers
-        ),
-        allowed_modes=(
-            request.allowed_modes
-            if request.allowed_modes is not None
-            else current.allowed_modes
-        ),
+        allowed_ciphers=(request.allowed_ciphers if request.allowed_ciphers is not None else current.allowed_ciphers),
+        allowed_modes=(request.allowed_modes if request.allowed_modes is not None else current.allowed_modes),
         updated_at=datetime.now(timezone.utc),
         updated_by=admin.github_username,
     )

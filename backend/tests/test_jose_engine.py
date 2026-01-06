@@ -1,13 +1,11 @@
 """Tests for the JOSE engine."""
 
 import pytest
-import json
 import os
 
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519
 
 from app.core.jose_engine import (
-    jose_engine,
     JOSEEngine,
     JWSAlgorithm,
     JWEAlgorithm,
@@ -15,7 +13,6 @@ from app.core.jose_engine import (
     JWK,
     InvalidJWSError,
     InvalidJWEError,
-    UnsupportedAlgorithmError,
 )
 
 
@@ -113,10 +110,7 @@ class TestJWSCreationAndVerification:
         key = os.urandom(32)
         payload = b"test"
 
-        result = fresh_engine.create_jws(
-            payload, key, JWSAlgorithm.HS256,
-            extra_headers={"custom": "value"}
-        )
+        result = fresh_engine.create_jws(payload, key, JWSAlgorithm.HS256, extra_headers={"custom": "value"})
         assert result.header["custom"] == "value"
 
     def test_jws_verify_wrong_key(self, fresh_engine):
@@ -175,10 +169,7 @@ class TestJWECreationAndDecryption:
         key = os.urandom(32)
         plaintext = b"Hello, World!"
 
-        result = fresh_engine.create_jwe(
-            plaintext, key,
-            JWEAlgorithm.DIR, JWEEncryption.A256GCM
-        )
+        result = fresh_engine.create_jwe(plaintext, key, JWEAlgorithm.DIR, JWEEncryption.A256GCM)
 
         assert result.compact.count(".") == 4
         assert result.header["alg"] == "dir"
@@ -193,10 +184,7 @@ class TestJWECreationAndDecryption:
         key = os.urandom(16)
         plaintext = b"Hello, World!"
 
-        result = fresh_engine.create_jwe(
-            plaintext, key,
-            JWEAlgorithm.DIR, JWEEncryption.A128GCM
-        )
+        result = fresh_engine.create_jwe(plaintext, key, JWEAlgorithm.DIR, JWEEncryption.A128GCM)
 
         decrypted, _ = fresh_engine.decrypt_jwe(result.compact, key)
         assert decrypted == plaintext
@@ -206,10 +194,7 @@ class TestJWECreationAndDecryption:
         key = os.urandom(32)
         plaintext = b"Hello, World!"
 
-        result = fresh_engine.create_jwe(
-            plaintext, key,
-            JWEAlgorithm.DIR, JWEEncryption.C20P
-        )
+        result = fresh_engine.create_jwe(plaintext, key, JWEAlgorithm.DIR, JWEEncryption.C20P)
 
         assert result.header["enc"] == "C20P"
 
@@ -221,10 +206,7 @@ class TestJWECreationAndDecryption:
         key = os.urandom(32)
         plaintext = b"Hello, World!"
 
-        result = fresh_engine.create_jwe(
-            plaintext, key,
-            JWEAlgorithm.A256KW, JWEEncryption.A256GCM
-        )
+        result = fresh_engine.create_jwe(plaintext, key, JWEAlgorithm.A256KW, JWEEncryption.A256GCM)
 
         assert result.header["alg"] == "A256KW"
         assert len(result.encrypted_key) > 0  # CEK is wrapped
@@ -237,10 +219,7 @@ class TestJWECreationAndDecryption:
         key = os.urandom(16)
         plaintext = b"Hello, World!"
 
-        result = fresh_engine.create_jwe(
-            plaintext, key,
-            JWEAlgorithm.A128KW, JWEEncryption.A128GCM
-        )
+        result = fresh_engine.create_jwe(plaintext, key, JWEAlgorithm.A128KW, JWEEncryption.A128GCM)
 
         decrypted, _ = fresh_engine.decrypt_jwe(result.compact, key)
         assert decrypted == plaintext
@@ -251,10 +230,7 @@ class TestJWECreationAndDecryption:
         public_key = private_key.public_key()
         plaintext = b"Hello, World!"
 
-        result = fresh_engine.create_jwe(
-            plaintext, public_key,
-            JWEAlgorithm.ECDH_ES, JWEEncryption.A256GCM
-        )
+        result = fresh_engine.create_jwe(plaintext, public_key, JWEAlgorithm.ECDH_ES, JWEEncryption.A256GCM)
 
         assert result.header["alg"] == "ECDH-ES"
         assert "epk" in result.header  # Ephemeral public key
@@ -269,10 +245,7 @@ class TestJWECreationAndDecryption:
         public_key = private_key.public_key()
         plaintext = b"Hello, World!"
 
-        result = fresh_engine.create_jwe(
-            plaintext, public_key,
-            JWEAlgorithm.ECDH_ES_A128KW, JWEEncryption.A256GCM
-        )
+        result = fresh_engine.create_jwe(plaintext, public_key, JWEAlgorithm.ECDH_ES_A128KW, JWEEncryption.A256GCM)
 
         assert result.header["alg"] == "ECDH-ES+A128KW"
         assert len(result.encrypted_key) > 0  # Wrapped CEK
@@ -286,10 +259,7 @@ class TestJWECreationAndDecryption:
         public_key = private_key.public_key()
         plaintext = b"Hello, World!"
 
-        result = fresh_engine.create_jwe(
-            plaintext, public_key,
-            JWEAlgorithm.ECDH_ES, JWEEncryption.A256GCM
-        )
+        result = fresh_engine.create_jwe(plaintext, public_key, JWEAlgorithm.ECDH_ES, JWEEncryption.A256GCM)
 
         assert result.header["epk"]["crv"] == "P-384"
 
@@ -301,10 +271,7 @@ class TestJWECreationAndDecryption:
         key = os.urandom(32)  # 128-bit enc + 128-bit mac
         plaintext = b"Hello, World!"
 
-        result = fresh_engine.create_jwe(
-            plaintext, key,
-            JWEAlgorithm.DIR, JWEEncryption.A128CBC_HS256
-        )
+        result = fresh_engine.create_jwe(plaintext, key, JWEAlgorithm.DIR, JWEEncryption.A128CBC_HS256)
 
         assert result.header["enc"] == "A128CBC-HS256"
 
@@ -316,10 +283,7 @@ class TestJWECreationAndDecryption:
         key = os.urandom(64)  # 256-bit enc + 256-bit mac
         plaintext = b"Hello, World!"
 
-        result = fresh_engine.create_jwe(
-            plaintext, key,
-            JWEAlgorithm.DIR, JWEEncryption.A256CBC_HS512
-        )
+        result = fresh_engine.create_jwe(plaintext, key, JWEAlgorithm.DIR, JWEEncryption.A256CBC_HS512)
 
         decrypted, _ = fresh_engine.decrypt_jwe(result.compact, key)
         assert decrypted == plaintext
@@ -329,11 +293,7 @@ class TestJWECreationAndDecryption:
         key = os.urandom(32)
         plaintext = b"test"
 
-        result = fresh_engine.create_jwe(
-            plaintext, key,
-            JWEAlgorithm.DIR, JWEEncryption.A256GCM,
-            kid="key-123"
-        )
+        result = fresh_engine.create_jwe(plaintext, key, JWEAlgorithm.DIR, JWEEncryption.A256GCM, kid="key-123")
         assert result.header["kid"] == "key-123"
 
     def test_jwe_decrypt_wrong_key(self, fresh_engine):
@@ -342,10 +302,7 @@ class TestJWECreationAndDecryption:
         key2 = os.urandom(32)
         plaintext = b"test"
 
-        result = fresh_engine.create_jwe(
-            plaintext, key1,
-            JWEAlgorithm.DIR, JWEEncryption.A256GCM
-        )
+        result = fresh_engine.create_jwe(plaintext, key1, JWEAlgorithm.DIR, JWEEncryption.A256GCM)
 
         with pytest.raises(InvalidJWEError):
             fresh_engine.decrypt_jwe(result.compact, key2)
@@ -355,10 +312,7 @@ class TestJWECreationAndDecryption:
         key = os.urandom(32)
         plaintext = b"test data for tampering test"
 
-        result = fresh_engine.create_jwe(
-            plaintext, key,
-            JWEAlgorithm.DIR, JWEEncryption.A256GCM
-        )
+        result = fresh_engine.create_jwe(plaintext, key, JWEAlgorithm.DIR, JWEEncryption.A256GCM)
 
         # Tamper with ciphertext more aggressively - flip multiple characters
         parts = result.compact.split(".")
@@ -379,10 +333,7 @@ class TestJWECreationAndDecryption:
         key = os.urandom(32)
         plaintext = os.urandom(1024 * 100)  # 100 KB
 
-        result = fresh_engine.create_jwe(
-            plaintext, key,
-            JWEAlgorithm.DIR, JWEEncryption.A256GCM
-        )
+        result = fresh_engine.create_jwe(plaintext, key, JWEAlgorithm.DIR, JWEEncryption.A256GCM)
 
         decrypted, _ = fresh_engine.decrypt_jwe(result.compact, key)
         assert decrypted == plaintext
@@ -538,10 +489,7 @@ class TestJWKWithJWSJWE:
 
         payload = b'{"test": "data"}'
 
-        result = fresh_engine.create_jws(
-            payload, private_key, JWSAlgorithm.EDDSA,
-            kid=private_jwk.kid
-        )
+        result = fresh_engine.create_jws(payload, private_key, JWSAlgorithm.EDDSA, kid=private_jwk.kid)
 
         verified, header = fresh_engine.verify_jws(result.compact, public_key)
         assert verified == payload
@@ -557,9 +505,7 @@ class TestJWKWithJWSJWE:
         plaintext = b"secret message"
 
         result = fresh_engine.create_jwe(
-            plaintext, public_key,
-            JWEAlgorithm.ECDH_ES, JWEEncryption.A256GCM,
-            kid=public_jwk.kid
+            plaintext, public_key, JWEAlgorithm.ECDH_ES, JWEEncryption.A256GCM, kid=public_jwk.kid
         )
 
         decrypted, header = fresh_engine.decrypt_jwe(result.compact, private_key)
@@ -581,9 +527,7 @@ class TestEdgeCases:
     def test_empty_plaintext_jwe(self, fresh_engine):
         """Test JWE with empty plaintext."""
         key = os.urandom(32)
-        result = fresh_engine.create_jwe(
-            b"", key, JWEAlgorithm.DIR, JWEEncryption.A256GCM
-        )
+        result = fresh_engine.create_jwe(b"", key, JWEAlgorithm.DIR, JWEEncryption.A256GCM)
 
         decrypted, _ = fresh_engine.decrypt_jwe(result.compact, key)
         assert decrypted == b""
@@ -600,10 +544,7 @@ class TestEdgeCases:
     def test_unicode_in_header(self, fresh_engine):
         """Test JWS with unicode in custom header."""
         key = os.urandom(32)
-        result = fresh_engine.create_jws(
-            b"test", key, JWSAlgorithm.HS256,
-            extra_headers={"name": "Test"}
-        )
+        result = fresh_engine.create_jws(b"test", key, JWSAlgorithm.HS256, extra_headers={"name": "Test"})
 
         _, header = fresh_engine.verify_jws(result.compact, key)
         assert header["name"] == "Test"

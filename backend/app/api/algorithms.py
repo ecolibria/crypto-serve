@@ -24,8 +24,10 @@ router = APIRouter(prefix="/api/algorithms", tags=["algorithms"])
 # Response Schemas
 # =============================================================================
 
+
 class AlgorithmResponse(BaseModel):
     """Algorithm information for API responses."""
+
     name: str
     family: str
     variant: str | None = None
@@ -43,6 +45,7 @@ class AlgorithmResponse(BaseModel):
 
 class AlgorithmDetailResponse(AlgorithmResponse):
     """Detailed algorithm information."""
+
     block_size: int | None = None
     output_size: int | None = None
     quantum_security_bits: int | None = None
@@ -57,6 +60,7 @@ class AlgorithmDetailResponse(AlgorithmResponse):
 
 class AlgorithmTypeInfo(BaseModel):
     """Information about an algorithm type."""
+
     value: str
     label: str
     description: str
@@ -66,6 +70,7 @@ class AlgorithmTypeInfo(BaseModel):
 # =============================================================================
 # API Endpoints
 # =============================================================================
+
 
 @router.get("", response_model=list[AlgorithmResponse])
 async def list_algorithms(
@@ -151,12 +156,14 @@ async def list_algorithm_types(
     results = []
     for algo_type in AlgorithmType:
         count = len(crypto_registry.search(algorithm_type=algo_type))
-        results.append(AlgorithmTypeInfo(
-            value=algo_type.value,
-            label=type_labels.get(algo_type, algo_type.value),
-            description=type_descriptions.get(algo_type, ""),
-            count=count,
-        ))
+        results.append(
+            AlgorithmTypeInfo(
+                value=algo_type.value,
+                label=type_labels.get(algo_type, algo_type.value),
+                description=type_descriptions.get(algo_type, ""),
+                count=count,
+            )
+        )
 
     return results
 
@@ -263,6 +270,7 @@ async def get_algorithm(
 
     if not algo:
         from fastapi import HTTPException, status
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Algorithm not found: {name}",

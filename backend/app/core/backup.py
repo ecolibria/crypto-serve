@@ -18,20 +18,16 @@ Security:
 - Backup manifest includes creation time and version info
 """
 
-import asyncio
-import gzip
 import hashlib
 import io
 import json
 import logging
-import os
 import secrets
 import tarfile
-import tempfile
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
@@ -40,14 +36,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import __version__ as cryptoserve_version
 from app.config import get_settings
-from app.database import Base, get_session_maker
+from app.database import get_session_maker
 from app.models import (
-    Tenant, User, Context, Key, PQCKey, AuditLog,
-    Policy, CryptoInventoryReport, Application, Identity, OrganizationSettings
+    Tenant,
+    User,
+    Context,
+    Key,
+    PQCKey,
+    AuditLog,
+    Policy,
+    CryptoInventoryReport,
+    Application,
+    Identity,
+    OrganizationSettings,
 )
 
 if TYPE_CHECKING:
-    from sqlalchemy.orm import DeclarativeBase
+    pass
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -77,6 +82,7 @@ AUDIT_LOG_SIZE_LIMIT = 10 * 1024 * 1024
 @dataclass
 class BackupManifest:
     """Metadata about a backup."""
+
     version: str
     created_at: str
     cryptoserve_version: str
@@ -99,6 +105,7 @@ class BackupManifest:
 @dataclass
 class BackupResult:
     """Result of a backup operation."""
+
     success: bool
     backup_path: str | None
     manifest: BackupManifest | None
@@ -110,6 +117,7 @@ class BackupResult:
 @dataclass
 class RestoreResult:
     """Result of a restore operation."""
+
     success: bool
     error: str | None
     records_restored: dict[str, int]
@@ -150,7 +158,7 @@ class BackupService:
         kdf = Scrypt(
             salt=salt,
             length=32,  # 256-bit key
-            n=2**17,    # CPU/memory cost (128MB)
+            n=2**17,  # CPU/memory cost (128MB)
             r=8,
             p=1,
         )
@@ -175,9 +183,9 @@ class BackupService:
         if len(encrypted) < self._salt_size + self._nonce_size + 16:
             raise ValueError("Invalid encrypted data: too short")
 
-        salt = encrypted[:self._salt_size]
-        nonce = encrypted[self._salt_size:self._salt_size + self._nonce_size]
-        ciphertext = encrypted[self._salt_size + self._nonce_size:]
+        salt = encrypted[: self._salt_size]
+        nonce = encrypted[self._salt_size : self._salt_size + self._nonce_size]
+        ciphertext = encrypted[self._salt_size + self._nonce_size :]
 
         key = self._derive_backup_key(password, salt)
         aesgcm = AESGCM(key)
@@ -187,17 +195,12 @@ class BackupService:
         except Exception as e:
             raise ValueError(f"Decryption failed - wrong password or corrupted backup: {e}")
 
-    async def _export_model(
-        self,
-        db: AsyncSession,
-        model: type,
-        tenant_id: str | None = None
-    ) -> list[dict]:
+    async def _export_model(self, db: AsyncSession, model: type, tenant_id: str | None = None) -> list[dict]:
         """Export all records of a model to dictionaries."""
         query = select(model)
 
         # Filter by tenant if model has tenant_id and tenant specified
-        if tenant_id and hasattr(model, 'tenant_id'):
+        if tenant_id and hasattr(model, "tenant_id"):
             query = query.where(model.tenant_id == tenant_id)
 
         result = await db.execute(query)
@@ -216,26 +219,22 @@ class BackupService:
                 elif isinstance(value, bytes):
                     # Base64 encode binary data
                     import base64
-                    value = base64.b64encode(value).decode('ascii')
-                elif hasattr(value, 'value'):  # Enum
+
+                    value = base64.b64encode(value).decode("ascii")
+                elif hasattr(value, "value"):  # Enum
                     value = value.value
                 row_dict[column.key] = value
             exported.append(row_dict)
 
         return exported
 
-    async def _import_model(
-        self,
-        db: AsyncSession,
-        model: type,
-        records: list[dict],
-        dry_run: bool = False
-    ) -> int:
+    async def _import_model(self, db: AsyncSession, model: type, records: list[dict], dry_run: bool = False) -> int:
         """Import records into a model table."""
         if dry_run:
             return len(records)
 
         import base64
+
         mapper = inspect(model)
         imported = 0
 
@@ -250,12 +249,12 @@ class BackupService:
                     continue
 
                 # Handle datetime
-                if hasattr(column.type, 'python_type'):
+                if hasattr(column.type, "python_type"):
                     if column.type.python_type == datetime and isinstance(value, str):
                         record_dict[column.key] = datetime.fromisoformat(value)
 
                 # Handle binary (base64)
-                if hasattr(column.type, '__class__') and 'LargeBinary' in str(column.type.__class__):
+                if hasattr(column.type, "__class__") and "LargeBinary" in str(column.type.__class__):
                     if isinstance(value, str):
                         record_dict[column.key] = base64.b64decode(value)
 
@@ -263,9 +262,7 @@ class BackupService:
             pk_column = mapper.primary_key[0]
             pk_value = record_dict.get(pk_column.key)
 
-            existing = await db.execute(
-                select(model).where(pk_column == pk_value)
-            )
+            existing = await db.execute(select(model).where(pk_column == pk_value))
             if existing.scalar_one_or_none():
                 # Update existing record
                 # For now, skip existing records to avoid conflicts
@@ -326,9 +323,7 @@ class BackupService:
                 logger.info(f"Exported {len(records)} {model_name} records")
 
             # Calculate overall checksum
-            overall_checksum = hashlib.sha256(
-                json.dumps(checksums, sort_keys=True).encode()
-            ).hexdigest()
+            overall_checksum = hashlib.sha256(json.dumps(checksums, sort_keys=True).encode()).hexdigest()
 
             # Create manifest
             manifest = BackupManifest(
@@ -346,7 +341,7 @@ class BackupService:
 
             # Create tar archive in memory
             tar_buffer = io.BytesIO()
-            with tarfile.open(fileobj=tar_buffer, mode='w:gz') as tar:
+            with tarfile.open(fileobj=tar_buffer, mode="w:gz") as tar:
                 # Add manifest
                 manifest_json = json.dumps(manifest.to_dict(), indent=2)
                 manifest_bytes = manifest_json.encode()
@@ -451,7 +446,7 @@ class BackupService:
 
             # Extract tar archive
             tar_buffer = io.BytesIO(tar_data)
-            with tarfile.open(fileobj=tar_buffer, mode='r:gz') as tar:
+            with tarfile.open(fileobj=tar_buffer, mode="r:gz") as tar:
                 # Read manifest
                 manifest_file = tar.extractfile("manifest.json")
                 if not manifest_file:
@@ -487,17 +482,12 @@ class BackupService:
 
                             if table_name in checksums:
                                 if calculated_checksum != checksums[table_name]:
-                                    raise ValueError(
-                                        f"Checksum mismatch for {table_name}: "
-                                        f"backup may be corrupted"
-                                    )
+                                    raise ValueError(f"Checksum mismatch for {table_name}: " f"backup may be corrupted")
 
                             backup_data[table_name] = records
 
                 # Verify overall checksum
-                calculated_overall = hashlib.sha256(
-                    json.dumps(checksums, sort_keys=True).encode()
-                ).hexdigest()
+                calculated_overall = hashlib.sha256(json.dumps(checksums, sort_keys=True).encode()).hexdigest()
                 if calculated_overall != manifest.checksum:
                     raise ValueError("Overall checksum mismatch: backup may be corrupted")
 
@@ -523,9 +513,7 @@ class BackupService:
 
                         # Handle audit logs if present
                         if "audit_logs" in backup_data:
-                            count = await self._import_model(
-                                db_session, AuditLog, backup_data["audit_logs"]
-                            )
+                            count = await self._import_model(db_session, AuditLog, backup_data["audit_logs"])
                             records_restored["audit_logs"] = count
 
                         await db_session.commit()
@@ -574,14 +562,14 @@ class BackupService:
 
         for file in backup_path.glob("*.tar.gz.enc"):
             stat = file.stat()
-            backups.append({
-                "filename": file.name,
-                "path": str(file),
-                "size_bytes": stat.st_size,
-                "modified_at": datetime.fromtimestamp(
-                    stat.st_mtime, tz=timezone.utc
-                ).isoformat(),
-            })
+            backups.append(
+                {
+                    "filename": file.name,
+                    "path": str(file),
+                    "size_bytes": stat.st_size,
+                    "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+                }
+            )
 
         # Sort by modified time, newest first
         backups.sort(key=lambda x: x["modified_at"], reverse=True)
@@ -601,7 +589,7 @@ class BackupService:
         tar_data = self._decrypt_data(encrypted_data, password)
 
         tar_buffer = io.BytesIO(tar_data)
-        with tarfile.open(fileobj=tar_buffer, mode='r:gz') as tar:
+        with tarfile.open(fileobj=tar_buffer, mode="r:gz") as tar:
             manifest_file = tar.extractfile("manifest.json")
             if not manifest_file:
                 raise ValueError("Invalid backup: missing manifest.json")

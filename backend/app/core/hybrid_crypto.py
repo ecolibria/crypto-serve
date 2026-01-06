@@ -22,7 +22,6 @@ Supported Hybrid Modes:
 import os
 import json
 import base64
-import hashlib
 import secrets
 import logging
 from dataclasses import dataclass
@@ -41,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import oqs
+
     LIBOQS_AVAILABLE = True
     logger.info("liboqs loaded successfully - real PQC enabled")
 except ImportError:
@@ -50,11 +50,13 @@ except ImportError:
 
 class PQCError(Exception):
     """Post-quantum cryptography error."""
+
     pass
 
 
 class HybridMode(str, Enum):
     """Supported hybrid encryption modes."""
+
     AES_MLKEM_768 = "AES-256-GCM+ML-KEM-768"
     AES_MLKEM_1024 = "AES-256-GCM+ML-KEM-1024"
     CHACHA_MLKEM_768 = "ChaCha20-Poly1305+ML-KEM-768"
@@ -62,10 +64,11 @@ class HybridMode(str, Enum):
 
 class SignatureAlgorithm(str, Enum):
     """Supported PQC signature algorithms."""
+
     # ML-DSA (FIPS 204) - Lattice-based, balanced key/signature sizes
-    ML_DSA_44 = "ML-DSA-44"      # NIST Level 2 (128-bit security)
-    ML_DSA_65 = "ML-DSA-65"      # NIST Level 3 (192-bit security)
-    ML_DSA_87 = "ML-DSA-87"      # NIST Level 5 (256-bit security)
+    ML_DSA_44 = "ML-DSA-44"  # NIST Level 2 (128-bit security)
+    ML_DSA_65 = "ML-DSA-65"  # NIST Level 3 (192-bit security)
+    ML_DSA_87 = "ML-DSA-87"  # NIST Level 5 (256-bit security)
 
     # SLH-DSA (FIPS 205) - Hash-based, tiny keys but large signatures
     # "f" = fast signing, larger signatures; "s" = small signatures, slower
@@ -77,22 +80,23 @@ class SignatureAlgorithm(str, Enum):
     SLH_DSA_SHA2_256S = "SLH-DSA-SHA2-256s"  # Level 5, small (29KB sigs)
 
     # Falcon (NIST alternate) - Smaller signatures than ML-DSA
-    FALCON_512 = "Falcon-512"    # Level 1, compact signatures
+    FALCON_512 = "Falcon-512"  # Level 1, compact signatures
     FALCON_1024 = "Falcon-1024"  # Level 5, compact signatures
 
 
 @dataclass
 class HybridKeyPair:
     """A hybrid key pair combining classical and PQC keys."""
+
     mode: HybridMode
-    public_key: bytes     # Serialized public key (KEM)
-    private_key: bytes    # Serialized private key (KEM)
-    key_id: str           # Unique identifier
+    public_key: bytes  # Serialized public key (KEM)
+    private_key: bytes  # Serialized private key (KEM)
+    key_id: str  # Unique identifier
 
     def to_dict(self) -> dict:
         return {
             "mode": self.mode.value,
-            "public_key": base64.b64encode(self.public_key).decode('ascii'),
+            "public_key": base64.b64encode(self.public_key).decode("ascii"),
             "key_id": self.key_id,
         }
 
@@ -100,6 +104,7 @@ class HybridKeyPair:
 @dataclass
 class SignatureKeyPair:
     """A PQC signature key pair."""
+
     algorithm: SignatureAlgorithm
     public_key: bytes
     private_key: bytes
@@ -108,7 +113,7 @@ class SignatureKeyPair:
     def to_dict(self) -> dict:
         return {
             "algorithm": self.algorithm.value,
-            "public_key": base64.b64encode(self.public_key).decode('ascii'),
+            "public_key": base64.b64encode(self.public_key).decode("ascii"),
             "key_id": self.key_id,
         }
 
@@ -116,11 +121,12 @@ class SignatureKeyPair:
 @dataclass
 class HybridCiphertext:
     """Result of hybrid encryption."""
+
     mode: HybridMode
     classical_ciphertext: bytes  # AES/ChaCha encrypted data
-    kem_ciphertext: bytes        # ML-KEM encapsulated key
-    nonce: bytes                 # For AEAD
-    key_id: str                  # Which key was used
+    kem_ciphertext: bytes  # ML-KEM encapsulated key
+    nonce: bytes  # For AEAD
+    key_id: str  # Which key was used
 
     def serialize(self) -> bytes:
         """Serialize to bytes for storage/transmission."""
@@ -128,25 +134,25 @@ class HybridCiphertext:
             "v": 1,
             "mode": self.mode.value,
             "kid": self.key_id,
-            "nonce": base64.b64encode(self.nonce).decode('ascii'),
+            "nonce": base64.b64encode(self.nonce).decode("ascii"),
             "kem_ct_len": len(self.kem_ciphertext),
         }
-        header_json = json.dumps(header, separators=(',', ':')).encode()
-        header_len = len(header_json).to_bytes(2, 'big')
+        header_json = json.dumps(header, separators=(",", ":")).encode()
+        header_len = len(header_json).to_bytes(2, "big")
 
         return header_len + header_json + self.kem_ciphertext + self.classical_ciphertext
 
     @classmethod
-    def deserialize(cls, data: bytes) -> 'HybridCiphertext':
+    def deserialize(cls, data: bytes) -> "HybridCiphertext":
         """Deserialize from bytes."""
         if len(data) < 3:
             raise ValueError("Invalid ciphertext: too short")
 
-        header_len = int.from_bytes(data[:2], 'big')
+        header_len = int.from_bytes(data[:2], "big")
         if len(data) < 2 + header_len:
             raise ValueError("Invalid ciphertext: header truncated")
 
-        header = json.loads(data[2:2 + header_len].decode())
+        header = json.loads(data[2 : 2 + header_len].decode())
 
         if header.get("v") != 1:
             raise ValueError(f"Unsupported version: {header.get('v')}")
@@ -167,6 +173,7 @@ class HybridCiphertext:
 # =============================================================================
 # Real ML-KEM Implementation using liboqs
 # =============================================================================
+
 
 class MLKEM:
     """Real ML-KEM implementation using liboqs.
@@ -189,9 +196,7 @@ class MLKEM:
 
     def __init__(self, algorithm: str = "ML-KEM-768"):
         if not LIBOQS_AVAILABLE:
-            raise PQCError(
-                "liboqs not installed. Install with: pip install liboqs-python"
-            )
+            raise PQCError("liboqs not installed. Install with: pip install liboqs-python")
 
         if algorithm not in self.PARAMS:
             raise ValueError(f"Unknown algorithm: {algorithm}. Valid: {list(self.PARAMS.keys())}")
@@ -275,6 +280,7 @@ class MLKEM:
 # Real ML-DSA Implementation using liboqs
 # =============================================================================
 
+
 class MLDSA:
     """Real ML-DSA implementation using liboqs.
 
@@ -296,9 +302,7 @@ class MLDSA:
 
     def __init__(self, algorithm: str = "ML-DSA-65"):
         if not LIBOQS_AVAILABLE:
-            raise PQCError(
-                "liboqs not installed. Install with: pip install liboqs-python"
-            )
+            raise PQCError("liboqs not installed. Install with: pip install liboqs-python")
 
         if algorithm not in self.PARAMS:
             raise ValueError(f"Unknown algorithm: {algorithm}. Valid: {list(self.PARAMS.keys())}")
@@ -375,6 +379,7 @@ class MLDSA:
 # Real SLH-DSA Implementation using liboqs
 # =============================================================================
 
+
 class SLHDSA:
     """Real SLH-DSA implementation using liboqs.
 
@@ -404,41 +409,57 @@ class SLHDSA:
     PARAMS = {
         "SLH-DSA-SHA2-128f": {
             "oqs_name": "SLH_DSA_PURE_SHA2_128F",
-            "pk_len": 32, "sk_len": 64, "sig_len": 17088,
-            "level": 1, "variant": "fast",
+            "pk_len": 32,
+            "sk_len": 64,
+            "sig_len": 17088,
+            "level": 1,
+            "variant": "fast",
         },
         "SLH-DSA-SHA2-128s": {
             "oqs_name": "SLH_DSA_PURE_SHA2_128S",
-            "pk_len": 32, "sk_len": 64, "sig_len": 7856,
-            "level": 1, "variant": "small",
+            "pk_len": 32,
+            "sk_len": 64,
+            "sig_len": 7856,
+            "level": 1,
+            "variant": "small",
         },
         "SLH-DSA-SHA2-192f": {
             "oqs_name": "SLH_DSA_PURE_SHA2_192F",
-            "pk_len": 48, "sk_len": 96, "sig_len": 35664,
-            "level": 3, "variant": "fast",
+            "pk_len": 48,
+            "sk_len": 96,
+            "sig_len": 35664,
+            "level": 3,
+            "variant": "fast",
         },
         "SLH-DSA-SHA2-192s": {
             "oqs_name": "SLH_DSA_PURE_SHA2_192S",
-            "pk_len": 48, "sk_len": 96, "sig_len": 16224,
-            "level": 3, "variant": "small",
+            "pk_len": 48,
+            "sk_len": 96,
+            "sig_len": 16224,
+            "level": 3,
+            "variant": "small",
         },
         "SLH-DSA-SHA2-256f": {
             "oqs_name": "SLH_DSA_PURE_SHA2_256F",
-            "pk_len": 64, "sk_len": 128, "sig_len": 49856,
-            "level": 5, "variant": "fast",
+            "pk_len": 64,
+            "sk_len": 128,
+            "sig_len": 49856,
+            "level": 5,
+            "variant": "fast",
         },
         "SLH-DSA-SHA2-256s": {
             "oqs_name": "SLH_DSA_PURE_SHA2_256S",
-            "pk_len": 64, "sk_len": 128, "sig_len": 29792,
-            "level": 5, "variant": "small",
+            "pk_len": 64,
+            "sk_len": 128,
+            "sig_len": 29792,
+            "level": 5,
+            "variant": "small",
         },
     }
 
     def __init__(self, algorithm: str = "SLH-DSA-SHA2-128f"):
         if not LIBOQS_AVAILABLE:
-            raise PQCError(
-                "liboqs not installed. Install with: pip install liboqs-python"
-            )
+            raise PQCError("liboqs not installed. Install with: pip install liboqs-python")
 
         if algorithm not in self.PARAMS:
             raise ValueError(f"Unknown algorithm: {algorithm}. Valid: {list(self.PARAMS.keys())}")
@@ -520,6 +541,7 @@ class SLHDSA:
 # =============================================================================
 # Factory Functions
 # =============================================================================
+
 
 def get_mlkem(algorithm: str = "ML-KEM-768") -> MLKEM:
     """Get an ML-KEM instance.
@@ -611,6 +633,7 @@ def get_all_available_sig_algorithms() -> list[str]:
 # =============================================================================
 # Hybrid Crypto Engine
 # =============================================================================
+
 
 class HybridCryptoEngine:
     """Hybrid quantum-safe encryption engine.
@@ -777,6 +800,7 @@ class HybridCryptoEngine:
 # Signature Engine
 # =============================================================================
 
+
 class PQCSignatureEngine:
     """Post-quantum digital signature engine supporting ML-DSA and SLH-DSA.
 
@@ -802,9 +826,12 @@ class PQCSignatureEngine:
 
     # SLH-DSA algorithm values for detection
     _SLHDSA_ALGORITHMS = {
-        "SLH-DSA-SHA2-128f", "SLH-DSA-SHA2-128s",
-        "SLH-DSA-SHA2-192f", "SLH-DSA-SHA2-192s",
-        "SLH-DSA-SHA2-256f", "SLH-DSA-SHA2-256s",
+        "SLH-DSA-SHA2-128f",
+        "SLH-DSA-SHA2-128s",
+        "SLH-DSA-SHA2-192f",
+        "SLH-DSA-SHA2-192s",
+        "SLH-DSA-SHA2-256f",
+        "SLH-DSA-SHA2-256s",
     }
 
     def __init__(self, algorithm: SignatureAlgorithm = SignatureAlgorithm.ML_DSA_65):
@@ -851,6 +878,7 @@ class PQCSignatureEngine:
 # =============================================================================
 # Convenience Functions
 # =============================================================================
+
 
 def create_hybrid_engine(
     quantum_security_level: int = 192,
@@ -959,12 +987,13 @@ def pqc_verify(
 # Key Management Helpers
 # =============================================================================
 
+
 def serialize_keypair(keypair: HybridKeyPair) -> dict:
     """Serialize a key pair for storage."""
     return {
         "mode": keypair.mode.value,
-        "public_key": base64.b64encode(keypair.public_key).decode('ascii'),
-        "private_key": base64.b64encode(keypair.private_key).decode('ascii'),
+        "public_key": base64.b64encode(keypair.public_key).decode("ascii"),
+        "private_key": base64.b64encode(keypair.private_key).decode("ascii"),
         "key_id": keypair.key_id,
     }
 
@@ -983,8 +1012,8 @@ def serialize_sig_keypair(keypair: SignatureKeyPair) -> dict:
     """Serialize a signature key pair for storage."""
     return {
         "algorithm": keypair.algorithm.value,
-        "public_key": base64.b64encode(keypair.public_key).decode('ascii'),
-        "private_key": base64.b64encode(keypair.private_key).decode('ascii'),
+        "public_key": base64.b64encode(keypair.public_key).decode("ascii"),
+        "private_key": base64.b64encode(keypair.private_key).decode("ascii"),
         "key_id": keypair.key_id,
     }
 
@@ -1002,6 +1031,7 @@ def deserialize_sig_keypair(data: dict) -> SignatureKeyPair:
 # =============================================================================
 # Algorithm Information
 # =============================================================================
+
 
 def get_hybrid_algorithm_info(mode: HybridMode) -> dict[str, Any]:
     """Get information about a hybrid mode."""

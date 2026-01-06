@@ -34,50 +34,59 @@ logger = logging.getLogger(__name__)
 
 class CeremonyState(str, Enum):
     """State of the key ceremony/service."""
+
     UNINITIALIZED = "uninitialized"  # No master key exists
-    SEALED = "sealed"                 # Master key exists but locked
-    UNSEALING = "unsealing"           # Collecting shares to unseal
-    UNSEALED = "unsealed"             # Service is operational
+    SEALED = "sealed"  # Master key exists but locked
+    UNSEALING = "unsealing"  # Collecting shares to unseal
+    UNSEALED = "unsealed"  # Service is operational
 
 
 class CeremonyError(Exception):
     """Key ceremony operation failed."""
+
     pass
 
 
 class AlreadyInitializedError(CeremonyError):
     """Master key already initialized."""
+
     pass
 
 
 class NotInitializedError(CeremonyError):
     """Master key not yet initialized."""
+
     pass
 
 
 class AlreadySealedError(CeremonyError):
     """Service is already sealed."""
+
     pass
 
 
 class AlreadyUnsealedError(CeremonyError):
     """Service is already unsealed."""
+
     pass
 
 
 class InvalidShareError(CeremonyError):
     """Invalid or incorrect share provided."""
+
     pass
 
 
 class InsufficientSharesError(CeremonyError):
     """Not enough shares to unseal."""
+
     pass
 
 
 @dataclass
 class KeyCustodian:
     """A key custodian who holds a share."""
+
     id: str
     name: str
     email: str
@@ -89,6 +98,7 @@ class KeyCustodian:
 @dataclass
 class CeremonyAuditEvent:
     """Audit event for key ceremony."""
+
     timestamp: datetime
     event_type: str
     actor: str
@@ -98,8 +108,9 @@ class CeremonyAuditEvent:
 @dataclass
 class InitializationResult:
     """Result of master key initialization."""
+
     recovery_shares: list[str]  # Hex-encoded shares
-    root_token: str            # Initial root token for setup
+    root_token: str  # Initial root token for setup
     threshold: int
     total_shares: int
     share_fingerprints: list[str]  # SHA-256 fingerprints for verification
@@ -108,6 +119,7 @@ class InitializationResult:
 @dataclass
 class UnsealProgress:
     """Progress toward unsealing."""
+
     shares_provided: int
     shares_required: int
     is_sealed: bool
@@ -222,9 +234,7 @@ class KeyCeremonyService:
             CeremonyError: If parameters are invalid
         """
         if self._state != CeremonyState.UNINITIALIZED:
-            raise AlreadyInitializedError(
-                "Master key already initialized. Use rotate_master_key() to change it."
-            )
+            raise AlreadyInitializedError("Master key already initialized. Use rotate_master_key() to change it.")
 
         if threshold < 2:
             raise CeremonyError("Threshold must be at least 2")
@@ -278,7 +288,7 @@ class KeyCeremonyService:
                 "threshold": threshold,
                 "total_shares": total_shares,
                 "custodians": len(self._custodians),
-            }
+            },
         )
 
         return InitializationResult(
@@ -346,9 +356,7 @@ class KeyCeremonyService:
 
         # Check share parameters match
         if share.threshold != self._threshold or share.total != self._total_shares:
-            raise InvalidShareError(
-                "Share parameters don't match (different ceremony?)"
-            )
+            raise InvalidShareError("Share parameters don't match (different ceremony?)")
 
         # Check for duplicate
         if any(s.x == share.x for s in self._pending_shares):
@@ -374,7 +382,7 @@ class KeyCeremonyService:
                 "share_index": share.x,
                 "shares_provided": len(self._pending_shares),
                 "shares_required": self._threshold,
-            }
+            },
         )
 
         # Check if threshold reached
@@ -399,8 +407,8 @@ class KeyCeremonyService:
             is_sealed=self.is_sealed,
             progress_percent=(
                 len(self._pending_shares) / self._threshold * 100
-                if self._state == CeremonyState.UNSEALING else
-                (0 if self.is_sealed else 100)
+                if self._state == CeremonyState.UNSEALING
+                else (0 if self.is_sealed else 100)
             ),
         )
 
@@ -523,10 +531,7 @@ class KeyCeremonyService:
             share = Share.from_hex(share_hex)
 
             # Check parameters
-            params_match = (
-                share.threshold == self._threshold and
-                share.total == self._total_shares
-            )
+            params_match = share.threshold == self._threshold and share.total == self._total_shares
 
             # Check fingerprint
             fingerprint = self._compute_share_fingerprint(share)
@@ -560,6 +565,7 @@ def get_ceremony_master_key() -> bytes | None:
     - Key ceremony mode is not enabled
     """
     from app.config import get_settings
+
     settings = get_settings()
 
     if not settings.key_ceremony_enabled:
@@ -580,6 +586,7 @@ def get_ceremony_master_key() -> bytes | None:
 def is_service_sealed() -> bool:
     """Check if service is in sealed state (ceremony enabled but not unsealed)."""
     from app.config import get_settings
+
     settings = get_settings()
 
     if not settings.key_ceremony_enabled:

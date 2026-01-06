@@ -14,7 +14,6 @@ import hashlib
 import hmac as std_hmac
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from enum import Enum
 from typing import BinaryIO
 
@@ -23,6 +22,7 @@ from cryptography.hazmat.primitives import hashes, hmac as crypto_hmac
 # KMAC and cSHAKE support (from pycryptodome)
 try:
     from Crypto.Hash import KMAC128, KMAC256, cSHAKE128, cSHAKE256
+
     KMAC_AVAILABLE = True
     CSHAKE_AVAILABLE = True
 except ImportError:
@@ -32,6 +32,7 @@ except ImportError:
 # TupleHash support (from pycryptodome) - NIST SP 800-185
 try:
     from Crypto.Hash import TupleHash128, TupleHash256
+
     TUPLEHASH_AVAILABLE = True
 except ImportError:
     TUPLEHASH_AVAILABLE = False
@@ -43,6 +44,7 @@ try:
         parallel_hash_256,
         parallel_hash_available,
     )
+
     PARALLELHASH_AVAILABLE = parallel_hash_available()
 except ImportError:
     PARALLELHASH_AVAILABLE = False
@@ -50,6 +52,7 @@ except ImportError:
 # BLAKE3 support (optional)
 try:
     import blake3
+
     BLAKE3_AVAILABLE = True
 except ImportError:
     BLAKE3_AVAILABLE = False
@@ -57,6 +60,7 @@ except ImportError:
 
 class HashAlgorithm(str, Enum):
     """Supported hash algorithms."""
+
     # SHA-2 family
     SHA256 = "sha256"
     SHA384 = "sha384"
@@ -90,6 +94,7 @@ class HashAlgorithm(str, Enum):
 
 class MACAlgorithm(str, Enum):
     """Supported MAC algorithms."""
+
     # HMAC family
     HMAC_SHA256 = "hmac-sha256"
     HMAC_SHA384 = "hmac-sha384"
@@ -105,6 +110,7 @@ class MACAlgorithm(str, Enum):
 @dataclass
 class HashResult:
     """Result of a hash operation."""
+
     digest: bytes
     algorithm: HashAlgorithm
     length: int  # bits
@@ -115,6 +121,7 @@ class HashResult:
 @dataclass
 class MACResult:
     """Result of a MAC operation."""
+
     tag: bytes
     algorithm: MACAlgorithm
     length: int  # bits
@@ -124,16 +131,19 @@ class MACResult:
 
 class HashError(Exception):
     """Hash operation failed."""
+
     pass
 
 
 class MACError(Exception):
     """MAC operation failed."""
+
     pass
 
 
 class UnsupportedAlgorithmError(Exception):
     """Algorithm not supported."""
+
     pass
 
 
@@ -204,17 +214,13 @@ class HashEngine:
             digest = hashlib.shake_256(data).digest(length)
         elif algorithm == HashAlgorithm.CSHAKE128:
             if not CSHAKE_AVAILABLE:
-                raise UnsupportedAlgorithmError(
-                    "cSHAKE requires pycryptodome. Install with: pip install pycryptodome"
-                )
+                raise UnsupportedAlgorithmError("cSHAKE requires pycryptodome. Install with: pip install pycryptodome")
             length = output_length or 16
             h = cSHAKE128.new(data=data, custom=customization)
             digest = h.read(length)
         elif algorithm == HashAlgorithm.CSHAKE256:
             if not CSHAKE_AVAILABLE:
-                raise UnsupportedAlgorithmError(
-                    "cSHAKE requires pycryptodome. Install with: pip install pycryptodome"
-                )
+                raise UnsupportedAlgorithmError("cSHAKE requires pycryptodome. Install with: pip install pycryptodome")
             length = output_length or 32
             h = cSHAKE256.new(data=data, custom=customization)
             digest = h.read(length)
@@ -240,9 +246,7 @@ class HashEngine:
             digest = hashlib.blake2s(data, digest_size=length).digest()
         elif algorithm == HashAlgorithm.BLAKE3:
             if not BLAKE3_AVAILABLE:
-                raise UnsupportedAlgorithmError(
-                    "blake3 is not installed. Install with: pip install blake3"
-                )
+                raise UnsupportedAlgorithmError("blake3 is not installed. Install with: pip install blake3")
             length = output_length or 32
             digest = blake3.blake3(data).digest(length)
         else:
@@ -278,9 +282,7 @@ class HashEngine:
             HashResult with digest
         """
         if not TUPLEHASH_AVAILABLE:
-            raise UnsupportedAlgorithmError(
-                "TupleHash requires pycryptodome. Install with: pip install pycryptodome"
-            )
+            raise UnsupportedAlgorithmError("TupleHash requires pycryptodome. Install with: pip install pycryptodome")
 
         if algorithm == HashAlgorithm.TUPLEHASH128:
             length = output_length or 16
@@ -290,8 +292,7 @@ class HashEngine:
             h = TupleHash256.new(digest_bytes=length, custom=customization)
         else:
             raise UnsupportedAlgorithmError(
-                f"Algorithm {algorithm} is not a TupleHash algorithm. "
-                f"Use TUPLEHASH128 or TUPLEHASH256."
+                f"Algorithm {algorithm} is not a TupleHash algorithm. " f"Use TUPLEHASH128 or TUPLEHASH256."
             )
 
         for item in items:
@@ -454,9 +455,7 @@ class MACEngine:
 
         elif algorithm == MACAlgorithm.KMAC128:
             if not KMAC_AVAILABLE:
-                raise UnsupportedAlgorithmError(
-                    "KMAC requires pycryptodome. Install with: pip install pycryptodome"
-                )
+                raise UnsupportedAlgorithmError("KMAC requires pycryptodome. Install with: pip install pycryptodome")
             mac_len = output_length or self.KMAC_OUTPUT_SIZES[algorithm]
             h = KMAC128.new(key=key, mac_len=mac_len, custom=customization)
             h.update(data)
@@ -464,9 +463,7 @@ class MACEngine:
 
         elif algorithm == MACAlgorithm.KMAC256:
             if not KMAC_AVAILABLE:
-                raise UnsupportedAlgorithmError(
-                    "KMAC requires pycryptodome. Install with: pip install pycryptodome"
-                )
+                raise UnsupportedAlgorithmError("KMAC requires pycryptodome. Install with: pip install pycryptodome")
             mac_len = output_length or self.KMAC_OUTPUT_SIZES[algorithm]
             h = KMAC256.new(key=key, mac_len=mac_len, custom=customization)
             h.update(data)

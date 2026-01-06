@@ -3,12 +3,9 @@
 import base64
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.models import Identity
 from app.core.hash_engine import (
     hash_engine,
@@ -28,21 +25,23 @@ router = APIRouter(prefix="/api/v1/crypto", tags=["hashing"])
 # Hash Operations
 # ============================================================================
 
+
 class HashRequest(BaseModel):
     """Hash request schema."""
+
     data: str = Field(..., description="Data to hash (base64 encoded)")
     algorithm: str = Field(
         default="sha256",
-        description="Hash algorithm (sha256, sha384, sha512, sha3-256, sha3-512, blake2b, blake2s, blake3)"
+        description="Hash algorithm (sha256, sha384, sha512, sha3-256, sha3-512, blake2b, blake2s, blake3)",
     )
     output_length: int | None = Field(
-        default=None,
-        description="Output length in bytes (for XOF algorithms like SHAKE, BLAKE)"
+        default=None, description="Output length in bytes (for XOF algorithms like SHAKE, BLAKE)"
     )
 
 
 class HashResponse(BaseModel):
     """Hash response schema."""
+
     digest: str = Field(..., description="Hash digest (base64 encoded)")
     hex: str = Field(..., description="Hash digest (hex encoded)")
     algorithm: str
@@ -51,6 +50,7 @@ class HashResponse(BaseModel):
 
 class HashVerifyRequest(BaseModel):
     """Hash verification request schema."""
+
     data: str = Field(..., description="Data to verify (base64 encoded)")
     expected_digest: str = Field(..., description="Expected digest (hex or base64 encoded)")
     algorithm: str = Field(default="sha256")
@@ -58,6 +58,7 @@ class HashVerifyRequest(BaseModel):
 
 class HashVerifyResponse(BaseModel):
     """Hash verification response schema."""
+
     valid: bool
 
 
@@ -155,26 +156,23 @@ async def verify_hash(
 # MAC Operations
 # ============================================================================
 
+
 class MACRequest(BaseModel):
     """MAC request schema."""
+
     data: str = Field(..., description="Data to authenticate (base64 encoded)")
     key: str = Field(..., description="MAC key (base64 encoded)")
     algorithm: str = Field(
         default="hmac-sha256",
-        description="MAC algorithm (hmac-sha256, hmac-sha384, hmac-sha512, hmac-sha3-256, kmac128, kmac256)"
+        description="MAC algorithm (hmac-sha256, hmac-sha384, hmac-sha512, hmac-sha3-256, kmac128, kmac256)",
     )
-    customization: str | None = Field(
-        default=None,
-        description="Customization string for KMAC (base64 encoded)"
-    )
-    output_length: int | None = Field(
-        default=None,
-        description="Output length in bytes for KMAC"
-    )
+    customization: str | None = Field(default=None, description="Customization string for KMAC (base64 encoded)")
+    output_length: int | None = Field(default=None, description="Output length in bytes for KMAC")
 
 
 class MACResponse(BaseModel):
     """MAC response schema."""
+
     tag: str = Field(..., description="MAC tag (base64 encoded)")
     hex: str = Field(..., description="MAC tag (hex encoded)")
     algorithm: str
@@ -183,6 +181,7 @@ class MACResponse(BaseModel):
 
 class MACVerifyRequest(BaseModel):
     """MAC verification request schema."""
+
     data: str = Field(..., description="Data to verify (base64 encoded)")
     key: str = Field(..., description="MAC key (base64 encoded)")
     expected_tag: str = Field(..., description="Expected tag (hex or base64 encoded)")
@@ -192,19 +191,19 @@ class MACVerifyRequest(BaseModel):
 
 class MACVerifyResponse(BaseModel):
     """MAC verification response schema."""
+
     valid: bool
 
 
 class MACKeyGenerateRequest(BaseModel):
     """MAC key generation request schema."""
-    algorithm: str = Field(
-        default="hmac-sha256",
-        description="MAC algorithm to generate key for"
-    )
+
+    algorithm: str = Field(default="hmac-sha256", description="MAC algorithm to generate key for")
 
 
 class MACKeyGenerateResponse(BaseModel):
     """MAC key generation response schema."""
+
     key: str = Field(..., description="Generated key (base64 encoded)")
     algorithm: str
     length_bytes: int
@@ -255,9 +254,7 @@ async def compute_mac(
         )
 
     try:
-        result = mac_engine.mac(
-            raw_data, key, algorithm, customization, data.output_length
-        )
+        result = mac_engine.mac(raw_data, key, algorithm, customization, data.output_length)
     except UnsupportedAlgorithmError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

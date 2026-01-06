@@ -31,18 +31,21 @@ router = APIRouter(prefix="/api/migration", tags=["migration"])
 # Request schemas
 class MigrateContextRequest(BaseModel):
     """Request to migrate a single context."""
+
     contextName: str
     newAlgorithm: str
 
 
 class BulkMigrateRequest(BaseModel):
     """Request to migrate all contexts using a specific algorithm."""
+
     fromAlgorithm: str
     toAlgorithm: str
 
 
 class SimulateRequest(BaseModel):
     """Request to simulate a migration."""
+
     contextName: str
     newAlgorithm: str
 
@@ -50,6 +53,7 @@ class SimulateRequest(BaseModel):
 # Response schemas
 class MigrationResult(BaseModel):
     """Result of a migration operation."""
+
     success: bool
     contextName: str
     previousAlgorithm: str
@@ -59,6 +63,7 @@ class MigrationResult(BaseModel):
 
 class BulkMigrationResult(BaseModel):
     """Result of a bulk migration operation."""
+
     success: bool
     migratedCount: int
     failedCount: int
@@ -67,6 +72,7 @@ class BulkMigrationResult(BaseModel):
 
 class MigrationHistoryEntry(BaseModel):
     """Entry in migration history."""
+
     contextName: str
     previousAlgorithm: str
     newAlgorithm: str
@@ -297,22 +303,26 @@ async def execute_bulk_migration(
             if context.derived:
                 context.derived["resolved_algorithm"] = request.toAlgorithm
 
-            results.append(MigrationResult(
-                success=True,
-                contextName=context.name,
-                previousAlgorithm=previous or "unknown",
-                newAlgorithm=request.toAlgorithm,
-                message=f"Migrated successfully",
-            ))
+            results.append(
+                MigrationResult(
+                    success=True,
+                    contextName=context.name,
+                    previousAlgorithm=previous or "unknown",
+                    newAlgorithm=request.toAlgorithm,
+                    message="Migrated successfully",
+                )
+            )
             migrated += 1
         except Exception as e:
-            results.append(MigrationResult(
-                success=False,
-                contextName=context.name,
-                previousAlgorithm=context.algorithm or "unknown",
-                newAlgorithm=request.toAlgorithm,
-                message=str(e),
-            ))
+            results.append(
+                MigrationResult(
+                    success=False,
+                    contextName=context.name,
+                    previousAlgorithm=context.algorithm or "unknown",
+                    newAlgorithm=request.toAlgorithm,
+                    message=str(e),
+                )
+            )
             failed += 1
 
     # Log bulk migration
@@ -363,24 +373,28 @@ async def get_migration_history(
     for record in records:
         # Handle both single and bulk migrations
         if record.action == "algorithm_migration":
-            history.append(MigrationHistoryEntry(
-                contextName=record.context_name or "unknown",
-                previousAlgorithm=record.previous_algorithm,
-                newAlgorithm=record.new_algorithm,
-                migratedAt=record.migrated_at,
-                migratedBy=str(record.user_id),
-                success=record.success,
-            ))
+            history.append(
+                MigrationHistoryEntry(
+                    contextName=record.context_name or "unknown",
+                    previousAlgorithm=record.previous_algorithm,
+                    newAlgorithm=record.new_algorithm,
+                    migratedAt=record.migrated_at,
+                    migratedBy=str(record.user_id),
+                    success=record.success,
+                )
+            )
         else:
             # Bulk migration - create entry for the operation
             details = record.details or {}
-            history.append(MigrationHistoryEntry(
-                contextName=f"Bulk: {details.get('migrated_count', 0)} contexts",
-                previousAlgorithm=record.previous_algorithm,
-                newAlgorithm=record.new_algorithm,
-                migratedAt=record.migrated_at,
-                migratedBy=str(record.user_id),
-                success=record.success,
-            ))
+            history.append(
+                MigrationHistoryEntry(
+                    contextName=f"Bulk: {details.get('migrated_count', 0)} contexts",
+                    previousAlgorithm=record.previous_algorithm,
+                    newAlgorithm=record.new_algorithm,
+                    migratedAt=record.migrated_at,
+                    migratedBy=str(record.user_id),
+                    success=record.success,
+                )
+            )
 
     return history

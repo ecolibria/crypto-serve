@@ -22,7 +22,6 @@ Environment variables:
 """
 
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 from .base import (
@@ -40,6 +39,7 @@ logger = logging.getLogger(__name__)
 try:
     import boto3
     from botocore.exceptions import ClientError, NoCredentialsError
+
     HAS_BOTO3 = True
 except ImportError:
     HAS_BOTO3 = False
@@ -62,10 +62,7 @@ class AWSKMSProvider(KMSProvider):
 
     def __init__(self, config: KMSConfig):
         if not HAS_BOTO3:
-            raise KMSError(
-                "AWS KMS provider requires boto3. "
-                "Install with: pip install boto3"
-            )
+            raise KMSError("AWS KMS provider requires boto3. " "Install with: pip install boto3")
 
         super().__init__(config)
         self._client = None
@@ -114,10 +111,7 @@ class AWSKMSProvider(KMSProvider):
             )
 
             self._initialized = True
-            logger.info(
-                f"AWS KMS provider initialized. Key: {key_meta['Arn']}, "
-                f"State: {key_meta['KeyState']}"
-            )
+            logger.info(f"AWS KMS provider initialized. Key: {key_meta['Arn']}, " f"State: {key_meta['KeyState']}")
 
         except NoCredentialsError as e:
             raise AuthenticationError(f"AWS credentials not found: {e}")
@@ -256,9 +250,7 @@ class AWSKMSProvider(KMSProvider):
             return self._key_metadata
 
         try:
-            response = self._client.describe_key(
-                KeyId=key_id or self.config.master_key_id
-            )
+            response = self._client.describe_key(KeyId=key_id or self.config.master_key_id)
             key_meta = response["KeyMetadata"]
 
             return KeyMetadata(

@@ -23,8 +23,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.crypto import get_sdk_identity
 from app.models import Identity, AuditLog, Context, Key, PQCKey, Tenant
-from app.core.fips import get_fips_status, FIPSMode
-from app.core.key_ceremony import key_ceremony_service, CeremonyState
+from app.core.fips import get_fips_status
+from app.core.key_ceremony import key_ceremony_service
 from app.config import get_settings
 
 router = APIRouter(prefix="/api/compliance", tags=["compliance"])
@@ -34,8 +34,10 @@ router = APIRouter(prefix="/api/compliance", tags=["compliance"])
 # Response Models
 # =============================================================================
 
+
 class FrameworkStatus(BaseModel):
     """Status for a specific compliance framework."""
+
     framework: str
     enabled: bool
     contexts_count: int
@@ -46,6 +48,7 @@ class FrameworkStatus(BaseModel):
 
 class AlgorithmCompliance(BaseModel):
     """Algorithm compliance status."""
+
     fips_mode: str
     fips_compliant: bool
     quantum_safe_available: bool
@@ -56,6 +59,7 @@ class AlgorithmCompliance(BaseModel):
 
 class KeyManagementStatus(BaseModel):
     """Key management compliance status."""
+
     kms_backend: str
     hsm_backed: bool
     key_ceremony_enabled: bool
@@ -67,6 +71,7 @@ class KeyManagementStatus(BaseModel):
 
 class AuditStatus(BaseModel):
     """Audit logging status."""
+
     enabled: bool
     total_events_30d: int
     operations_by_type: dict[str, int]
@@ -76,6 +81,7 @@ class AuditStatus(BaseModel):
 
 class TenantCompliance(BaseModel):
     """Per-tenant compliance summary."""
+
     tenant_id: str
     tenant_name: str
     contexts: int
@@ -86,6 +92,7 @@ class TenantCompliance(BaseModel):
 
 class ComplianceReport(BaseModel):
     """Full compliance status report."""
+
     generated_at: datetime
     overall_status: str  # "compliant", "warnings", "non_compliant"
     overall_score: int  # 0-100
@@ -109,6 +116,7 @@ class ComplianceReport(BaseModel):
 
 class ComplianceExport(BaseModel):
     """Exportable compliance report for auditors."""
+
     report: ComplianceReport
     export_format: str
     generated_by: str
@@ -119,8 +127,10 @@ class ComplianceExport(BaseModel):
 # Data Inventory Models (Community - Limited)
 # =============================================================================
 
+
 class DataClassification(str, Enum):
     """Data classification levels."""
+
     PII = "pii"
     PHI = "phi"
     PCI = "pci"
@@ -131,6 +141,7 @@ class DataClassification(str, Enum):
 
 class DataInventoryItem(BaseModel):
     """Summary of a data type in the inventory (Community Edition)."""
+
     context_name: str
     data_classification: list[str] = Field(default_factory=list)
     frameworks: list[str] = Field(default_factory=list)
@@ -141,6 +152,7 @@ class DataInventoryItem(BaseModel):
 
 class DataInventorySummary(BaseModel):
     """Data inventory summary."""
+
     total_contexts: int
     total_data_types: int
     pii_count: int
@@ -155,8 +167,10 @@ class DataInventorySummary(BaseModel):
 # Risk Score Models (Community - Aggregate Only)
 # =============================================================================
 
+
 class RiskLevel(str, Enum):
     """Risk severity levels."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -165,6 +179,7 @@ class RiskLevel(str, Enum):
 
 class RiskScoreSummary(BaseModel):
     """Risk score summary."""
+
     overall_score: int = Field(ge=0, le=100, description="Overall risk 0-100 (lower is better)")
     risk_level: RiskLevel
     high_risk_contexts: int = Field(description="Number of contexts with high risk")
@@ -176,6 +191,7 @@ class RiskScoreSummary(BaseModel):
 # Helper Functions
 # =============================================================================
 
+
 async def get_framework_status(
     db: AsyncSession,
     framework: str,
@@ -184,9 +200,7 @@ async def get_framework_status(
     """Get compliance status for a specific framework."""
 
     # Count contexts using this framework
-    query = select(func.count(Context.name)).where(
-        Context.compliance_tags.contains([framework])
-    )
+    query = select(func.count(Context.name)).where(Context.compliance_tags.contains([framework]))
     if tenant_id:
         query = query.where(Context.tenant_id == tenant_id)
 
@@ -245,9 +259,9 @@ async def get_algorithm_compliance(db: AsyncSession) -> AlgorithmCompliance:
     # Count quantum-safe contexts
     result = await db.execute(
         select(func.count(Context.name)).where(
-            Context.algorithm.ilike("%ML-KEM%") |
-            Context.algorithm.ilike("%Kyber%") |
-            Context.algorithm.ilike("%Dilithium%")
+            Context.algorithm.ilike("%ML-KEM%")
+            | Context.algorithm.ilike("%Kyber%")
+            | Context.algorithm.ilike("%Dilithium%")
         )
     )
     quantum_safe_count = result.scalar() or 0
@@ -255,12 +269,14 @@ async def get_algorithm_compliance(db: AsyncSession) -> AlgorithmCompliance:
     # Check for deprecated algorithms in recent audit logs
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     result = await db.execute(
-        select(AuditLog.algorithm).where(
+        select(AuditLog.algorithm)
+        .where(
             and_(
                 AuditLog.timestamp >= thirty_days_ago,
                 AuditLog.algorithm.isnot(None),
             )
-        ).distinct()
+        )
+        .distinct()
     )
     used_algorithms = [r[0] for r in result.fetchall() if r[0]]
 
@@ -305,9 +321,7 @@ async def get_key_management_status(db: AsyncSession) -> KeyManagementStatus:
 
     # Check for keys needing rotation (older than 90 days)
     ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
-    result = await db.execute(
-        select(func.count(Key.id)).where(Key.created_at < ninety_days_ago)
-    )
+    result = await db.execute(select(func.count(Key.id)).where(Key.created_at < ninety_days_ago))
     needs_rotation = result.scalar() or 0
 
     # KMS backend
@@ -334,16 +348,14 @@ async def get_audit_status(db: AsyncSession) -> AuditStatus:
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
 
     # Total events
-    result = await db.execute(
-        select(func.count(AuditLog.id)).where(AuditLog.timestamp >= thirty_days_ago)
-    )
+    result = await db.execute(select(func.count(AuditLog.id)).where(AuditLog.timestamp >= thirty_days_ago))
     total_events = result.scalar() or 0
 
     # Operations by type
     result = await db.execute(
-        select(AuditLog.operation, func.count(AuditLog.id)).where(
-            AuditLog.timestamp >= thirty_days_ago
-        ).group_by(AuditLog.operation)
+        select(AuditLog.operation, func.count(AuditLog.id))
+        .where(AuditLog.timestamp >= thirty_days_ago)
+        .group_by(AuditLog.operation)
     )
     ops_by_type = {r[0]: r[1] for r in result.fetchall()}
 
@@ -352,7 +364,7 @@ async def get_audit_status(db: AsyncSession) -> AuditStatus:
         select(func.count(AuditLog.id)).where(
             and_(
                 AuditLog.timestamp >= thirty_days_ago,
-                AuditLog.policy_violation == True,
+                AuditLog.policy_violation,
             )
         )
     )
@@ -363,7 +375,7 @@ async def get_audit_status(db: AsyncSession) -> AuditStatus:
         select(func.count(AuditLog.id)).where(
             and_(
                 AuditLog.timestamp >= thirty_days_ago,
-                AuditLog.success == False,
+                AuditLog.success.is_(False),
             )
         )
     )
@@ -385,15 +397,11 @@ async def get_tenant_compliance(
     """Get compliance status for a specific tenant."""
 
     # Count contexts
-    result = await db.execute(
-        select(func.count(Context.name)).where(Context.tenant_id == tenant.id)
-    )
+    result = await db.execute(select(func.count(Context.name)).where(Context.tenant_id == tenant.id))
     context_count = result.scalar() or 0
 
     # Count keys
-    result = await db.execute(
-        select(func.count(Key.id)).where(Key.tenant_id == tenant.id)
-    )
+    result = await db.execute(select(func.count(Key.id)).where(Key.tenant_id == tenant.id))
     key_count = result.scalar() or 0
 
     # Get frameworks in use
@@ -424,6 +432,7 @@ async def get_tenant_compliance(
 # =============================================================================
 # Endpoints
 # =============================================================================
+
 
 @router.get("/status", response_model=ComplianceReport)
 async def get_compliance_status(
@@ -469,15 +478,11 @@ async def get_compliance_status(
 
     # Check for deprecated algorithms
     if algorithms.deprecated_algorithms_in_use:
-        critical_issues.append(
-            f"Deprecated algorithms in use: {', '.join(algorithms.deprecated_algorithms_in_use)}"
-        )
+        critical_issues.append(f"Deprecated algorithms in use: {', '.join(algorithms.deprecated_algorithms_in_use)}")
 
     # Check key rotation
     if key_mgmt.keys_needing_rotation > 0:
-        warnings.append(
-            f"{key_mgmt.keys_needing_rotation} keys are older than 90 days and should be rotated"
-        )
+        warnings.append(f"{key_mgmt.keys_needing_rotation} keys are older than 90 days and should be rotated")
 
     # Check HSM backing
     if not key_mgmt.hsm_backed:
@@ -556,9 +561,7 @@ async def get_framework_compliance(
     status_result = await get_framework_status(db, framework)
 
     # Get contexts for this framework
-    result = await db.execute(
-        select(Context).where(Context.compliance_tags.contains([framework]))
-    )
+    result = await db.execute(select(Context).where(Context.compliance_tags.contains([framework])))
     contexts = result.scalars().all()
 
     return {
@@ -638,13 +641,10 @@ async def get_audit_summary(
         select(
             func.date(AuditLog.timestamp).label("date"),
             func.count(AuditLog.id).label("count"),
-        ).where(
-            AuditLog.timestamp >= cutoff
-        ).group_by(
-            func.date(AuditLog.timestamp)
-        ).order_by(
-            func.date(AuditLog.timestamp)
         )
+        .where(AuditLog.timestamp >= cutoff)
+        .group_by(func.date(AuditLog.timestamp))
+        .order_by(func.date(AuditLog.timestamp))
     )
     daily_ops = [{"date": str(r[0]), "count": r[1]} for r in result.fetchall()]
 
@@ -655,16 +655,15 @@ async def get_audit_summary(
             AuditLog.mode,
             AuditLog.key_bits,
             func.count(AuditLog.id).label("count"),
-        ).where(
+        )
+        .where(
             and_(
                 AuditLog.timestamp >= cutoff,
                 AuditLog.cipher.isnot(None),
             )
-        ).group_by(
-            AuditLog.cipher, AuditLog.mode, AuditLog.key_bits
-        ).order_by(
-            func.count(AuditLog.id).desc()
         )
+        .group_by(AuditLog.cipher, AuditLog.mode, AuditLog.key_bits)
+        .order_by(func.count(AuditLog.id).desc())
     )
     algorithm_usage = [
         {
@@ -681,16 +680,16 @@ async def get_audit_summary(
         select(
             AuditLog.context,
             func.count(AuditLog.id).label("count"),
-        ).where(
+        )
+        .where(
             and_(
                 AuditLog.timestamp >= cutoff,
                 AuditLog.context.isnot(None),
             )
-        ).group_by(
-            AuditLog.context
-        ).order_by(
-            func.count(AuditLog.id).desc()
-        ).limit(10)
+        )
+        .group_by(AuditLog.context)
+        .order_by(func.count(AuditLog.id).desc())
+        .limit(10)
     )
     top_contexts = [{"context": r[0], "count": r[1]} for r in result.fetchall()]
 
@@ -706,6 +705,7 @@ async def get_audit_summary(
 # =============================================================================
 # Data Inventory Endpoints (Community - Limited)
 # =============================================================================
+
 
 @router.get("/data-inventory", response_model=DataInventorySummary)
 async def get_data_inventory(
@@ -735,20 +735,22 @@ async def get_data_inventory(
     for ctx in contexts:
         # Determine data classifications
         classifications = []
-        if getattr(ctx, 'pii', False) or (ctx.data_examples and any('pii' in str(e).lower() for e in ctx.data_examples)):
+        if getattr(ctx, "pii", False) or (
+            ctx.data_examples and any("pii" in str(e).lower() for e in ctx.data_examples)
+        ):
             classifications.append("pii")
             pii_count += 1
-        if getattr(ctx, 'phi', False) or (ctx.compliance_tags and 'HIPAA' in ctx.compliance_tags):
+        if getattr(ctx, "phi", False) or (ctx.compliance_tags and "HIPAA" in ctx.compliance_tags):
             classifications.append("phi")
             phi_count += 1
-        if getattr(ctx, 'pci', False) or (ctx.compliance_tags and 'PCI-DSS' in ctx.compliance_tags):
+        if getattr(ctx, "pci", False) or (ctx.compliance_tags and "PCI-DSS" in ctx.compliance_tags):
             classifications.append("pci")
             pci_count += 1
 
         # Check quantum safety
         quantum_safe = False
         if ctx.algorithm:
-            quantum_patterns = ['ML-KEM', 'Kyber', 'Dilithium', 'SPHINCS', 'hybrid']
+            quantum_patterns = ["ML-KEM", "Kyber", "Dilithium", "SPHINCS", "hybrid"]
             quantum_safe = any(p.lower() in ctx.algorithm.lower() for p in quantum_patterns)
             if quantum_safe:
                 quantum_safe_count += 1
@@ -764,14 +766,16 @@ async def get_data_inventory(
         )
         ops_count = op_result.scalar() or 0
 
-        items.append(DataInventoryItem(
-            context_name=ctx.name,
-            data_classification=classifications,
-            frameworks=ctx.compliance_tags or [],
-            algorithm=ctx.algorithm or "AES-256-GCM",
-            quantum_safe=quantum_safe,
-            operations_30d=ops_count,
-        ))
+        items.append(
+            DataInventoryItem(
+                context_name=ctx.name,
+                data_classification=classifications,
+                frameworks=ctx.compliance_tags or [],
+                algorithm=ctx.algorithm or "AES-256-GCM",
+                quantum_safe=quantum_safe,
+                operations_30d=ops_count,
+            )
+        )
 
     return DataInventorySummary(
         total_contexts=len(contexts),
@@ -788,6 +792,7 @@ async def get_data_inventory(
 # =============================================================================
 # Risk Score Endpoints (Community - Aggregate Only)
 # =============================================================================
+
 
 @router.get("/risk-score", response_model=RiskScoreSummary)
 async def get_risk_score(
@@ -808,9 +813,7 @@ async def get_risk_score(
 
     # Check key rotation status
     ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
-    result = await db.execute(
-        select(func.count(Key.id)).where(Key.created_at < ninety_days_ago)
-    )
+    result = await db.execute(select(func.count(Key.id)).where(Key.created_at < ninety_days_ago))
     old_keys = result.scalar() or 0
     if old_keys > 0:
         score += min(20, old_keys * 2)
@@ -819,12 +822,14 @@ async def get_risk_score(
     # Check for deprecated algorithms
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     result = await db.execute(
-        select(AuditLog.algorithm).where(
+        select(AuditLog.algorithm)
+        .where(
             and_(
                 AuditLog.timestamp >= thirty_days_ago,
                 AuditLog.algorithm.isnot(None),
             )
-        ).distinct()
+        )
+        .distinct()
     )
     used_algorithms = [r[0] for r in result.fetchall() if r[0]]
 
@@ -845,7 +850,7 @@ async def get_risk_score(
         select(func.count(AuditLog.id)).where(
             and_(
                 AuditLog.timestamp >= thirty_days_ago,
-                AuditLog.policy_violation == True,
+                AuditLog.policy_violation,
             )
         )
     )
@@ -862,14 +867,13 @@ async def get_risk_score(
     for ctx in contexts:
         # Check if context has sensitive data requiring long-term protection
         is_sensitive = (
-            (ctx.compliance_tags and any(f in ctx.compliance_tags for f in ['HIPAA', 'PCI-DSS', 'GDPR'])) or
-            getattr(ctx, 'pii', False) or
-            getattr(ctx, 'phi', False)
+            (ctx.compliance_tags and any(f in ctx.compliance_tags for f in ["HIPAA", "PCI-DSS", "GDPR"]))
+            or getattr(ctx, "pii", False)
+            or getattr(ctx, "phi", False)
         )
         # Check if not quantum-safe
         is_quantum_safe = ctx.algorithm and any(
-            p.lower() in ctx.algorithm.lower()
-            for p in ['ML-KEM', 'Kyber', 'hybrid']
+            p.lower() in ctx.algorithm.lower() for p in ["ML-KEM", "Kyber", "hybrid"]
         )
 
         if is_sensitive and not is_quantum_safe:
@@ -882,6 +886,7 @@ async def get_risk_score(
 
     # Check HSM backing
     import os
+
     kms_backend = os.environ.get("KMS_BACKEND", "local")
     if kms_backend == "local":
         score += 10
@@ -907,5 +912,3 @@ async def get_risk_score(
         key_findings=findings[:3],  # Top 3 findings only in Community
         assessed_at=datetime.now(timezone.utc),
     )
-
-

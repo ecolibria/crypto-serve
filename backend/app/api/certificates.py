@@ -15,7 +15,6 @@ from app.core.certificate_engine import (
     CertificateEngine,
     CertificateError,
     CSRError,
-    ValidationError,
     SubjectInfo,
     CertificateType,
 )
@@ -37,8 +36,10 @@ key_export_engine = KeyExportEngine()
 # Request/Response Models
 # ============================================================================
 
+
 class SubjectInfoRequest(BaseModel):
     """Certificate subject information."""
+
     common_name: str = Field(..., description="Common Name (CN)")
     organization: str | None = Field(default=None, description="Organization (O)")
     organizational_unit: str | None = Field(default=None, description="Organizational Unit (OU)")
@@ -50,6 +51,7 @@ class SubjectInfoRequest(BaseModel):
 
 class CSRRequest(BaseModel):
     """CSR generation request."""
+
     subject: SubjectInfoRequest
     key_type: str = Field(default="ec", description="Key type: ec (recommended), rsa, ed25519")
     key_size: int = Field(default=256, description="Key size: 256/384/521 for EC, 2048-4096 for RSA")
@@ -60,6 +62,7 @@ class CSRRequest(BaseModel):
 
 class CSRResponse(BaseModel):
     """CSR generation response."""
+
     csr_pem: str = Field(..., description="CSR in PEM format")
     private_key_pem: str = Field(..., description="Private key in PEM format (keep secret!)")
     public_key_pem: str = Field(..., description="Public key in PEM format")
@@ -69,6 +72,7 @@ class CSRResponse(BaseModel):
 
 class SelfSignedRequest(BaseModel):
     """Self-signed certificate request."""
+
     subject: SubjectInfoRequest
     key_type: str = Field(default="ec", description="Key type: ec, rsa, ed25519")
     key_size: int = Field(default=256, description="Key size")
@@ -80,17 +84,20 @@ class SelfSignedRequest(BaseModel):
 
 class SelfSignedResponse(BaseModel):
     """Self-signed certificate response."""
+
     certificate_pem: str
     private_key_pem: str
 
 
 class ParseCertificateRequest(BaseModel):
     """Certificate parsing request."""
+
     certificate: str = Field(..., description="Certificate in PEM or base64-encoded DER format")
 
 
 class SubjectInfoResponse(BaseModel):
     """Subject/Issuer info response."""
+
     common_name: str
     organization: str | None = None
     organizational_unit: str | None = None
@@ -102,6 +109,7 @@ class SubjectInfoResponse(BaseModel):
 
 class CertificateInfoResponse(BaseModel):
     """Parsed certificate information."""
+
     subject: SubjectInfoResponse
     issuer: SubjectInfoResponse
     serial_number: str
@@ -121,6 +129,7 @@ class CertificateInfoResponse(BaseModel):
 
 class VerifyCertificateRequest(BaseModel):
     """Certificate verification request."""
+
     certificate: str = Field(..., description="Certificate to verify (PEM)")
     issuer_certificate: str | None = Field(default=None, description="Issuer certificate (PEM)")
     check_expiry: bool = Field(default=True, description="Check expiration dates")
@@ -128,12 +137,14 @@ class VerifyCertificateRequest(BaseModel):
 
 class VerifyChainRequest(BaseModel):
     """Certificate chain verification request."""
+
     certificates: list[str] = Field(..., description="Certificates (leaf first, root last)")
     check_expiry: bool = Field(default=True)
 
 
 class ValidationResultResponse(BaseModel):
     """Validation result."""
+
     valid: bool
     errors: list[str]
     warnings: list[str]
@@ -142,12 +153,14 @@ class ValidationResultResponse(BaseModel):
 
 class ParseCSRRequest(BaseModel):
     """CSR parsing request."""
+
     csr: str = Field(..., description="CSR in PEM format")
 
 
 # ============================================================================
 # API Endpoints
 # ============================================================================
+
 
 @router.post("/csr/generate", response_model=CSRResponse)
 async def generate_csr(
@@ -274,6 +287,7 @@ async def parse_certificate(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     from datetime import datetime, timezone
+
     now = datetime.now(timezone.utc)
     days_until_expiry = (info.not_after - now).days
 
@@ -429,6 +443,7 @@ async def parse_uploaded_certificate(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     from datetime import datetime, timezone
+
     now = datetime.now(timezone.utc)
     days_until_expiry = (info.not_after - now).days
 
@@ -459,8 +474,10 @@ async def parse_uploaded_certificate(
 # PKCS#12 Request/Response Models
 # ============================================================================
 
+
 class PKCS12ExportRequest(BaseModel):
     """PKCS#12 export request."""
+
     private_key_pem: str = Field(..., description="Private key in PEM format")
     certificate_pem: str = Field(..., description="Certificate in PEM format")
     password: str | None = Field(default=None, description="Password for PKCS#12 encryption (recommended)")
@@ -470,6 +487,7 @@ class PKCS12ExportRequest(BaseModel):
 
 class PKCS12ExportResponse(BaseModel):
     """PKCS#12 export response."""
+
     pkcs12_base64: str = Field(..., description="PKCS#12 data (base64 encoded)")
     includes_chain: bool = Field(..., description="Whether CA chain is included")
     key_type: str = Field(..., description="Key type (ec-p256, rsa-2048, etc.)")
@@ -479,12 +497,14 @@ class PKCS12ExportResponse(BaseModel):
 
 class PKCS12ImportRequest(BaseModel):
     """PKCS#12 import request."""
+
     pkcs12_base64: str = Field(..., description="PKCS#12 data (base64 encoded)")
     password: str | None = Field(default=None, description="Password to decrypt PKCS#12")
 
 
 class PKCS12ImportResponse(BaseModel):
     """PKCS#12 import response."""
+
     private_key_pem: str = Field(..., description="Private key in PEM format")
     certificate_pem: str = Field(..., description="Certificate in PEM format")
     ca_certs_pem: list[str] = Field(..., description="Additional CA certificates (PEM format)")
@@ -496,6 +516,7 @@ class PKCS12ImportResponse(BaseModel):
 # ============================================================================
 # PKCS#12 API Endpoints
 # ============================================================================
+
 
 @router.post("/pkcs12/export", response_model=PKCS12ExportResponse)
 async def export_to_pkcs12(
@@ -607,10 +628,7 @@ async def import_from_pkcs12(
         encoding=serialization.Encoding.PEM,
     ).decode()
 
-    ca_certs_pem = [
-        cert.public_bytes(serialization.Encoding.PEM).decode()
-        for cert in result.additional_certs
-    ]
+    ca_certs_pem = [cert.public_bytes(serialization.Encoding.PEM).decode() for cert in result.additional_certs]
 
     return PKCS12ImportResponse(
         private_key_pem=private_key_pem,
@@ -672,10 +690,7 @@ async def upload_pkcs12(
         encoding=serialization.Encoding.PEM,
     ).decode()
 
-    ca_certs_pem = [
-        cert.public_bytes(serialization.Encoding.PEM).decode()
-        for cert in result.additional_certs
-    ]
+    ca_certs_pem = [cert.public_bytes(serialization.Encoding.PEM).decode() for cert in result.additional_certs]
 
     return PKCS12ImportResponse(
         private_key_pem=private_key_pem,

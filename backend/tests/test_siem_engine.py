@@ -3,7 +3,6 @@
 import json
 import pytest
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
 
 from app.core.siem_engine import (
     siem_engine,
@@ -231,9 +230,7 @@ class TestFiltering:
 
     def test_include_categories_filter(self):
         """Test filtering by included categories."""
-        config = SIEMConfig(
-            include_categories=[EventCategory.AUTHENTICATION]
-        )
+        config = SIEMConfig(include_categories=[EventCategory.AUTHENTICATION])
         engine = SIEMEngine(config)
 
         # Auth should pass
@@ -256,9 +253,7 @@ class TestFiltering:
 
     def test_exclude_categories_filter(self):
         """Test filtering by excluded categories."""
-        config = SIEMConfig(
-            exclude_categories=[EventCategory.AUDIT]
-        )
+        config = SIEMConfig(exclude_categories=[EventCategory.AUDIT])
         engine = SIEMEngine(config)
 
         # Auth should pass
@@ -580,10 +575,12 @@ class TestHandlers:
 
     def test_handler_error_doesnt_stop_logging(self, engine):
         """Test that handler errors don't stop event logging."""
+
         def bad_handler(event):
             raise Exception("Handler error")
 
         good_events = []
+
         def good_handler(event):
             good_events.append(event)
 
@@ -725,7 +722,7 @@ class TestEdgeCases:
 
     def test_special_characters_in_message(self, engine):
         """Test handling special characters."""
-        special_message = "Test|with\\special\ncharacters\t<>&\""
+        special_message = 'Test|with\\special\ncharacters\t<>&"'
 
         event = engine.log_event(
             category=EventCategory.AUDIT,

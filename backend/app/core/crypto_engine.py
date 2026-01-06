@@ -31,34 +31,37 @@ from app.core.policy_engine import (
     PolicySeverity,
     build_evaluation_context,
 )
-from app.schemas.context import AlgorithmOverride, CipherMode, EncryptionUsageContext
-from app.core.algorithm_resolver import ALGORITHMS, resolve_algorithm
+from app.schemas.context import AlgorithmOverride, CipherMode
+from app.core.algorithm_resolver import ALGORITHMS
 from app.core.hybrid_crypto import (
     HybridCryptoEngine,
     HybridMode,
     HybridCiphertext,
     is_pqc_available,
-    PQCError,
 )
 
 
 class CryptoError(Exception):
     """Base crypto exception."""
+
     pass
 
 
 class ContextNotFoundError(CryptoError):
     """Context does not exist."""
+
     pass
 
 
 class AuthorizationError(CryptoError):
     """Identity not authorized for context."""
+
     pass
 
 
 class DecryptionError(CryptoError):
     """Failed to decrypt data."""
+
     pass
 
 
@@ -72,12 +75,14 @@ class PolicyError(CryptoError):
 
 class UnsupportedModeError(CryptoError):
     """Requested cipher mode is not supported."""
+
     pass
 
 
 @dataclass
 class EncryptResult:
     """Result of encryption operation with full metadata."""
+
     ciphertext: bytes
     algorithm: str
     mode: CipherMode
@@ -161,8 +166,7 @@ class CipherFactory:
         """Encrypt using AES-GCM with optional AAD."""
         if len(plaintext) > CipherFactory.GCM_MAX_SIZE:
             raise CryptoError(
-                f"Plaintext too large for GCM: {len(plaintext)} bytes "
-                f"(max: {CipherFactory.GCM_MAX_SIZE})"
+                f"Plaintext too large for GCM: {len(plaintext)} bytes " f"(max: {CipherFactory.GCM_MAX_SIZE})"
             )
         aesgcm = AESGCM(key)
         return aesgcm.encrypt(nonce, plaintext, associated_data)
@@ -188,8 +192,7 @@ class CipherFactory:
         """Encrypt using AES-CCM with optional AAD."""
         if len(plaintext) > CipherFactory.CCM_MAX_SIZE:
             raise CryptoError(
-                f"Plaintext too large for CCM: {len(plaintext)} bytes "
-                f"(max: {CipherFactory.CCM_MAX_SIZE})"
+                f"Plaintext too large for CCM: {len(plaintext)} bytes " f"(max: {CipherFactory.CCM_MAX_SIZE})"
             )
         # CCM requires 7-13 byte nonce, we use 12
         aesccm = AESCCM(key, tag_length=16)
@@ -279,8 +282,8 @@ class CipherFactory:
 
         cipher = Cipher(
             algorithms.AES(enc_key),
-            modes.CTR(nonce + b'\x00' * 4),  # 12-byte nonce + 4-byte counter
-            backend=default_backend()
+            modes.CTR(nonce + b"\x00" * 4),  # 12-byte nonce + 4-byte counter
+            backend=default_backend(),
         )
         encryptor = cipher.encryptor()
         ciphertext = encryptor.update(plaintext) + encryptor.finalize()
@@ -307,11 +310,7 @@ class CipherFactory:
         if not hmac.compare_digest(mac, expected_mac):
             raise DecryptionError("HMAC verification failed")
 
-        cipher = Cipher(
-            algorithms.AES(enc_key),
-            modes.CTR(nonce + b'\x00' * 4),
-            backend=default_backend()
-        )
+        cipher = Cipher(algorithms.AES(enc_key), modes.CTR(nonce + b"\x00" * 4), backend=default_backend())
         decryptor = cipher.decryptor()
         return decryptor.update(ciphertext) + decryptor.finalize()
 
@@ -392,18 +391,14 @@ class CryptoEngine:
 
         try:
             # Validate context exists
-            result = await db.execute(
-                select(Context).where(Context.name == context_name)
-            )
+            result = await db.execute(select(Context).where(Context.name == context_name))
             context = result.scalar_one_or_none()
             if not context:
                 raise ContextNotFoundError(f"Unknown context: {context_name}")
 
             # Validate identity has access to context
             if context_name not in identity.allowed_contexts:
-                raise AuthorizationError(
-                    f"Identity not authorized for context: {context_name}"
-                )
+                raise AuthorizationError(f"Identity not authorized for context: {context_name}")
 
             # Evaluate policies
             if enforce_policies:
@@ -417,12 +412,11 @@ class CryptoEngine:
                 )
 
             # Determine algorithm, mode, and key size
-            algorithm, mode, key_bits, description = self._resolve_algorithm(
-                context, algorithm_override, warnings
-            )
+            algorithm, mode, key_bits, description = self._resolve_algorithm(context, algorithm_override, warnings)
 
             # Enforce FIPS compliance if enabled
             from app.core.fips import enforce_fips_algorithm
+
             # Extract cipher name (e.g., "AES" from "AES-256-GCM")
             cipher = algorithm.split("-")[0] if "-" in algorithm else algorithm
             enforce_fips_algorithm(cipher, mode.value, key_bits)
@@ -469,9 +463,7 @@ class CryptoEngine:
             key_commitment = CipherFactory.compute_key_commitment(key)
 
             # Encrypt based on mode (with AAD support for AEAD modes)
-            ciphertext = self._encrypt_with_mode(
-                key, plaintext, nonce, mode, algorithm, associated_data
-            )
+            ciphertext = self._encrypt_with_mode(key, plaintext, nonce, mode, algorithm, associated_data)
 
             # Pack into self-describing format with key commitment
             packed = self._pack_ciphertext(
@@ -508,9 +500,7 @@ class CryptoEngine:
 
         finally:
             # Log to audit
-            latency_ms = int(
-                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
-            )
+            latency_ms = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
             # Extract algorithm details for metrics (if available)
             audit_algorithm = None
@@ -523,7 +513,7 @@ class CryptoEngine:
             if success:
                 # Get values from local variables set during encryption
                 audit_algorithm = algorithm  # e.g., "AES-256-GCM"
-                audit_mode = mode.value if hasattr(mode, 'value') else str(mode)
+                audit_mode = mode.value if hasattr(mode, "value") else str(mode)
                 audit_key_bits = key_bits
                 audit_key_id = key_id
 
@@ -538,9 +528,7 @@ class CryptoEngine:
                     audit_cipher = algorithm.split("-")[0] if "-" in algorithm else algorithm
 
                 # Check if quantum-safe algorithm
-                audit_quantum_safe = any(
-                    pqc in algorithm for pqc in ["ML-KEM", "Kyber", "Dilithium", "SPHINCS"]
-                )
+                audit_quantum_safe = any(pqc in algorithm for pqc in ["ML-KEM", "Kyber", "Dilithium", "SPHINCS"])
 
             audit = AuditLog(
                 tenant_id=identity.tenant_id,
@@ -686,7 +674,7 @@ class CryptoEngine:
         # Check allowed modes
         allowed_modes = policy.get("allowed_modes", [])
         if allowed_modes:
-            mode_str = mode.value if hasattr(mode, 'value') else str(mode)
+            mode_str = mode.value if hasattr(mode, "value") else str(mode)
             if mode_str.lower() not in [m.lower() for m in allowed_modes]:
                 violations.append(f"Mode '{mode_str}' not in allowed list: {allowed_modes}")
 
@@ -698,9 +686,7 @@ class CryptoEngine:
         # Check quantum-safe requirement
         require_quantum = policy.get("require_quantum_safe", False)
         if require_quantum:
-            is_quantum_safe = any(
-                pqc in algorithm for pqc in ["ML-KEM", "Kyber", "Dilithium", "SPHINCS"]
-            )
+            is_quantum_safe = any(pqc in algorithm for pqc in ["ML-KEM", "Kyber", "Dilithium", "SPHINCS"])
             if not is_quantum_safe:
                 violations.append("Algorithm is not quantum-safe (required by policy)")
 
@@ -779,16 +765,12 @@ class CryptoEngine:
         elif mode == CipherMode.CBC:
             # CBC doesn't support AAD natively - it uses separate HMAC
             if associated_data:
-                raise UnsupportedModeError(
-                    "CBC mode does not support AAD. Use GCM or ChaCha20-Poly1305 for AAD."
-                )
+                raise UnsupportedModeError("CBC mode does not support AAD. Use GCM or ChaCha20-Poly1305 for AAD.")
             return CipherFactory.encrypt_cbc(key, plaintext, nonce)
         elif mode == CipherMode.CTR:
             # CTR doesn't support AAD natively - it uses separate HMAC
             if associated_data:
-                raise UnsupportedModeError(
-                    "CTR mode does not support AAD. Use GCM or ChaCha20-Poly1305 for AAD."
-                )
+                raise UnsupportedModeError("CTR mode does not support AAD. Use GCM or ChaCha20-Poly1305 for AAD.")
             return CipherFactory.encrypt_ctr(key, plaintext, nonce)
         elif mode == CipherMode.CCM:
             return CipherFactory.encrypt_ccm(key, plaintext, nonce, associated_data)
@@ -805,8 +787,7 @@ class CryptoEngine:
             # Hybrid PQC mode - handled separately in encrypt()
             # This should not be called directly since hybrid uses different key management
             raise UnsupportedModeError(
-                "HYBRID mode must be handled via _encrypt_hybrid(). "
-                "This is an internal error."
+                "HYBRID mode must be handled via _encrypt_hybrid(). " "This is an internal error."
             )
         else:
             return CipherFactory.encrypt_gcm(key, plaintext, nonce, associated_data)
@@ -847,14 +828,12 @@ class CryptoEngine:
         elif mode == CipherMode.XTS:
             # XTS not supported - see _encrypt_with_mode for rationale
             raise UnsupportedModeError(
-                "XTS mode is not supported for API encryption. "
-                "Use AES-256-GCM for authenticated encryption."
+                "XTS mode is not supported for API encryption. " "Use AES-256-GCM for authenticated encryption."
             )
         elif mode == CipherMode.HYBRID:
             # Hybrid PQC mode - handled separately
             raise UnsupportedModeError(
-                "HYBRID mode must be handled via _decrypt_hybrid(). "
-                "This is an internal error."
+                "HYBRID mode must be handled via _decrypt_hybrid(). " "This is an internal error."
             )
         else:
             return CipherFactory.decrypt_gcm(key, ciphertext, nonce, associated_data)
@@ -872,11 +851,11 @@ class CryptoEngine:
 
         try:
             # Both formats use 2-byte header length prefix
-            header_len = int.from_bytes(data[:2], 'big')
+            header_len = int.from_bytes(data[:2], "big")
             if len(data) < 2 + header_len:
                 return False
 
-            header_json = data[2:2 + header_len].decode('utf-8')
+            header_json = data[2 : 2 + header_len].decode("utf-8")
             header = json.loads(header_json)
 
             # Hybrid ciphertexts have "kem_ct_len" field
@@ -928,8 +907,7 @@ class CryptoEngine:
         """
         if not is_pqc_available():
             raise CryptoError(
-                "Post-quantum cryptography not available. "
-                "Install liboqs-python: pip install liboqs-python"
+                "Post-quantum cryptography not available. " "Install liboqs-python: pip install liboqs-python"
             )
 
         hybrid_mode = self._get_hybrid_mode(algorithm)
@@ -982,8 +960,7 @@ class CryptoEngine:
         """
         if not is_pqc_available():
             raise CryptoError(
-                "Post-quantum cryptography not available. "
-                "Install liboqs-python: pip install liboqs-python"
+                "Post-quantum cryptography not available. " "Install liboqs-python: pip install liboqs-python"
             )
 
         # Retrieve the private key
@@ -1037,9 +1014,7 @@ class CryptoEngine:
         try:
             # Validate identity has access to context
             if context_name not in identity.allowed_contexts:
-                raise AuthorizationError(
-                    f"Identity not authorized for context: {context_name}"
-                )
+                raise AuthorizationError(f"Identity not authorized for context: {context_name}")
 
             # Check if this is a hybrid ciphertext (starts with JSON object)
             if self._is_hybrid_ciphertext(packed_ciphertext):
@@ -1056,15 +1031,11 @@ class CryptoEngine:
 
             # Validate context matches
             if header["ctx"] != context_name:
-                raise DecryptionError(
-                    f"Context mismatch: expected {context_name}, got {header['ctx']}"
-                )
+                raise DecryptionError(f"Context mismatch: expected {context_name}, got {header['ctx']}")
 
             # Check if AAD was used during encryption
             if header.get("aad") and not associated_data:
-                raise DecryptionError(
-                    "Ciphertext was encrypted with AAD but no AAD provided for decryption"
-                )
+                raise DecryptionError("Ciphertext was encrypted with AAD but no AAD provided for decryption")
 
             # Extract key size from algorithm (e.g., "AES-256-GCM" -> 32 bytes)
             algorithm = header.get("alg", "AES-256-GCM")
@@ -1080,9 +1051,7 @@ class CryptoEngine:
                 expected_commitment = CipherFactory.compute_key_commitment(key)
                 stored_commitment = base64.b64decode(header["kc"])
                 if not hmac.compare_digest(expected_commitment, stored_commitment):
-                    raise DecryptionError(
-                        "Key commitment verification failed - possible key mismatch"
-                    )
+                    raise DecryptionError("Key commitment verification failed - possible key mismatch")
 
             # Get mode from header
             mode_str = header.get("mode", "gcm")
@@ -1093,9 +1062,7 @@ class CryptoEngine:
 
             # Decrypt with AAD if applicable
             nonce = base64.b64decode(header["nonce"])
-            plaintext = self._decrypt_with_mode(
-                key, ciphertext, nonce, mode, algorithm, associated_data
-            )
+            plaintext = self._decrypt_with_mode(key, ciphertext, nonce, mode, algorithm, associated_data)
 
             success = True
             return plaintext
@@ -1106,9 +1073,7 @@ class CryptoEngine:
 
         finally:
             # Log to audit
-            latency_ms = int(
-                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
-            )
+            latency_ms = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
             # Extract algorithm details for metrics (if available from header)
             audit_algorithm = None
@@ -1120,7 +1085,7 @@ class CryptoEngine:
 
             # Try to extract from header (set during unpack if we got that far)
             try:
-                if 'header' in dir() and header:
+                if "header" in dir() and header:
                     audit_algorithm = header.get("alg")
                     audit_mode = header.get("mode")
                     audit_key_id = header.get("kid")
@@ -1235,8 +1200,8 @@ class CryptoEngine:
         if len(packed) < 2 + header_len:
             raise DecryptionError("Invalid ciphertext: header truncated")
 
-        header_json = packed[2:2 + header_len]
-        ciphertext = packed[2 + header_len:]
+        header_json = packed[2 : 2 + header_len]
+        ciphertext = packed[2 + header_len :]
 
         try:
             header = json.loads(header_json.decode())
@@ -1245,9 +1210,7 @@ class CryptoEngine:
 
         # Support v1, v2, and v3 headers for backward compatibility
         if header.get("v") not in [1, 2, 3]:
-            raise DecryptionError(
-                f"Unsupported ciphertext version: {header.get('v')}"
-            )
+            raise DecryptionError(f"Unsupported ciphertext version: {header.get('v')}")
 
         return header, ciphertext
 

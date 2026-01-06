@@ -13,7 +13,6 @@ Security model:
 - Expiration and revocation checking
 """
 
-import base64
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from enum import Enum
@@ -27,6 +26,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, ec, ed25519
 
 class CertificateType(str, Enum):
     """Certificate types."""
+
     RSA = "rsa"
     EC = "ec"
     ED25519 = "ed25519"
@@ -34,6 +34,7 @@ class CertificateType(str, Enum):
 
 class KeyUsage(str, Enum):
     """Key usage extensions."""
+
     DIGITAL_SIGNATURE = "digital_signature"
     KEY_ENCIPHERMENT = "key_encipherment"
     DATA_ENCIPHERMENT = "data_encipherment"
@@ -46,6 +47,7 @@ class KeyUsage(str, Enum):
 
 class ExtendedKeyUsage(str, Enum):
     """Extended key usage."""
+
     SERVER_AUTH = "server_auth"
     CLIENT_AUTH = "client_auth"
     CODE_SIGNING = "code_signing"
@@ -57,6 +59,7 @@ class ExtendedKeyUsage(str, Enum):
 @dataclass
 class SubjectInfo:
     """Subject/Issuer distinguished name."""
+
     common_name: str
     organization: str | None = None
     organizational_unit: str | None = None
@@ -69,6 +72,7 @@ class SubjectInfo:
 @dataclass
 class CSRResult:
     """Result of CSR generation."""
+
     csr_pem: bytes
     csr_der: bytes
     private_key_pem: bytes
@@ -81,6 +85,7 @@ class CSRResult:
 @dataclass
 class CertificateInfo:
     """Parsed certificate information."""
+
     subject: SubjectInfo
     issuer: SubjectInfo
     serial_number: int
@@ -101,6 +106,7 @@ class CertificateInfo:
 @dataclass
 class ChainValidationResult:
     """Result of certificate chain validation."""
+
     valid: bool
     errors: list[str]
     warnings: list[str]
@@ -110,16 +116,19 @@ class ChainValidationResult:
 
 class CertificateError(Exception):
     """Certificate operation failed."""
+
     pass
 
 
 class CSRError(CertificateError):
     """CSR operation failed."""
+
     pass
 
 
 class ValidationError(CertificateError):
     """Validation failed."""
+
     pass
 
 
@@ -166,9 +175,7 @@ class CertificateEngine:
         if subject.email:
             name_attributes.append(x509.NameAttribute(NameOID.EMAIL_ADDRESS, subject.email))
 
-        csr_builder = x509.CertificateSigningRequestBuilder().subject_name(
-            x509.Name(name_attributes)
-        )
+        csr_builder = x509.CertificateSigningRequestBuilder().subject_name(x509.Name(name_attributes))
 
         # Add SANs
         san_list = []
@@ -176,6 +183,7 @@ class CertificateEngine:
             san_list.extend([x509.DNSName(d) for d in san_domains])
         if san_ips:
             import ipaddress
+
             san_list.extend([x509.IPAddress(ipaddress.ip_address(ip)) for ip in san_ips])
         if san_emails:
             san_list.extend([x509.RFC822Name(e) for e in san_emails])
@@ -359,9 +367,7 @@ class CertificateEngine:
         san = []
 
         try:
-            basic_constraints = cert.extensions.get_extension_for_oid(
-                ExtensionOID.BASIC_CONSTRAINTS
-            )
+            basic_constraints = cert.extensions.get_extension_for_oid(ExtensionOID.BASIC_CONSTRAINTS)
             is_ca = basic_constraints.value.ca
         except x509.ExtensionNotFound:
             pass
@@ -403,9 +409,7 @@ class CertificateEngine:
             pass
 
         try:
-            san_ext = cert.extensions.get_extension_for_oid(
-                ExtensionOID.SUBJECT_ALTERNATIVE_NAME
-            )
+            san_ext = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
             for name in san_ext.value:
                 if isinstance(name, x509.DNSName):
                     san.append(f"DNS:{name.value}")
@@ -481,9 +485,7 @@ class CertificateEngine:
 
                 # Check issuer is a CA
                 try:
-                    basic_constraints = issuer_cert.extensions.get_extension_for_oid(
-                        ExtensionOID.BASIC_CONSTRAINTS
-                    )
+                    basic_constraints = issuer_cert.extensions.get_extension_for_oid(ExtensionOID.BASIC_CONSTRAINTS)
                     if not basic_constraints.value.ca:
                         errors.append("Issuer certificate is not a CA")
                 except x509.ExtensionNotFound:
@@ -590,9 +592,7 @@ class CertificateEngine:
 
                 # Check issuer is CA
                 try:
-                    basic_constraints = issuer_cert.extensions.get_extension_for_oid(
-                        ExtensionOID.BASIC_CONSTRAINTS
-                    )
+                    basic_constraints = issuer_cert.extensions.get_extension_for_oid(ExtensionOID.BASIC_CONSTRAINTS)
                     if not basic_constraints.value.ca:
                         errors.append(f"Certificate {i+1} is not a CA but signs {cert_name}")
                 except x509.ExtensionNotFound:
@@ -638,9 +638,7 @@ class CertificateEngine:
         # Extract SANs if present
         san = []
         try:
-            san_ext = csr.extensions.get_extension_for_oid(
-                ExtensionOID.SUBJECT_ALTERNATIVE_NAME
-            )
+            san_ext = csr.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
             for name in san_ext.value:
                 if isinstance(name, x509.DNSName):
                     san.append(f"DNS:{name.value}")
@@ -715,6 +713,7 @@ class CertificateEngine:
 
     def _extract_name(self, name: x509.Name) -> SubjectInfo:
         """Extract SubjectInfo from X.509 Name."""
+
         def get_attr(oid) -> str | None:
             try:
                 return name.get_attributes_for_oid(oid)[0].value
@@ -756,9 +755,7 @@ class CertificateEngine:
         cert = self._load_certificate(cert_data)
 
         try:
-            aia = cert.extensions.get_extension_for_oid(
-                ExtensionOID.AUTHORITY_INFORMATION_ACCESS
-            )
+            aia = cert.extensions.get_extension_for_oid(ExtensionOID.AUTHORITY_INFORMATION_ACCESS)
             for access_desc in aia.value:
                 if access_desc.access_method == x509.oid.AuthorityInformationAccessOID.OCSP:
                     return access_desc.access_location.value
@@ -780,9 +777,7 @@ class CertificateEngine:
         urls = []
 
         try:
-            crl_dp = cert.extensions.get_extension_for_oid(
-                ExtensionOID.CRL_DISTRIBUTION_POINTS
-            )
+            crl_dp = cert.extensions.get_extension_for_oid(ExtensionOID.CRL_DISTRIBUTION_POINTS)
             for dp in crl_dp.value:
                 if dp.full_name:
                     for name in dp.full_name:
@@ -863,9 +858,9 @@ class CertificateEngine:
             elif cert_status == ocsp.OCSPCertStatus.REVOKED:
                 result = {
                     "status": "revoked",
-                    "revocation_time": ocsp_response.revocation_time.isoformat()
-                    if ocsp_response.revocation_time
-                    else None,
+                    "revocation_time": (
+                        ocsp_response.revocation_time.isoformat() if ocsp_response.revocation_time else None
+                    ),
                 }
                 if ocsp_response.revocation_reason:
                     result["revocation_reason"] = ocsp_response.revocation_reason.name
@@ -940,16 +935,12 @@ class CertificateEngine:
 
         result = {
             "status": "revoked",
-            "revocation_time": revoked_cert.revocation_date_utc.isoformat()
-            if revoked_cert.revocation_date
-            else None,
+            "revocation_time": revoked_cert.revocation_date_utc.isoformat() if revoked_cert.revocation_date else None,
         }
 
         # Get revocation reason if present
         try:
-            reason_ext = revoked_cert.extensions.get_extension_for_oid(
-                x509.CRLEntryExtensionOID.CRL_REASON
-            )
+            reason_ext = revoked_cert.extensions.get_extension_for_oid(x509.CRLEntryExtensionOID.CRL_REASON)
             result["revocation_reason"] = reason_ext.value.name
         except x509.ExtensionNotFound:
             pass

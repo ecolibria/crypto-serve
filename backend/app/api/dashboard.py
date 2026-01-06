@@ -13,7 +13,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User, Identity, AuditLog, CryptoInventoryReport
@@ -23,8 +23,6 @@ from app.auth.jwt import get_dashboard_or_sdk_user
 from app.core.promotion import (
     check_promotion_readiness,
     get_context_tier,
-    TIER_REQUIREMENTS,
-    ContextTier,
 )
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
@@ -37,6 +35,7 @@ router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
 
 class AlgorithmUsage(BaseModel):
     """Algorithm usage statistics."""
+
     algorithm: str
     count: int
     category: str  # symmetric, asymmetric, hash, kdf
@@ -45,6 +44,7 @@ class AlgorithmUsage(BaseModel):
 
 class SecurityPosture(BaseModel):
     """Security posture summary."""
+
     overall_score: float = Field(..., description="0-100 score")
     quantum_readiness: float = Field(..., description="0-100 score")
     deprecated_usage: int = Field(..., description="Count of deprecated algo usages")
@@ -54,6 +54,7 @@ class SecurityPosture(BaseModel):
 
 class RecentActivity(BaseModel):
     """Recent crypto activity."""
+
     total_operations_24h: int
     successful_24h: int
     failed_24h: int
@@ -63,6 +64,7 @@ class RecentActivity(BaseModel):
 
 class AppPromotionStatus(BaseModel):
     """Promotion status for a single application."""
+
     app_id: str
     app_name: str
     environment: str
@@ -76,6 +78,7 @@ class AppPromotionStatus(BaseModel):
 
 class PromotionMetrics(BaseModel):
     """Overall promotion metrics for dashboard."""
+
     apps_ready_for_promotion: int = Field(..., description="Apps ready to promote to production")
     apps_blocking: int = Field(..., description="Apps with blocking contexts")
     total_dev_apps: int = Field(..., description="Total apps in development/staging")
@@ -85,6 +88,7 @@ class PromotionMetrics(BaseModel):
 
 class DashboardMetrics(BaseModel):
     """Complete dashboard metrics response."""
+
     security_posture: SecurityPosture
     recent_activity: RecentActivity
     algorithm_distribution: list[AlgorithmUsage]
@@ -162,9 +166,7 @@ async def get_dashboard_metrics(
     day_ago = now - timedelta(days=1)
 
     # Get user's identities
-    identity_result = await db.execute(
-        select(Identity).where(Identity.user_id == user.id)
-    )
+    identity_result = await db.execute(select(Identity).where(Identity.user_id == user.id))
     identities = list(identity_result.scalars().all())
     identity_ids = [i.id for i in identities]
     active_identities = len([i for i in identities if i.status == "active"])
@@ -213,12 +215,14 @@ async def get_dashboard_metrics(
 
     for algo, count in algo_counts.items():
         info = ALGORITHM_INFO.get(algo, {"category": "unknown", "quantum_safe": False})
-        algorithm_distribution.append(AlgorithmUsage(
-            algorithm=algo,
-            count=count,
-            category=info["category"],
-            quantum_safe=info["quantum_safe"],
-        ))
+        algorithm_distribution.append(
+            AlgorithmUsage(
+                algorithm=algo,
+                count=count,
+                category=info["category"],
+                quantum_safe=info["quantum_safe"],
+            )
+        )
 
         if algo in QUANTUM_VULNERABLE:
             quantum_vulnerable_count += count
@@ -307,7 +311,9 @@ async def get_dashboard_metrics(
             for app in dev_apps:
                 # Check promotion readiness with user trust score
                 readiness = await check_promotion_readiness(
-                    db, app, "production",
+                    db,
+                    app,
+                    "production",
                     user_id=user.id,
                     tenant_id=user.tenant_id,
                 )
@@ -322,17 +328,19 @@ async def get_dashboard_metrics(
                 else:
                     apps_blocking += 1
 
-                app_statuses.append(AppPromotionStatus(
-                    app_id=app.id,
-                    app_name=app.name,
-                    environment=app.environment,
-                    is_ready=readiness.is_ready,
-                    ready_count=readiness.ready_count,
-                    total_count=readiness.total_count,
-                    blocking_contexts=readiness.blocking_contexts,
-                    estimated_ready_at=readiness.estimated_ready_at,
-                    requires_approval=readiness.requires_approval,
-                ))
+                app_statuses.append(
+                    AppPromotionStatus(
+                        app_id=app.id,
+                        app_name=app.name,
+                        environment=app.environment,
+                        is_ready=readiness.is_ready,
+                        ready_count=readiness.ready_count,
+                        total_count=readiness.total_count,
+                        blocking_contexts=readiness.blocking_contexts,
+                        estimated_ready_at=readiness.estimated_ready_at,
+                        requires_approval=readiness.requires_approval,
+                    )
+                )
 
             promotion_metrics = PromotionMetrics(
                 apps_ready_for_promotion=apps_ready,

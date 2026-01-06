@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from app.core.ct_monitoring import (
     CTMonitor,
     CTLogEntry,
-    CTAlert,
     CTAlertSeverity,
     CTAlertType,
     CTMonitoringResult,
@@ -184,16 +183,26 @@ class TestCTMonitorAnalysis:
         3. Same serial from different CAs is technically valid
         """
         cert1 = CTLogEntry(
-            id=1, issuer_name="CA1", issuer_ca_id=1, common_name="a.example.com",
-            name_value="a.example.com", not_before=datetime.now(timezone.utc),
+            id=1,
+            issuer_name="CA1",
+            issuer_ca_id=1,
+            common_name="a.example.com",
+            name_value="a.example.com",
+            not_before=datetime.now(timezone.utc),
             not_after=datetime.now(timezone.utc) + timedelta(days=90),
-            serial_number="SAME_SERIAL", sha256_fingerprint="fp1",
+            serial_number="SAME_SERIAL",
+            sha256_fingerprint="fp1",
         )
         cert2 = CTLogEntry(
-            id=2, issuer_name="CA2", issuer_ca_id=2, common_name="b.example.com",
-            name_value="b.example.com", not_before=datetime.now(timezone.utc),
+            id=2,
+            issuer_name="CA2",
+            issuer_ca_id=2,
+            common_name="b.example.com",
+            name_value="b.example.com",
+            not_before=datetime.now(timezone.utc),
             not_after=datetime.now(timezone.utc) + timedelta(days=90),
-            serial_number="SAME_SERIAL", sha256_fingerprint="fp2",
+            serial_number="SAME_SERIAL",
+            sha256_fingerprint="fp2",
         )
 
         config = DomainConfig(domain="example.com")
@@ -223,7 +232,7 @@ class TestCTMonitorSearch:
             }
         ]
 
-        with patch.object(ct_monitor, '_get_client') as mock_get_client:
+        with patch.object(ct_monitor, "_get_client") as mock_get_client:
             mock_client = AsyncMock()
             mock_client.get = AsyncMock()
             mock_client.get.return_value.raise_for_status = MagicMock()
@@ -239,7 +248,7 @@ class TestCTMonitorSearch:
     @pytest.mark.asyncio
     async def test_search_empty_results(self, ct_monitor):
         """Test search with no results."""
-        with patch.object(ct_monitor, '_get_client') as mock_get_client:
+        with patch.object(ct_monitor, "_get_client") as mock_get_client:
             mock_client = AsyncMock()
             mock_client.get = AsyncMock()
             mock_client.get.return_value.raise_for_status = MagicMock()

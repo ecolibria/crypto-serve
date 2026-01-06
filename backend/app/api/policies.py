@@ -37,6 +37,7 @@ router = APIRouter(prefix="/api/policies", tags=["policies"])
 # Helper Functions
 # =============================================================================
 
+
 def db_policy_to_engine_policy(db_policy: Policy) -> EnginePolicy:
     """Convert a database Policy to a PolicyEngine Policy."""
     return EnginePolicy(
@@ -91,6 +92,7 @@ def build_test_context(req: EvaluationRequest, algo_info: dict) -> EvaluationCon
 # Read Endpoints
 # =============================================================================
 
+
 @router.get("", response_model=list[PolicyListResponse])
 async def list_policies(
     identity: Annotated[Identity, Depends(get_sdk_identity)],
@@ -102,7 +104,7 @@ async def list_policies(
     query = select(Policy).order_by(Policy.name)
 
     if enabled_only:
-        query = query.where(Policy.enabled == True)
+        query = query.where(Policy.enabled)
 
     if severity:
         query = query.where(Policy.severity == severity)
@@ -161,6 +163,7 @@ async def get_policy(
 # Policy Evaluation
 # =============================================================================
 
+
 @router.post("/evaluate", response_model=EvaluationResponse)
 async def evaluate_policies(
     data: EvaluationRequest,
@@ -198,7 +201,7 @@ async def evaluate_policies(
         engine.load_default_policies()
 
     # Load custom policies from database
-    result = await db.execute(select(Policy).where(Policy.enabled == True))
+    result = await db.execute(select(Policy).where(Policy.enabled))
     db_policies = result.scalars().all()
     for db_policy in db_policies:
         engine.add_policy(db_policy_to_engine_policy(db_policy))
@@ -213,13 +216,15 @@ async def evaluate_policies(
     eval_results = []
 
     for r in results:
-        eval_results.append(PolicyEvaluationResult(
-            policy_name=r.policy_name,
-            passed=r.passed,
-            severity=r.severity.value,
-            message=r.message if not r.passed else "",
-            rule=r.details.get("rule", ""),
-        ))
+        eval_results.append(
+            PolicyEvaluationResult(
+                policy_name=r.policy_name,
+                passed=r.passed,
+                severity=r.severity.value,
+                message=r.message if not r.passed else "",
+                rule=r.details.get("rule", ""),
+            )
+        )
 
         if not r.passed:
             if r.severity == EnginePolicySeverity.BLOCK:
@@ -244,9 +249,8 @@ async def evaluate_policies(
 # Admin Helper
 # =============================================================================
 
-async def require_admin(
-    identity: Annotated[Identity, Depends(get_sdk_identity)]
-) -> Identity:
+
+async def require_admin(identity: Annotated[Identity, Depends(get_sdk_identity)]) -> Identity:
     """Verify identity has admin privileges."""
     # Note: For SDK identities, we currently allow admin operations
     # In production, you'd check identity.is_admin or similar
@@ -256,6 +260,7 @@ async def require_admin(
 # =============================================================================
 # Policy CRUD (Admin Only)
 # =============================================================================
+
 
 @router.post("", response_model=PolicyResponse, status_code=status.HTTP_201_CREATED)
 async def create_policy(

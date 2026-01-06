@@ -25,11 +25,13 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 class TokenRefreshRequest(BaseModel):
     """Token refresh request."""
+
     refresh_token: str
 
 
 class TokenRefreshResponse(BaseModel):
     """Token refresh response."""
+
     access_token: str
     expires_at: datetime
     token_type: str = "bearer"
@@ -37,11 +39,13 @@ class TokenRefreshResponse(BaseModel):
 
 class TokenVerifyRequest(BaseModel):
     """Token verification request."""
+
     access_token: str
 
 
 class TokenVerifyResponse(BaseModel):
     """Token verification response."""
+
     valid: bool
     app_id: str | None = None
     app_name: str | None = None
@@ -126,6 +130,7 @@ async def verify_token(
 
     # Decode expiry
     from datetime import timezone
+
     exp = payload.get("exp")
     expires_at = datetime.fromtimestamp(exp, tz=timezone.utc) if exp else None
 

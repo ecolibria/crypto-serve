@@ -24,6 +24,7 @@ from typing import Any
 
 class InventorySource(str, Enum):
     """Source of inventory data."""
+
     IMPORT_SCAN = "import_scan"  # sys.modules analysis
     DEPENDENCY_FILE = "dependency_file"  # requirements.txt, package.json
     CODE_SCAN = "code_scan"  # Static code analysis
@@ -32,6 +33,7 @@ class InventorySource(str, Enum):
 
 class QuantumRisk(str, Enum):
     """Quantum computing risk level."""
+
     NONE = "none"
     LOW = "low"
     HIGH = "high"
@@ -41,6 +43,7 @@ class QuantumRisk(str, Enum):
 @dataclass
 class DetectedLibrary:
     """A detected cryptographic library."""
+
     name: str
     version: str | None
     category: str  # symmetric, asymmetric, hashing, kdf, signing, pqc
@@ -55,6 +58,7 @@ class DetectedLibrary:
 @dataclass
 class DetectedAlgorithm:
     """A detected cryptographic algorithm."""
+
     name: str
     category: str
     library: str
@@ -68,6 +72,7 @@ class DetectedAlgorithm:
 @dataclass
 class CryptoInventory:
     """Complete cryptographic inventory for an application."""
+
     identity_id: str
     identity_name: str
     scan_timestamp: str
@@ -84,7 +89,18 @@ CRYPTO_LIBRARIES = {
     # Python libraries
     "cryptography": {
         "category": "general",
-        "algorithms": ["AES", "ChaCha20", "RSA", "ECDSA", "Ed25519", "X25519", "SHA-256", "SHA-512", "PBKDF2", "Scrypt"],
+        "algorithms": [
+            "AES",
+            "ChaCha20",
+            "RSA",
+            "ECDSA",
+            "Ed25519",
+            "X25519",
+            "SHA-256",
+            "SHA-512",
+            "PBKDF2",
+            "Scrypt",
+        ],
         "quantum_risk": QuantumRisk.HIGH,  # Contains RSA/ECDSA
         "is_deprecated": False,
     },
@@ -318,6 +334,7 @@ class CryptoInventoryScanner:
         # Try importlib.metadata first (works for pip-installed packages)
         try:
             from importlib.metadata import version as get_version
+
             # Map library names to package names
             package_names = {
                 "pynacl": "PyNaCl",
@@ -346,9 +363,10 @@ class CryptoInventoryScanner:
         if library_name == "ssl":
             try:
                 import ssl
+
                 # Extract version number from string like "OpenSSL 3.0.2 15 Mar 2022"
                 openssl_ver = ssl.OPENSSL_VERSION
-                match = re.search(r'(\d+\.\d+\.\d+)', openssl_ver)
+                match = re.search(r"(\d+\.\d+\.\d+)", openssl_ver)
                 if match:
                     return f"OpenSSL {match.group(1)}"
             except Exception:
@@ -384,17 +402,19 @@ class CryptoInventoryScanner:
 
                         # Avoid duplicates
                         if not any(d.name == library_name for d in detected):
-                            detected.append(DetectedLibrary(
-                                name=library_name,
-                                version=version,
-                                category=lib_info["category"],
-                                algorithms=lib_info["algorithms"],
-                                quantum_risk=lib_info["quantum_risk"],
-                                source=InventorySource.IMPORT_SCAN,
-                                is_deprecated=lib_info.get("is_deprecated", False),
-                                deprecation_reason=lib_info.get("deprecation_reason"),
-                                recommendation=lib_info.get("recommendation"),
-                            ))
+                            detected.append(
+                                DetectedLibrary(
+                                    name=library_name,
+                                    version=version,
+                                    category=lib_info["category"],
+                                    algorithms=lib_info["algorithms"],
+                                    quantum_risk=lib_info["quantum_risk"],
+                                    source=InventorySource.IMPORT_SCAN,
+                                    is_deprecated=lib_info.get("is_deprecated", False),
+                                    deprecation_reason=lib_info.get("deprecation_reason"),
+                                    recommendation=lib_info.get("recommendation"),
+                                )
+                            )
                         break
 
         self.detected_libraries = detected
@@ -424,15 +444,13 @@ class CryptoInventoryScanner:
         # Check OpenSSL version
         try:
             import ssl
+
             env_info["openssl_version"] = ssl.OPENSSL_VERSION
         except Exception:
             pass
 
         # Check for crypto-related environment variables
-        crypto_env_patterns = [
-            "CRYPTO", "SSL", "TLS", "KEY", "SECRET", "ENCRYPT",
-            "FIPS", "OPENSSL", "CIPHER", "HASH"
-        ]
+        crypto_env_patterns = ["CRYPTO", "SSL", "TLS", "KEY", "SECRET", "ENCRYPT", "FIPS", "OPENSSL", "CIPHER", "HASH"]
 
         for key in os.environ:
             for pattern in crypto_env_patterns:
@@ -468,21 +486,25 @@ class CryptoInventoryScanner:
         algorithms = []
         for lib in self.detected_libraries:
             for algo in lib.algorithms:
-                algorithms.append(DetectedAlgorithm(
-                    name=algo,
-                    category=lib.category,
-                    library=lib.name,
-                    quantum_risk=lib.quantum_risk,
-                    is_weak=lib.is_deprecated,
-                    weakness_reason=lib.deprecation_reason,
-                    source=lib.source,
-                ))
+                algorithms.append(
+                    DetectedAlgorithm(
+                        name=algo,
+                        category=lib.category,
+                        library=lib.name,
+                        quantum_risk=lib.quantum_risk,
+                        is_weak=lib.is_deprecated,
+                        weakness_reason=lib.deprecation_reason,
+                        source=lib.source,
+                    )
+                )
 
         # Build quantum summary
         quantum_summary = {
             "total_libraries": len(self.detected_libraries),
             "quantum_safe": sum(1 for lib in self.detected_libraries if lib.quantum_risk == QuantumRisk.NONE),
-            "quantum_vulnerable": sum(1 for lib in self.detected_libraries if lib.quantum_risk in [QuantumRisk.HIGH, QuantumRisk.CRITICAL]),
+            "quantum_vulnerable": sum(
+                1 for lib in self.detected_libraries if lib.quantum_risk in [QuantumRisk.HIGH, QuantumRisk.CRITICAL]
+            ),
             "has_pqc": any(lib.category == "pqc" for lib in self.detected_libraries),
         }
 
@@ -497,17 +519,21 @@ class CryptoInventoryScanner:
         # Add recommendations
         for lib in self.detected_libraries:
             if lib.is_deprecated and lib.recommendation:
-                risk_summary["recommendations"].append({
-                    "type": "deprecated_library",
-                    "library": lib.name,
-                    "recommendation": lib.recommendation,
-                })
+                risk_summary["recommendations"].append(
+                    {
+                        "type": "deprecated_library",
+                        "library": lib.name,
+                        "recommendation": lib.recommendation,
+                    }
+                )
 
         if quantum_summary["quantum_vulnerable"] > 0 and not quantum_summary["has_pqc"]:
-            risk_summary["recommendations"].append({
-                "type": "quantum_readiness",
-                "recommendation": "Consider adding post-quantum cryptography support for long-term data protection",
-            })
+            risk_summary["recommendations"].append(
+                {
+                    "type": "quantum_readiness",
+                    "recommendation": "Consider adding post-quantum cryptography support for long-term data protection",
+                }
+            )
 
         return CryptoInventory(
             identity_id=identity_id,

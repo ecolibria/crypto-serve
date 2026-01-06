@@ -30,17 +30,13 @@ Platform Support:
 """
 
 import atexit
-import ctypes
 import mmap
-import os
 import secrets
-import struct
 import sys
 import threading
-import weakref
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Optional, List, Set
+from typing import Dict, Optional
 
 
 class SecureAllocatorError(Exception):
@@ -387,13 +383,9 @@ class SecureAllocator:
 
             # Allocate based on protection level
             if protection_level in (ProtectionLevel.GUARDED, ProtectionLevel.MAXIMUM):
-                info = self._allocate_guarded(
-                    size, actual_size, canary_head, canary_tail, protection_level
-                )
+                info = self._allocate_guarded(size, actual_size, canary_head, canary_tail, protection_level)
             else:
-                info = self._allocate_standard(
-                    size, actual_size, canary_head, canary_tail, protection_level
-                )
+                info = self._allocate_standard(size, actual_size, canary_head, canary_tail, protection_level)
 
             # Lock memory if requested
             if protection_level in (
@@ -493,9 +485,7 @@ class SecureAllocator:
 
         # Write canaries
         mm[: self.CANARY_SIZE] = canary_head
-        mm[self.CANARY_SIZE + size : self.CANARY_SIZE + size + self.CANARY_SIZE] = (
-            canary_tail
-        )
+        mm[self.CANARY_SIZE + size : self.CANARY_SIZE + size + self.CANARY_SIZE] = canary_tail
 
         info = AllocationInfo(
             address=id(mm),
@@ -543,13 +533,9 @@ class SecureAllocator:
             Memoryview of user data region
         """
         if isinstance(info.mmap_obj, bytearray):
-            return memoryview(info.mmap_obj)[
-                self.CANARY_SIZE : self.CANARY_SIZE + info.size
-            ]
+            return memoryview(info.mmap_obj)[self.CANARY_SIZE : self.CANARY_SIZE + info.size]
         elif isinstance(info.mmap_obj, mmap.mmap):
-            return memoryview(info.mmap_obj)[
-                self.CANARY_SIZE : self.CANARY_SIZE + info.size
-            ]
+            return memoryview(info.mmap_obj)[self.CANARY_SIZE : self.CANARY_SIZE + info.size]
         else:
             raise SecureAllocatorError("Unknown allocation type")
 

@@ -10,13 +10,13 @@ Endpoints for:
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Identity, User
+from app.models import Identity
 from app.models.crypto_inventory import (
     CryptoInventoryReport,
     CryptoLibraryUsage,
@@ -41,7 +41,6 @@ from app.core.pqc_recommendations import (
     pqc_recommendation_service,
     DataProfile,
 )
-from app.auth import get_current_user
 from app.api.crypto import get_sdk_identity
 
 router = APIRouter(prefix="/api/v1/inventory", tags=["inventory"])
@@ -54,6 +53,7 @@ router = APIRouter(prefix="/api/v1/inventory", tags=["inventory"])
 
 class DetectedLibraryRequest(BaseModel):
     """A detected cryptographic library from SDK."""
+
     name: str
     version: str | None = None
     category: str
@@ -65,6 +65,7 @@ class DetectedLibraryRequest(BaseModel):
 
 class InventoryReportRequest(BaseModel):
     """Inventory report from SDK initialization."""
+
     identity_id: str
     identity_name: str
     libraries: list[DetectedLibraryRequest] = Field(default_factory=list)
@@ -80,6 +81,7 @@ class InventoryReportRequest(BaseModel):
 
 class CICDGateRequest(BaseModel):
     """CI/CD gate check request."""
+
     identity_id: str
     identity_name: str
     libraries: list[DetectedLibraryRequest] = Field(default_factory=list)
@@ -93,6 +95,7 @@ class CICDGateRequest(BaseModel):
 
 class PolicyViolationResponse(BaseModel):
     """A policy violation in the response."""
+
     violation_type: str
     severity: str
     policy_name: str
@@ -105,6 +108,7 @@ class PolicyViolationResponse(BaseModel):
 
 class EnforcementResultResponse(BaseModel):
     """Policy enforcement result response."""
+
     report_id: int | None = None  # ID for tracking
     action: str  # allow, warn, block
     violations: list[PolicyViolationResponse]
@@ -119,6 +123,7 @@ class EnforcementResultResponse(BaseModel):
 
 class CICDGateResponse(BaseModel):
     """CI/CD gate response with pass/fail status."""
+
     passed: bool
     report_id: int
     action: str
@@ -133,6 +138,7 @@ class CICDGateResponse(BaseModel):
 
 class CBOMUploadRequest(BaseModel):
     """CBOM upload from CLI."""
+
     format: str = "json"
     content: dict = Field(default_factory=dict)
     score: float = 0.0
@@ -147,6 +153,7 @@ class CBOMUploadRequest(BaseModel):
 
 class CBOMUploadResponse(BaseModel):
     """Response from CBOM upload."""
+
     success: bool
     report_id: int
     scan_ref: str  # Human-readable reference ID (e.g., CBOM-A7B3C9D2)
@@ -184,7 +191,9 @@ async def report_inventory(
             category=lib.category,
             algorithms=lib.algorithms,
             quantum_risk=QuantumRisk(lib.quantum_risk),
-            source=InventorySource(request.scan_source if request.scan_source in ["import_scan", "sdk_init"] else "import_scan"),
+            source=InventorySource(
+                request.scan_source if request.scan_source in ["import_scan", "sdk_init"] else "import_scan"
+            ),
             is_deprecated=lib.is_deprecated,
             deprecation_reason=lib.deprecation_reason,
         )
@@ -239,9 +248,7 @@ async def report_inventory(
     result = policy_enforcement_service.evaluate_inventory(inventory)
 
     # Get identity info for team/department
-    identity_result = await db.execute(
-        select(Identity).where(Identity.id == request.identity_id)
-    )
+    identity_result = await db.execute(select(Identity).where(Identity.id == request.identity_id))
     identity = identity_result.scalar_one_or_none()
     team = identity.team if identity else None
 
@@ -260,10 +267,26 @@ async def report_inventory(
         quantum_vulnerable_count=quantum_vulnerable,
         has_pqc=has_pqc,
         deprecated_count=deprecated_count,
-        libraries=[{"name": lib.name, "version": lib.version, "category": lib.category, "algorithms": lib.algorithms, "quantum_risk": lib.quantum_risk.value, "is_deprecated": lib.is_deprecated} for lib in libraries],
+        libraries=[
+            {
+                "name": lib.name,
+                "version": lib.version,
+                "category": lib.category,
+                "algorithms": lib.algorithms,
+                "quantum_risk": lib.quantum_risk.value,
+                "is_deprecated": lib.is_deprecated,
+            }
+            for lib in libraries
+        ],
         algorithms=[{"name": algo.name, "category": algo.category, "library": algo.library} for algo in algorithms],
-        violations=[{"type": v.violation_type.value, "severity": v.severity.value, "message": v.message, "library": v.library} for v in result.violations],
-        warnings=[{"type": w.violation_type.value, "severity": w.severity.value, "message": w.message, "library": w.library} for w in result.warnings],
+        violations=[
+            {"type": v.violation_type.value, "severity": v.severity.value, "message": v.message, "library": v.library}
+            for v in result.violations
+        ],
+        warnings=[
+            {"type": w.violation_type.value, "severity": w.severity.value, "message": w.message, "library": w.library}
+            for w in result.warnings
+        ],
         environment=request.environment,
         python_version=request.python_version,
         git_commit=request.git_commit,
@@ -368,9 +391,7 @@ async def cicd_gate(
     result = policy_enforcement_service.evaluate_inventory(inventory)
 
     # Get identity info
-    identity_result = await db.execute(
-        select(Identity).where(Identity.id == request.identity_id)
-    )
+    identity_result = await db.execute(select(Identity).where(Identity.id == request.identity_id))
     identity = identity_result.scalar_one_or_none()
     team = identity.team if identity else None
 
@@ -403,10 +424,26 @@ async def cicd_gate(
         quantum_vulnerable_count=quantum_vulnerable,
         has_pqc=has_pqc,
         deprecated_count=deprecated_count,
-        libraries=[{"name": lib.name, "version": lib.version, "category": lib.category, "algorithms": lib.algorithms, "quantum_risk": lib.quantum_risk.value, "is_deprecated": lib.is_deprecated} for lib in libraries],
+        libraries=[
+            {
+                "name": lib.name,
+                "version": lib.version,
+                "category": lib.category,
+                "algorithms": lib.algorithms,
+                "quantum_risk": lib.quantum_risk.value,
+                "is_deprecated": lib.is_deprecated,
+            }
+            for lib in libraries
+        ],
         algorithms=[{"name": algo.name, "category": algo.category, "library": algo.library} for algo in algorithms],
-        violations=[{"type": v.violation_type.value, "severity": v.severity.value, "message": v.message, "library": v.library} for v in result.violations],
-        warnings=[{"type": w.violation_type.value, "severity": w.severity.value, "message": w.message, "library": w.library} for w in result.warnings],
+        violations=[
+            {"type": v.violation_type.value, "severity": v.severity.value, "message": v.message, "library": v.library}
+            for v in result.violations
+        ],
+        warnings=[
+            {"type": w.violation_type.value, "severity": w.severity.value, "message": w.message, "library": w.library}
+            for w in result.warnings
+        ],
         environment=request.environment,
         git_commit=request.git_commit,
         git_branch=request.git_branch,
@@ -530,9 +567,7 @@ async def get_inventory_report(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get a specific inventory report by ID."""
-    result = await db.execute(
-        select(CryptoInventoryReport).where(CryptoInventoryReport.id == report_id)
-    )
+    result = await db.execute(select(CryptoInventoryReport).where(CryptoInventoryReport.id == report_id))
     report = result.scalar_one_or_none()
 
     if not report:
@@ -723,20 +758,15 @@ async def upload_cbom(
     else:
         # Calculate from libraries data
         quantum_safe = sum(
-            1 for lib in libraries_data
-            if lib.get("quantumRisk", lib.get("quantum_risk", "high")) == "low"
+            1 for lib in libraries_data if lib.get("quantumRisk", lib.get("quantum_risk", "high")) == "low"
         )
         quantum_vulnerable = sum(
-            1 for lib in libraries_data
+            1
+            for lib in libraries_data
             if lib.get("quantumRisk", lib.get("quantum_risk", "none")) in ["high", "critical"]
         )
-        has_pqc = any(
-            lib.get("category") == "pqc" for lib in libraries_data
-        )
-        deprecated_count = sum(
-            1 for lib in libraries_data
-            if lib.get("isDeprecated", lib.get("is_deprecated", False))
-        )
+        has_pqc = any(lib.get("category") == "pqc" for lib in libraries_data)
+        deprecated_count = sum(1 for lib in libraries_data if lib.get("isDeprecated", lib.get("is_deprecated", False)))
 
     # Create inventory report
     report = CryptoInventoryReport(
@@ -843,7 +873,11 @@ async def get_cbom_report(
         # Lookup by scan_ref - try both original case and lowercase for backwards compatibility
         result = await db.execute(
             select(CryptoInventoryReport)
-            .where(CryptoInventoryReport.scan_ref.in_([report_id_or_ref, report_id_or_ref.lower(), report_id_or_ref.upper()]))
+            .where(
+                CryptoInventoryReport.scan_ref.in_(
+                    [report_id_or_ref, report_id_or_ref.lower(), report_id_or_ref.upper()]
+                )
+            )
             .where(CryptoInventoryReport.user_id.in_([str(identity.user_id), user_id_normalized]))
         )
     else:
@@ -913,9 +947,7 @@ async def export_cbom(
     CBOM is like SBOM but focused on cryptographic components,
     enabling organizations to track and manage their crypto inventory.
     """
-    result = await db.execute(
-        select(CryptoInventoryReport).where(CryptoInventoryReport.id == report_id)
-    )
+    result = await db.execute(select(CryptoInventoryReport).where(CryptoInventoryReport.id == report_id))
     report = result.scalar_one_or_none()
 
     if not report:
@@ -1018,9 +1050,7 @@ async def get_pqc_recommendations(
     - authentication_credentials: 1-year confidentiality (MEDIUM)
     - ephemeral_communications: Short-term (LOW)
     """
-    result = await db.execute(
-        select(CryptoInventoryReport).where(CryptoInventoryReport.id == report_id)
-    )
+    result = await db.execute(select(CryptoInventoryReport).where(CryptoInventoryReport.id == report_id))
     report = result.scalar_one_or_none()
 
     if not report:
@@ -1079,8 +1109,7 @@ async def get_pqc_recommendations(
             profile = DataProfile(data_profile)
         except ValueError:
             raise HTTPException(
-                status_code=400,
-                detail=f"Invalid data_profile. Valid options: {[p.value for p in DataProfile]}"
+                status_code=400, detail=f"Invalid data_profile. Valid options: {[p.value for p in DataProfile]}"
             )
 
     # Generate recommendations
@@ -1132,7 +1161,7 @@ async def get_data_profiles():
     which affects the urgency of PQC migration. Use these when
     calling /recommendations to get context-aware migration advice.
     """
-    from app.core.pqc_recommendations import DATA_PROFILES, DataProfile as DP
+    from app.core.pqc_recommendations import DATA_PROFILES
 
     return {
         "profiles": [

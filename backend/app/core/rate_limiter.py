@@ -156,9 +156,7 @@ class InMemoryBackend(RateLimitBackend):
 
             # Refill tokens based on time elapsed
             elapsed = now - bucket["last_update"]
-            bucket["tokens"] = min(
-                burst_size, bucket["tokens"] + elapsed * refill_rate
-            )
+            bucket["tokens"] = min(burst_size, bucket["tokens"] + elapsed * refill_rate)
             bucket["last_update"] = now
 
             # Calculate reset time (when bucket will be full again)
@@ -380,9 +378,7 @@ class RateLimiter:
             burst_size=config.burst_size,
         )
 
-    async def check_context(
-        self, context_name: str, identity_id: str
-    ) -> RateLimitResult:
+    async def check_context(self, context_name: str, identity_id: str) -> RateLimitResult:
         """Check rate limit for a specific context + identity combination."""
         config = self.get_context_limit(context_name)
         if not config.enabled:

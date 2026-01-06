@@ -36,8 +36,10 @@ router = APIRouter(prefix="/api/admin/security-dashboard", tags=["security-dashb
 # Response Models
 # =============================================================================
 
+
 class ScanSummary(BaseModel):
     """Summary of a security scan."""
+
     scan_id: str
     scan_type: str
     target_name: str
@@ -52,6 +54,7 @@ class ScanSummary(BaseModel):
 
 class DashboardStats(BaseModel):
     """Overall security dashboard statistics."""
+
     # Scan counts
     total_scans_30d: int
     code_scans_30d: int
@@ -80,6 +83,7 @@ class DashboardStats(BaseModel):
 
 class FindingSummary(BaseModel):
     """Summary of a security finding."""
+
     id: int
     severity: str
     title: str
@@ -105,12 +109,14 @@ class FindingSummary(BaseModel):
 
 class UpdateFindingStatusRequest(BaseModel):
     """Request to update finding status."""
+
     status: FindingStatus
     reason: str | None = Field(None, max_length=500, description="Reason for status change")
 
 
 class UpdateFindingStatusResponse(BaseModel):
     """Response after updating finding status."""
+
     id: int
     status: str
     status_reason: str | None
@@ -120,6 +126,7 @@ class UpdateFindingStatusResponse(BaseModel):
 
 class CertificateSummary(BaseModel):
     """Summary of a tracked certificate."""
+
     id: int
     common_name: str
     issuer_cn: str | None
@@ -134,6 +141,7 @@ class CertificateSummary(BaseModel):
 
 class ScanTrendPoint(BaseModel):
     """Data point for scan trends."""
+
     date: str
     code_scans: int
     dependency_scans: int
@@ -144,6 +152,7 @@ class ScanTrendPoint(BaseModel):
 # =============================================================================
 # Endpoints
 # =============================================================================
+
 
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(
@@ -168,12 +177,9 @@ async def get_dashboard_stats(
 
     # Count scans by type
     result = await db.execute(
-        select(
-            SecurityScan.scan_type,
-            func.count(SecurityScan.id)
-        ).where(
-            SecurityScan.scanned_at >= thirty_days_ago
-        ).group_by(SecurityScan.scan_type)
+        select(SecurityScan.scan_type, func.count(SecurityScan.id))
+        .where(SecurityScan.scanned_at >= thirty_days_ago)
+        .group_by(SecurityScan.scan_type)
     )
     scan_counts = {r[0].value: r[1] for r in result.fetchall()}
 
@@ -184,12 +190,10 @@ async def get_dashboard_stats(
 
     # Count findings by severity
     result = await db.execute(
-        select(
-            SecurityFinding.severity,
-            func.count(SecurityFinding.id)
-        ).join(SecurityScan).where(
-            SecurityScan.scanned_at >= thirty_days_ago
-        ).group_by(SecurityFinding.severity)
+        select(SecurityFinding.severity, func.count(SecurityFinding.id))
+        .join(SecurityScan)
+        .where(SecurityScan.scanned_at >= thirty_days_ago)
+        .group_by(SecurityFinding.severity)
     )
     severity_counts = {r[0].value: r[1] for r in result.fetchall()}
 
@@ -201,10 +205,9 @@ async def get_dashboard_stats(
 
     # Quantum vulnerability counts
     result = await db.execute(
-        select(
-            func.sum(SecurityScan.quantum_vulnerable_count),
-            func.sum(SecurityScan.quantum_safe_count)
-        ).where(SecurityScan.scanned_at >= thirty_days_ago)
+        select(func.sum(SecurityScan.quantum_vulnerable_count), func.sum(SecurityScan.quantum_safe_count)).where(
+            SecurityScan.scanned_at >= thirty_days_ago
+        )
     )
     row = result.fetchone()
     quantum_vulnerable = row[0] or 0 if row else 0
@@ -214,14 +217,14 @@ async def get_dashboard_stats(
     fifteen_days_ago = datetime.now(timezone.utc) - timedelta(days=15)
 
     result = await db.execute(
-        select(func.count(SecurityFinding.id)).join(SecurityScan).where(
-            SecurityScan.scanned_at >= fifteen_days_ago
-        )
+        select(func.count(SecurityFinding.id)).join(SecurityScan).where(SecurityScan.scanned_at >= fifteen_days_ago)
     )
     recent_findings = result.scalar() or 0
 
     result = await db.execute(
-        select(func.count(SecurityFinding.id)).join(SecurityScan).where(
+        select(func.count(SecurityFinding.id))
+        .join(SecurityScan)
+        .where(
             and_(
                 SecurityScan.scanned_at >= thirty_days_ago,
                 SecurityScan.scanned_at < fifteen_days_ago,
@@ -259,11 +262,7 @@ async def get_dashboard_stats(
     )
     expiring_soon = result.scalar() or 0
 
-    result = await db.execute(
-        select(func.count(CertificateInventory.id)).where(
-            CertificateInventory.not_after <= now
-        )
-    )
+    result = await db.execute(select(func.count(CertificateInventory.id)).where(CertificateInventory.not_after <= now))
     expired = result.scalar() or 0
 
     return DashboardStats(
@@ -306,9 +305,7 @@ async def list_scans(
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
-    query = select(SecurityScan).where(
-        SecurityScan.scanned_at >= cutoff
-    )
+    query = select(SecurityScan).where(SecurityScan.scanned_at >= cutoff)
 
     if scan_type:
         query = query.where(SecurityScan.scan_type == scan_type)
@@ -358,11 +355,7 @@ async def list_findings(
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
-    query = (
-        select(SecurityFinding, SecurityScan)
-        .join(SecurityScan)
-        .where(SecurityScan.scanned_at >= cutoff)
-    )
+    query = select(SecurityFinding, SecurityScan).join(SecurityScan).where(SecurityScan.scanned_at >= cutoff)
 
     if severity:
         query = query.where(SecurityFinding.severity == severity)
@@ -373,14 +366,9 @@ async def list_findings(
     if finding_status:
         query = query.where(SecurityFinding.status == finding_status)
     elif hide_accepted:
-        query = query.where(
-            SecurityFinding.status.in_([FindingStatus.OPEN, FindingStatus.IN_PROGRESS])
-        )
+        query = query.where(SecurityFinding.status.in_([FindingStatus.OPEN, FindingStatus.IN_PROGRESS]))
 
-    query = query.order_by(
-        desc(SecurityFinding.severity),
-        desc(SecurityScan.scanned_at)
-    ).limit(limit)
+    query = query.order_by(desc(SecurityFinding.severity), desc(SecurityScan.scanned_at)).limit(limit)
 
     result = await db.execute(query)
     rows = result.fetchall()
@@ -432,9 +420,7 @@ async def update_finding_status(
             detail="Admin access required",
         )
 
-    result = await db.execute(
-        select(SecurityFinding).where(SecurityFinding.id == finding_id)
-    )
+    result = await db.execute(select(SecurityFinding).where(SecurityFinding.id == finding_id))
     finding = result.scalar_one_or_none()
 
     if not finding:
@@ -483,9 +469,7 @@ async def bulk_update_finding_status(
             detail="Maximum 100 findings per request",
         )
 
-    result = await db.execute(
-        select(SecurityFinding).where(SecurityFinding.id.in_(finding_ids))
-    )
+    result = await db.execute(select(SecurityFinding).where(SecurityFinding.id.in_(finding_ids)))
     findings = result.scalars().all()
 
     now = datetime.now(timezone.utc)
@@ -586,13 +570,11 @@ async def get_scan_trends(
         select(
             func.date(SecurityScan.scanned_at).label("date"),
             SecurityScan.scan_type,
-            func.count(SecurityScan.id).label("count")
-        ).where(
-            SecurityScan.scanned_at >= cutoff
-        ).group_by(
-            func.date(SecurityScan.scanned_at),
-            SecurityScan.scan_type
-        ).order_by(func.date(SecurityScan.scanned_at))
+            func.count(SecurityScan.id).label("count"),
+        )
+        .where(SecurityScan.scanned_at >= cutoff)
+        .group_by(func.date(SecurityScan.scanned_at), SecurityScan.scan_type)
+        .order_by(func.date(SecurityScan.scanned_at))
     )
 
     scan_data: dict[str, dict[str, int]] = {}
@@ -609,14 +591,11 @@ async def get_scan_trends(
 
     # Get findings by date
     result = await db.execute(
-        select(
-            func.date(SecurityScan.scanned_at).label("date"),
-            func.count(SecurityFinding.id).label("count")
-        ).join(SecurityScan).where(
-            SecurityScan.scanned_at >= cutoff
-        ).group_by(
-            func.date(SecurityScan.scanned_at)
-        ).order_by(func.date(SecurityScan.scanned_at))
+        select(func.date(SecurityScan.scanned_at).label("date"), func.count(SecurityFinding.id).label("count"))
+        .join(SecurityScan)
+        .where(SecurityScan.scanned_at >= cutoff)
+        .group_by(func.date(SecurityScan.scanned_at))
+        .order_by(func.date(SecurityScan.scanned_at))
     )
 
     for row in result.fetchall():
@@ -632,13 +611,15 @@ async def get_scan_trends(
     while current <= end:
         date_str = str(current)
         data = scan_data.get(date_str, {"code": 0, "dependency": 0, "certificate": 0, "findings": 0})
-        trends.append(ScanTrendPoint(
-            date=date_str,
-            code_scans=data["code"],
-            dependency_scans=data["dependency"],
-            certificate_scans=data["certificate"],
-            findings=data["findings"],
-        ))
+        trends.append(
+            ScanTrendPoint(
+                date=date_str,
+                code_scans=data["code"],
+                dependency_scans=data["dependency"],
+                certificate_scans=data["certificate"],
+                findings=data["findings"],
+            )
+        )
         current += timedelta(days=1)
 
     return trends

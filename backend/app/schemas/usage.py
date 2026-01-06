@@ -16,6 +16,7 @@ def to_camel(string: str) -> str:
 
 class ContextUsageStats(BaseModel):
     """Usage statistics for a single context."""
+
     model_config = ConfigDict(
         from_attributes=True,
         alias_generator=to_camel,
@@ -32,6 +33,7 @@ class ContextUsageStats(BaseModel):
 
 class ErrorSummary(BaseModel):
     """Summary of errors for a context."""
+
     model_config = ConfigDict(
         from_attributes=True,
         alias_generator=to_camel,
@@ -46,6 +48,7 @@ class ErrorSummary(BaseModel):
 
 class DailyUsageStats(BaseModel):
     """Daily aggregated usage statistics."""
+
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
@@ -57,6 +60,7 @@ class DailyUsageStats(BaseModel):
 
 class UsagePeriod(BaseModel):
     """Time period for usage statistics."""
+
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
@@ -68,6 +72,7 @@ class UsagePeriod(BaseModel):
 
 class UsageStatsResponse(BaseModel):
     """Complete usage statistics response."""
+
     model_config = ConfigDict(
         from_attributes=True,
         alias_generator=to_camel,
@@ -77,31 +82,14 @@ class UsageStatsResponse(BaseModel):
     org_id: str = Field(description="Organization/tenant ID")
     period: UsagePeriod = Field(description="Time period covered")
     total_calls: int = Field(description="Total API calls in period")
-    by_context: list[ContextUsageStats] = Field(
-        default_factory=list,
-        description="Breakdown by context"
-    )
-    errors: list[ErrorSummary] = Field(
-        default_factory=list,
-        description="Error summary"
-    )
-    daily_breakdown: list[DailyUsageStats] = Field(
-        default_factory=list,
-        description="Daily usage breakdown"
-    )
+    by_context: list[ContextUsageStats] = Field(default_factory=list, description="Breakdown by context")
+    errors: list[ErrorSummary] = Field(default_factory=list, description="Error summary")
+    daily_breakdown: list[DailyUsageStats] = Field(default_factory=list, description="Daily usage breakdown")
 
 
 class UsageStatsRequest(BaseModel):
     """Request parameters for usage statistics."""
-    start_date: datetime | None = Field(
-        default=None,
-        description="Start of period (defaults to 30 days ago)"
-    )
-    end_date: datetime | None = Field(
-        default=None,
-        description="End of period (defaults to now)"
-    )
-    context_ids: list[str] | None = Field(
-        default=None,
-        description="Filter by specific contexts"
-    )
+
+    start_date: datetime | None = Field(default=None, description="Start of period (defaults to 30 days ago)")
+    end_date: datetime | None = Field(default=None, description="End of period (defaults to now)")
+    context_ids: list[str] | None = Field(default=None, description="Filter by specific contexts")
