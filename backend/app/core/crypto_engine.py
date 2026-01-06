@@ -31,7 +31,7 @@ from app.core.policy_engine import (
     PolicySeverity,
     build_evaluation_context,
 )
-from app.schemas.context import AlgorithmOverride, CipherMode
+from app.schemas.context import AlgorithmOverride, CipherMode, EncryptionUsageContext
 from app.core.algorithm_resolver import ALGORITHMS
 from app.core.hybrid_crypto import (
     HybridCryptoEngine,
@@ -90,6 +90,7 @@ class EncryptResult:
     key_id: str
     nonce: bytes
     context: str
+    usage: EncryptionUsageContext | None = None
     description: str | None = None
     warnings: list[str] = field(default_factory=list)
     is_quantum_safe: bool = False
@@ -357,6 +358,7 @@ class CryptoEngine:
         enforce_policies: bool = True,
         algorithm_override: AlgorithmOverride | None = None,
         associated_data: bytes | None = None,
+        usage: EncryptionUsageContext | None = None,
     ) -> EncryptResult:
         """Encrypt data and return structured result with metadata.
 
@@ -371,6 +373,9 @@ class CryptoEngine:
             algorithm_override: Optional explicit algorithm selection
             associated_data: Optional additional authenticated data (AAD)
                 for AEAD modes. This data is authenticated but not encrypted.
+            usage: Runtime usage hint (at_rest, in_transit, streaming, etc.)
+                Combines with context policy to select optimal encryption.
+                If not provided, uses the context's default usage_context.
 
         Returns:
             EncryptResult with ciphertext and metadata
@@ -388,6 +393,7 @@ class CryptoEngine:
         packed = b""
         warnings: list[str] = []
         policy_violated = False
+        effective_usage: EncryptionUsageContext | None = None
 
         try:
             # Validate context exists
@@ -412,7 +418,10 @@ class CryptoEngine:
                 )
 
             # Determine algorithm, mode, and key size
-            algorithm, mode, key_bits, description = self._resolve_algorithm(context, algorithm_override, warnings)
+            # Runtime usage hint overrides context's default usage_context
+            algorithm, mode, key_bits, description, effective_usage = self._resolve_algorithm(
+                context, algorithm_override, warnings, usage
+            )
 
             # Enforce FIPS compliance if enabled
             from app.core.fips import enforce_fips_algorithm
@@ -443,6 +452,7 @@ class CryptoEngine:
                     key_id=key_id,
                     nonce=nonce,
                     context=context_name,
+                    usage=effective_usage,
                     description=description,
                     warnings=warnings,
                     is_quantum_safe=True,
@@ -486,6 +496,7 @@ class CryptoEngine:
                 key_id=key_id,
                 nonce=nonce,
                 context=context_name,
+                usage=effective_usage,
                 description=description,
                 warnings=warnings,
             )
@@ -552,6 +563,8 @@ class CryptoEngine:
                 key_id=audit_key_id,
                 quantum_safe=audit_quantum_safe,
                 policy_violation=policy_violated,
+                # Runtime usage tracking (how devs actually use contexts)
+                usage=effective_usage.value if effective_usage else None,
             )
             db.add(audit)
             await db.commit()
@@ -561,13 +574,37 @@ class CryptoEngine:
         context: Context,
         override: AlgorithmOverride | None,
         warnings: list[str],
-    ) -> tuple[str, CipherMode, int, str | None]:
-        """Resolve algorithm, mode, and key size from context or override.
+        runtime_usage: EncryptionUsageContext | None = None,
+    ) -> tuple[str, CipherMode, int, str | None, EncryptionUsageContext | None]:
+        """Resolve algorithm, mode, and key size from context, override, and runtime usage.
+
+        The runtime_usage parameter allows developers to specify how the data is being
+        used (at_rest, in_transit, streaming, etc.) without creating multiple contexts
+        for the same data type.
+
+        Algorithm selection priority:
+        1. If algorithm_override is provided, use it directly
+        2. Otherwise, combine context policy + runtime_usage to select optimal algorithm
 
         Returns:
-            Tuple of (algorithm_name, mode, key_bits, description)
+            Tuple of (algorithm_name, mode, key_bits, description, effective_usage)
         """
-        # If override provided, use it
+        # Determine effective usage: runtime hint takes precedence over context default
+        effective_usage = runtime_usage
+        if effective_usage is None:
+            # Fall back to context's configured usage_context
+            config = context.config or {}
+            data_identity = config.get("data_identity", {})
+            usage_str = data_identity.get("usage_context")
+            if usage_str:
+                try:
+                    effective_usage = EncryptionUsageContext(usage_str)
+                except ValueError:
+                    effective_usage = EncryptionUsageContext.AT_REST
+            else:
+                effective_usage = EncryptionUsageContext.AT_REST
+
+        # If override provided, use it (but still return effective_usage)
         if override and override.cipher:
             algorithm = override.to_algorithm_name() or "AES-256-GCM"
             mode = override.mode or CipherMode.GCM
@@ -588,13 +625,55 @@ class CryptoEngine:
                     warnings.append(
                         f"Algorithm {algorithm} is legacy. Consider using {props.get('replacement', 'AES-256-GCM')}"
                     )
-                return algorithm, mode, key_bits, props.get("description")
+                return algorithm, mode, key_bits, props.get("description"), effective_usage
 
             # Unknown algorithm - default to AES-GCM with specified key size
-            return f"AES-{key_bits}-GCM", mode, key_bits, None
+            return f"AES-{key_bits}-GCM", mode, key_bits, None, effective_usage
 
-        # Use context's derived algorithm
+        # Import here to use the enhanced resolver
+        from app.core.algorithm_resolver import (
+            USAGE_CONTEXT_ALGORITHM_MAP,
+            USAGE_CONTEXT_MODE_MAP,
+        )
+
+        # Use context's derived algorithm as base
         derived = context.derived or {}
+        config = context.config or {}
+
+        # Check if we should use runtime usage to influence algorithm selection
+        # This is the key innovation: context defines WHAT, runtime defines HOW
+        if effective_usage and effective_usage != EncryptionUsageContext.AT_REST:
+            # Use usage-specific algorithm if different from default
+            usage_algorithm = USAGE_CONTEXT_ALGORITHM_MAP.get(effective_usage)
+            usage_mode = USAGE_CONTEXT_MODE_MAP.get(effective_usage)
+
+            if usage_algorithm:
+                # Check if context requires quantum resistance
+                threat_model = config.get("threat_model", {})
+                quantum_required = (
+                    derived.get("quantum_resistant", False)
+                    or threat_model.get("quantum_resistant_required", False)
+                )
+
+                if quantum_required:
+                    # Use quantum-safe variant if available
+                    if "ChaCha20" in usage_algorithm:
+                        algorithm = "ChaCha20-Poly1305+ML-KEM-768"
+                    else:
+                        algorithm = "AES-256-GCM+ML-KEM-768"
+                    mode = CipherMode.HYBRID
+                else:
+                    algorithm = usage_algorithm
+                    mode = usage_mode or CipherMode.GCM
+
+                # Respect minimum key bits from context policy
+                key_bits = max(derived.get("resolved_key_bits") or 256, 256)
+                props = ALGORITHMS.get(algorithm, {})
+
+                warnings.append(f"Algorithm selected based on runtime usage: {effective_usage.value}")
+                return algorithm, mode, key_bits, props.get("description"), effective_usage
+
+        # Default path: use context's derived algorithm
         algorithm = derived.get("resolved_algorithm") or context.algorithm or "AES-256-GCM"
         mode_str = derived.get("resolved_mode")
 
@@ -627,7 +706,7 @@ class CryptoEngine:
         key_bits = derived.get("resolved_key_bits") or 256
         props = ALGORITHMS.get(algorithm, {})
 
-        return algorithm, mode, key_bits, props.get("description")
+        return algorithm, mode, key_bits, props.get("description"), effective_usage
 
     def _check_algorithm_policy(
         self,

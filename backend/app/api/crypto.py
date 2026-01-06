@@ -23,7 +23,7 @@ from app.core.rate_limiter import (
     get_rate_limiter,
     RateLimitResult,
 )
-from app.schemas.context import AlgorithmOverride
+from app.schemas.context import AlgorithmOverride, EncryptionUsageContext
 
 router = APIRouter(prefix="/api/v1/crypto", tags=["crypto"])
 security = HTTPBearer()
@@ -34,6 +34,14 @@ class EncryptRequest(BaseModel):
 
     plaintext: str  # Base64 encoded
     context: str
+    usage: EncryptionUsageContext | None = Field(
+        default=None,
+        description="Runtime usage hint: How is this data being used? "
+        "Combines with context policy to select optimal encryption. "
+        "Options: at_rest (database/files), in_transit (API/network), "
+        "in_use (memory), streaming (real-time), disk (volume encryption). "
+        "If not specified, uses the context's default usage_context.",
+    )
     algorithm_override: AlgorithmOverride | None = Field(
         default=None, description="Optional: Override automatic algorithm selection"
     )
@@ -59,6 +67,10 @@ class EncryptResponse(BaseModel):
 
     ciphertext: str  # Base64 encoded
     algorithm: AlgorithmInfo | None = Field(default=None, description="Algorithm used for encryption")
+    usage: str | None = Field(
+        default=None,
+        description="Usage context applied (at_rest, in_transit, streaming, etc.)",
+    )
     warnings: list[str] = Field(
         default_factory=list, description="Any warnings about the encryption (e.g., deprecation)"
     )
@@ -252,6 +264,7 @@ async def encrypt(
             user_agent=request.headers.get("user-agent"),
             algorithm_override=data.algorithm_override,
             associated_data=associated_data,
+            usage=data.usage,
         )
     except ContextNotFoundError as e:
         raise HTTPException(
@@ -280,6 +293,7 @@ async def encrypt(
     return EncryptResponse(
         ciphertext=base64.b64encode(result.ciphertext).decode("ascii"),
         algorithm=algorithm_info,
+        usage=result.usage.value if result.usage else None,
         warnings=result.warnings,
     )
 
@@ -471,6 +485,11 @@ class BatchEncryptRequest(BaseModel):
     """Batch encryption request."""
 
     context: str = Field(..., description="Encryption context (all items use same context)")
+    usage: EncryptionUsageContext | None = Field(
+        default=None,
+        description="Runtime usage hint for all items in this batch. "
+        "Options: at_rest, in_transit, in_use, streaming, disk.",
+    )
     items: list[BatchEncryptItem] = Field(
         ...,
         description="Items to encrypt (max 100 per batch)",
@@ -587,6 +606,7 @@ async def batch_encrypt(
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent"),
                 associated_data=associated_data,
+                usage=data.usage,
             )
 
             # Capture algorithm info from first successful encryption
