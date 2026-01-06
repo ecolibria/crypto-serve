@@ -457,4 +457,4 @@ Hybrid encryption ensures data remains accessible:
 - [NIST Post-Quantum Cryptography](https://csrc.nist.gov/projects/post-quantum-cryptography)
 - [CISA Post-Quantum Guidance](https://www.cisa.gov/quantum)
 - [CryptoServe PQC API Reference](../api-reference/crypto.md)
-- [Example: Post-Quantum Operations](https://github.com/keytum/crypto-serve/blob/main/examples/09_post_quantum.py)
+- [Example: Post-Quantum Operations](https://github.com/ecolibria/crypto-serve/blob/main/examples/09_post_quantum.py)

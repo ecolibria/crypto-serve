@@ -11,10 +11,10 @@
 </p>
 
 <p align="center">
-  <a href="https://cryptoserve.dev"><img src="https://img.shields.io/badge/website-cryptoserve.dev-06b6d4?style=flat-square" alt="Website"></a>
+  <a href="https://github.com/ecolibria/crypto-serve/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/ecolibria/crypto-serve/ci.yml?branch=main&style=flat-square&label=build" alt="Build Status"></a>
+  <a href="https://github.com/ecolibria/crypto-serve/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/tests-1,346%20passed-brightgreen.svg?style=flat-square" alt="Tests"></a>
   <a href="https://github.com/ecolibria/crypto-serve/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square" alt="License"></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.10+-blue.svg?style=flat-square" alt="Python 3.10+"></a>
-  <img src="https://img.shields.io/badge/tests-1,346%20passed-brightgreen.svg?style=flat-square" alt="Tests">
   <a href="https://cryptoserve.dev/docs/"><img src="https://img.shields.io/badge/docs-cryptoserve.dev-brightgreen.svg?style=flat-square" alt="Documentation"></a>
 </p>
 
