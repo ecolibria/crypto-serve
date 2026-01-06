@@ -27,6 +27,7 @@ from cryptoserve.client import (
     CryptoClient,
     CryptoServeError,
     AuthenticationError,
+    Usage,
 )
 from cryptoserve._cache import KeyCache, get_key_cache, configure_cache
 from cryptoserve._local_crypto import (
@@ -234,6 +235,7 @@ class CryptoServe:
         plaintext: bytes,
         context: str,
         associated_data: Optional[bytes] = None,
+        usage: Optional[Usage] = None,
     ) -> bytes:
         """
         Encrypt data using a specific context.
@@ -245,17 +247,42 @@ class CryptoServe:
             plaintext: Data to encrypt
             context: Encryption context name (e.g., "user-pii", "payment-data")
             associated_data: Optional authenticated data (not encrypted)
+            usage: Runtime usage hint (how this data is being used).
+                   This is CryptoServe's key differentiator: the platform
+                   automatically selects optimal algorithms by combining
+                   your context policy (WHAT the data is) with runtime
+                   usage (HOW it's being used).
+
+                   Options:
+                   - Usage.AT_REST: Database storage, file encryption
+                   - Usage.IN_TRANSIT: Network transmission, API payloads
+                   - Usage.IN_USE: Memory encryption, active processing
+                   - Usage.STREAMING: Real-time data streams
+                   - Usage.DISK: Volume/disk encryption
 
         Returns:
             Encrypted ciphertext
 
         Example:
             ```python
-            encrypted = crypto.encrypt(b"user@example.com", context="user-pii")
+            # Store customer PII in database
+            encrypted = crypto.encrypt(
+                b"user@example.com",
+                context="user-pii",
+                usage=Usage.AT_REST
+            )
+
+            # Send same PII over API - platform selects optimal algorithm
+            encrypted = crypto.encrypt(
+                b"user@example.com",
+                context="user-pii",
+                usage=Usage.IN_TRANSIT
+            )
             ```
         """
-        # Try local encryption with cached key
-        if self._enable_cache and self._cache is not None and self._local_crypto:
+        # Try local encryption with cached key (only for default usage)
+        # Server-side encryption required for usage-aware algorithm selection
+        if usage is None and self._enable_cache and self._cache is not None and self._local_crypto:
             cached = self._cache.get(context, "encrypt")
             if cached:
                 result = self._local_crypto.encrypt(
@@ -270,7 +297,7 @@ class CryptoServe:
                     return result.data
 
         # Fall back to server (also fetches key for caching)
-        ciphertext = self.client.encrypt(plaintext, context, associated_data)
+        ciphertext = self.client.encrypt(plaintext, context, associated_data, usage)
 
         # Try to cache the key for future operations
         self._cache_key_from_server(context, "encrypt")
@@ -467,6 +494,7 @@ class CryptoServe:
         text: str,
         context: str,
         associated_data: Optional[bytes] = None,
+        usage: Optional[Usage] = None,
     ) -> str:
         """
         Encrypt a string and return base64-encoded ciphertext.
@@ -475,12 +503,13 @@ class CryptoServe:
             text: String to encrypt
             context: Encryption context
             associated_data: Optional AAD
+            usage: Runtime usage hint (at_rest, in_transit, streaming, etc.)
 
         Returns:
             Base64-encoded ciphertext
         """
         import base64
-        ciphertext = self.encrypt(text.encode("utf-8"), context, associated_data)
+        ciphertext = self.encrypt(text.encode("utf-8"), context, associated_data, usage)
         return base64.b64encode(ciphertext).decode("ascii")
 
     def decrypt_string(
@@ -509,6 +538,7 @@ class CryptoServe:
         obj: Any,
         context: str,
         associated_data: Optional[bytes] = None,
+        usage: Optional[Usage] = None,
     ) -> str:
         """
         Encrypt a JSON-serializable object.
@@ -517,12 +547,13 @@ class CryptoServe:
             obj: Object to serialize and encrypt
             context: Encryption context
             associated_data: Optional AAD
+            usage: Runtime usage hint (at_rest, in_transit, streaming, etc.)
 
         Returns:
             Base64-encoded ciphertext
         """
         import json
-        return self.encrypt_string(json.dumps(obj), context, associated_data)
+        return self.encrypt_string(json.dumps(obj), context, associated_data, usage)
 
     def decrypt_json(
         self,

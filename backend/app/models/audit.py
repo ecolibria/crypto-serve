@@ -44,5 +44,9 @@ class AuditLog(Base):
     quantum_safe: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     policy_violation: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # Runtime usage tracking (how devs are using contexts)
+    # Enables admins to see actual usage patterns vs policy assumptions
+    usage: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)  # at_rest, in_transit, streaming
+
     def __repr__(self) -> str:
         return f"<AuditLog {self.operation} {self.identity_id}>"

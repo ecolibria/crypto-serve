@@ -2,7 +2,7 @@
 CryptoServe SDK - Zero-config cryptographic operations with auto-registration.
 
 Usage:
-    from cryptoserve import CryptoServe
+    from cryptoserve import CryptoServe, AT_REST, IN_TRANSIT, STREAMING
 
     # One-time setup: run `cryptoserve login` in terminal
 
@@ -16,6 +16,12 @@ Usage:
     # Use immediately - no dashboard setup needed!
     encrypted = crypto.encrypt(b"sensitive data", context="user-pii")
     decrypted = crypto.decrypt(encrypted, context="user-pii")
+
+    # Runtime usage hints - intelligent algorithm selection!
+    # Same context, different usage = different optimal algorithms
+    db_encrypted = crypto.encrypt(b"ssn", context="pii", usage=AT_REST)
+    api_encrypted = crypto.encrypt(b"ssn", context="pii", usage=IN_TRANSIT)
+    stream_encrypted = crypto.encrypt(b"ssn", context="pii", usage=STREAMING)
 
     # String helpers
     encrypted = crypto.encrypt_string("my secret", context="user-pii")
@@ -46,12 +52,29 @@ from cryptoserve._auto_register import (
     CryptoServeRegistrationError,
 )
 
-__version__ = "0.8.0"
+# New in 0.9.0: Runtime usage hints for intelligent algorithm selection
+from cryptoserve.client import Usage
+
+# Export enum values directly for cleaner syntax: usage=AT_REST instead of usage=Usage.AT_REST
+AT_REST = Usage.AT_REST
+IN_TRANSIT = Usage.IN_TRANSIT
+IN_USE = Usage.IN_USE
+STREAMING = Usage.STREAMING
+DISK = Usage.DISK
+
+__version__ = "0.9.0"
 __all__ = [
     # Main SDK class
     "CryptoServe",
     "CryptoServeNotLoggedInError",
     "CryptoServeRegistrationError",
+    # Runtime usage hints (intelligent algorithm selection)
+    "Usage",
+    "AT_REST",
+    "IN_TRANSIT",
+    "IN_USE",
+    "STREAMING",
+    "DISK",
     # Client and errors
     "CryptoClient",
     "CryptoServeError",

@@ -24,7 +24,7 @@
   <a href="#quick-start">Quick Start</a> •
   <a href="#features">Features</a> •
   <a href="#sdk-reference">SDK</a> •
-  <a href="#context-flags-advanced">Context Flags</a> •
+  <a href="#runtime-usage-hints-intelligent-algorithm-selection">Runtime Usage</a> •
   <a href="#post-quantum-cryptography">Post-Quantum</a> •
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
@@ -400,173 +400,178 @@ for record in records:
 
 ---
 
-## Context Flags (Advanced)
+## Runtime Usage Hints (Intelligent Algorithm Selection)
 
-For developers who need fine-grained control over cryptographic operations, CryptoServe provides context flags that automatically select appropriate algorithms and key derivation based on the data's use case.
+CryptoServe's key differentiator: **automatic algorithm selection** that combines admin-configured **context policies** (WHAT the data is) with developer-provided **runtime usage hints** (HOW the data is being used).
 
-### Data State Flags
+This solves the enterprise problem where:
+- Admins can't know at configuration time whether PII will be stored in a database vs sent over an API
+- Developers don't want to learn cryptographic details
+- The same data type needs different optimal algorithms for different use cases
+
+### Usage Constants
 
 ```python
-from cryptoserve import CryptoServe
-from cryptoserve.flags import AT_REST, IN_TRANSIT, EPHEMERAL
+from cryptoserve import CryptoServe, AT_REST, IN_TRANSIT, IN_USE, STREAMING, DISK
 
 crypto = CryptoServe(app_name="my-app", team="platform")
 
+# Same context ("customer-pii"), different usage = different optimal algorithms!
+
 # AT_REST - Data being stored (databases, files, backups)
-# Uses: AES-256-GCM, stronger KDF (high iteration count), persistent keys
+# Platform selects: AES-256-GCM (optimized for storage)
 db_record = crypto.encrypt(
-    sensitive_data,
-    context="user-records",
-    flags=AT_REST
+    ssn.encode(),
+    context="customer-pii",
+    usage=AT_REST
 )
 
-# IN_TRANSIT - Data being transmitted (API calls, messages)
-# Uses: ChaCha20-Poly1305, faster KDF, session keys
-api_payload = crypto.encrypt(
-    request_body,
-    context="api-messages",
-    flags=IN_TRANSIT
+# IN_TRANSIT - Data being transmitted (API calls, network)
+# Platform selects: AES-256-GCM (optimized for network)
+api_response = crypto.encrypt(
+    ssn.encode(),
+    context="customer-pii",
+    usage=IN_TRANSIT
 )
 
-# EPHEMERAL - Short-lived data (session tokens, temp files)
-# Uses: In-memory keys only, no key persistence, auto-expiry
-session_token = crypto.encrypt(
-    token_data,
-    context="sessions",
-    flags=EPHEMERAL
+# IN_USE - Data in active memory/processing
+# Platform selects: AES-256-GCM-SIV (nonce-misuse resistant)
+memory_data = crypto.encrypt(
+    ssn.encode(),
+    context="customer-pii",
+    usage=IN_USE
+)
+
+# STREAMING - Real-time data streams
+# Platform selects: ChaCha20-Poly1305 (optimized for streams)
+stream_chunk = crypto.encrypt(
+    video_chunk,
+    context="media-content",
+    usage=STREAMING
+)
+
+# DISK - Volume/disk encryption
+# Platform selects: Based on context policy (XTS mode)
+disk_sector = crypto.encrypt(
+    sector_data,
+    context="disk-encryption",
+    usage=DISK
 )
 ```
 
-### Compliance Flags
+### How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Admin configures CONTEXT (via dashboard):                          │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  customer-pii:                                               │   │
+│  │    sensitivity: critical                                     │   │
+│  │    compliance: [HIPAA, GDPR]                                 │   │
+│  │    min_key_bits: 256                                         │   │
+│  │    quantum_resistant: false                                  │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  Developer provides USAGE at runtime:                               │
+│                                                                     │
+│    crypto.encrypt(data, context="customer-pii", usage=AT_REST)      │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  CryptoServe combines CONTEXT + USAGE → Optimal Algorithm           │
+│                                                                     │
+│    customer-pii + AT_REST     → AES-256-GCM                         │
+│    customer-pii + IN_TRANSIT  → AES-256-GCM                         │
+│    customer-pii + IN_USE      → AES-256-GCM-SIV (nonce-resistant)   │
+│    customer-pii + STREAMING   → ChaCha20-Poly1305                   │
+│                                                                     │
+│    If context requires quantum_resistant:                           │
+│    customer-pii + AT_REST     → AES-256-GCM + ML-KEM-768 (hybrid)   │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Usage Reference
+
+| Usage | Description | Default Algorithm |
+|-------|-------------|-------------------|
+| `AT_REST` | Database storage, file encryption | AES-256-GCM |
+| `IN_TRANSIT` | Network transmission, API payloads | AES-256-GCM |
+| `IN_USE` | Memory encryption, active processing | AES-256-GCM-SIV |
+| `STREAMING` | Real-time data streams | ChaCha20-Poly1305 |
+| `DISK` | Volume/disk encryption | Per context policy |
+
+### Admin Analytics
+
+Admins can see how developers are using each context in the audit logs:
+
+```sql
+-- See usage patterns for customer-pii context
+SELECT usage, COUNT(*) as ops, DATE(timestamp) as date
+FROM audit_log
+WHERE context = 'customer-pii'
+GROUP BY usage, DATE(timestamp)
+ORDER BY date DESC;
+
+-- Results:
+-- usage       | ops  | date
+-- at_rest     | 1542 | 2024-01-06
+-- in_transit  | 3291 | 2024-01-06
+-- streaming   |   47 | 2024-01-06
+```
+
+This helps admins understand actual data flow and adjust context policies accordingly.
+
+### Real-World Example
 
 ```python
-from cryptoserve.flags import FIPS_MODE, PQ_SAFE, HIPAA, PCI_DSS, SOC2
+from cryptoserve import CryptoServe, AT_REST, IN_TRANSIT, IN_USE, STREAMING
 
-# FIPS_MODE - FIPS 140-2/140-3 compliant algorithms only
-# Restricts to: AES-256-GCM, SHA-256/384/512, PBKDF2, RSA-2048+
-govt_data = crypto.encrypt(
-    classified_doc,
-    context="gov-documents",
-    flags=FIPS_MODE
-)
+crypto = CryptoServe(app_name="healthcare-api", team="platform")
 
-# Combine flags with | operator
-fips_at_rest = crypto.encrypt(
-    archive_data,
-    context="long-term-storage",
-    flags=FIPS_MODE | AT_REST
-)
+class PatientService:
+    """Healthcare service showing usage-based encryption."""
 
-# PQ_SAFE - Post-quantum resistant encryption
-# Uses: ML-KEM-768 + X25519 hybrid, ML-DSA for signatures
-long_term_secret = crypto.encrypt(
-    master_key,
-    context="key-archive",
-    flags=PQ_SAFE
-)
+    def save_to_database(self, patient_record: dict) -> str:
+        """Store patient data in database."""
+        encrypted = crypto.encrypt_json(
+            patient_record,
+            context="patient-phi",
+            usage=AT_REST  # Database storage
+        )
+        db.save(encrypted)
+        return encrypted
 
-# HIPAA - Healthcare compliance preset
-# Enforces: Audit logging, key rotation policy, access controls
-patient_record = crypto.encrypt(
-    phi_data,
-    context="patient-records",
-    flags=HIPAA
-)
+    def send_to_api(self, patient_record: dict) -> bytes:
+        """Send patient data to external API."""
+        return crypto.encrypt_json(
+            patient_record,
+            context="patient-phi",
+            usage=IN_TRANSIT  # Network transmission
+        )
 
-# PCI_DSS - Payment card compliance preset
-# Enforces: AES-256, strict key management, audit trails
-card_data = crypto.encrypt(
-    credit_card_number,
-    context="payment-data",
-    flags=PCI_DSS
-)
+    def process_in_memory(self, patient_record: dict) -> bytes:
+        """Process patient data in secure memory."""
+        return crypto.encrypt_json(
+            patient_record,
+            context="patient-phi",
+            usage=IN_USE  # Memory-safe encryption
+        )
 
-# SOC2 - SOC 2 compliance preset
-# Enforces: Logging, access controls, encryption standards
-customer_data = crypto.encrypt(
-    customer_info,
-    context="customer-records",
-    flags=SOC2
-)
+    def stream_to_archive(self, records_stream):
+        """Stream patient records to archive."""
+        for record in records_stream:
+            yield crypto.encrypt_json(
+                record,
+                context="patient-phi",
+                usage=STREAMING  # Optimized for streams
+            )
 ```
-
-### Purpose-Specific Flags
-
-```python
-from cryptoserve.flags import SEARCHABLE, STREAMING, MULTI_RECIPIENT, AUDIT_REQUIRED
-
-# SEARCHABLE - Deterministic encryption for encrypted search
-# Warning: Same plaintext = same ciphertext (reduced security)
-# Use only when search capability is required
-email_subject = crypto.encrypt(
-    subject_line,
-    context="email-subjects",
-    flags=SEARCHABLE
-)
-
-# Now you can search encrypted subjects
-search_token = crypto.encrypt(b"Project Update", context="email-subjects", flags=SEARCHABLE)
-# Query: WHERE encrypted_subject = search_token
-
-# STREAMING - Chunked encryption for large files
-# Low memory usage, processes data in chunks
-with crypto.encrypt_stream(
-    context="file-uploads",
-    flags=STREAMING | AT_REST
-) as encryptor:
-    for chunk in read_large_file("large_video.mp4", chunk_size=1024*1024):
-        encrypted_chunk = encryptor.update(chunk)
-        output_file.write(encrypted_chunk)
-    output_file.write(encryptor.finalize())
-
-# MULTI_RECIPIENT - Encrypt for multiple recipients
-# Each recipient can decrypt with their own key
-shared_document = crypto.encrypt(
-    team_document,
-    context="team-docs",
-    flags=MULTI_RECIPIENT,
-    recipients=["alice@company.com", "bob@company.com", "carol@company.com"]
-)
-
-# AUDIT_REQUIRED - Force audit log entry for this operation
-# Use for sensitive operations that must be logged
-critical_op = crypto.encrypt(
-    admin_credentials,
-    context="admin-secrets",
-    flags=AUDIT_REQUIRED
-)
-```
-
-### Common Flag Combinations
-
-| Use Case | Flags | Effect |
-|----------|-------|--------|
-| Database storage | `AT_REST` | AES-256-GCM, strong KDF, persistent keys |
-| API payloads | `IN_TRANSIT` | ChaCha20-Poly1305, fast derivation |
-| Government/FIPS | `FIPS_MODE \| AT_REST` | FIPS-validated AES, PBKDF2 |
-| Future-proof secrets | `PQ_SAFE \| AT_REST` | ML-KEM + AES hybrid encryption |
-| Healthcare PHI | `HIPAA \| AUDIT_REQUIRED` | Full audit trail, compliant algorithms |
-| Payment processing | `PCI_DSS \| IN_TRANSIT` | PCI-compliant, optimized for speed |
-| Large file upload | `STREAMING \| AT_REST` | Chunked encryption, low memory |
-| Session tokens | `EPHEMERAL \| IN_TRANSIT` | In-memory keys, auto-expiry |
-| Searchable database | `SEARCHABLE \| AT_REST` | Deterministic encryption for queries |
-
-### Flag Reference
-
-| Flag | Description | Algorithm Selection |
-|------|-------------|---------------------|
-| `AT_REST` | Data at rest | AES-256-GCM, HKDF (100k iterations) |
-| `IN_TRANSIT` | Data in transit | ChaCha20-Poly1305, HKDF (10k iterations) |
-| `EPHEMERAL` | Short-lived data | ChaCha20, in-memory keys only |
-| `FIPS_MODE` | FIPS compliance | FIPS 140-2 approved algorithms only |
-| `PQ_SAFE` | Post-quantum safe | ML-KEM-768 + X25519 hybrid |
-| `HIPAA` | Healthcare | AES-256, mandatory audit, key rotation |
-| `PCI_DSS` | Payment cards | AES-256, strict key management |
-| `SOC2` | SOC 2 Type II | Industry standard encryption + logging |
-| `SEARCHABLE` | Encrypted search | Deterministic encryption (AES-SIV) |
-| `STREAMING` | Large files | Chunked processing, AEAD |
-| `MULTI_RECIPIENT` | Multiple recipients | Hybrid encryption with DEK |
-| `AUDIT_REQUIRED` | Force audit | Always log operation |
 
 ---
 

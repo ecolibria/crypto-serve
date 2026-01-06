@@ -4,9 +4,38 @@ import base64
 import json
 import threading
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Optional
 
 import requests
+
+
+class Usage(str, Enum):
+    """
+    Runtime usage hints for encryption operations.
+
+    These hints tell CryptoServe HOW your data is being used, allowing
+    intelligent algorithm selection that combines your context policy
+    (WHAT the data is) with runtime usage (HOW it's being used).
+
+    This is CryptoServe's key differentiator: admins define context policies
+    once, and developers provide runtime hints without needing to understand
+    cryptographic details. The platform automatically selects optimal algorithms.
+
+    Example:
+        # Store PII in database - use AT_REST
+        crypto.encrypt(data, context="customer-pii", usage=Usage.AT_REST)
+
+        # Send same PII over API - use IN_TRANSIT
+        crypto.encrypt(data, context="customer-pii", usage=Usage.IN_TRANSIT)
+
+        # Same context, different algorithms based on usage!
+    """
+    AT_REST = "at_rest"           # Database storage, file encryption (AES-256-GCM)
+    IN_TRANSIT = "in_transit"     # Network transmission, API payloads (AES-256-GCM)
+    IN_USE = "in_use"             # Memory encryption, active processing (AES-256-GCM-SIV)
+    STREAMING = "streaming"       # Real-time data streams (ChaCha20-Poly1305)
+    DISK = "disk"                 # Volume/disk encryption (XTS mode via context policy)
 
 
 class CryptoServeError(Exception):
@@ -195,6 +224,7 @@ class CryptoClient:
         plaintext: bytes,
         context: str,
         associated_data: Optional[bytes] = None,
+        usage: Optional[Usage] = None,
     ) -> bytes:
         """
         Encrypt data.
@@ -203,6 +233,12 @@ class CryptoClient:
             plaintext: Data to encrypt
             context: Crypto context name
             associated_data: Optional authenticated but unencrypted data
+            usage: Runtime usage hint (how this data is being used).
+                   Combines with context policy to select optimal algorithm.
+                   Options: Usage.AT_REST (database), Usage.IN_TRANSIT (network),
+                   Usage.IN_USE (memory), Usage.STREAMING (real-time),
+                   Usage.DISK (volume encryption).
+                   If not specified, uses the context's default usage.
 
         Returns:
             Encrypted ciphertext
@@ -212,6 +248,21 @@ class CryptoClient:
             AuthorizationError: If not authorized for context
             ContextNotFoundError: If context doesn't exist
             ServerError: If server returns an error
+
+        Example:
+            # Store customer PII in database
+            ciphertext = crypto.encrypt(
+                data=customer_ssn.encode(),
+                context="customer-pii",
+                usage=Usage.AT_REST
+            )
+
+            # Send same PII over API (different algorithm selected)
+            ciphertext = crypto.encrypt(
+                data=customer_ssn.encode(),
+                context="customer-pii",
+                usage=Usage.IN_TRANSIT
+            )
         """
         # Auto-refresh token if needed
         self._ensure_valid_token()
@@ -222,6 +273,8 @@ class CryptoClient:
         }
         if associated_data:
             payload["aad"] = base64.b64encode(associated_data).decode("ascii")
+        if usage:
+            payload["usage"] = usage.value if isinstance(usage, Usage) else usage
 
         response = self.session.post(
             f"{self.server_url}/v1/crypto/encrypt",
