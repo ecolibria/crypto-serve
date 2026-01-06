@@ -1,0 +1,21 @@
+# Set line length to match Black
+line-length = 120
+
+[lint]
+# Enable recommended rules
+select = ["E", "F", "W"]
+
+# Ignore specific rules
+ignore = [
+    "F821",  # Undefined name - false positives for SQLAlchemy forward references
+    "E402",  # Module level import not at top of file - needed for conditional imports
+    "E741",  # Ambiguous variable name - sometimes acceptable in list comprehensions
+    "E501",  # Line too long - handled by Black formatter
+]
+
+# Exclude generated files
+exclude = [
+    "migrations/*",
+    "__pycache__",
+    ".pytest_cache",
+]

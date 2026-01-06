@@ -32,11 +32,7 @@ def create_access_token(user_id: str, github_username: str) -> str:
 def verify_token(token: str) -> dict | None:
     """Verify and decode JWT token."""
     try:
-        payload = jwt.decode(
-            token,
-            settings.jwt_secret_key,
-            algorithms=[settings.jwt_algorithm]
-        )
+        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
         return payload
     except jwt.ExpiredSignatureError:
         return None
@@ -127,15 +123,11 @@ async def get_dashboard_or_sdk_user(
         # SDK tokens are UUIDs without dots (JWT has 3 dot-separated parts)
         if token and "." not in token:
             # This looks like an SDK identity token, try to find the identity
-            result = await db.execute(
-                select(Identity).where(Identity.api_key == token)
-            )
+            result = await db.execute(select(Identity).where(Identity.api_key == token))
             identity = result.scalar_one_or_none()
             if identity:
                 # Get the user who owns this identity
-                user_result = await db.execute(
-                    select(User).where(User.id == identity.user_id)
-                )
+                user_result = await db.execute(select(User).where(User.id == identity.user_id))
                 user = user_result.scalar_one_or_none()
                 if user:
                     return user

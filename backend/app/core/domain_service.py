@@ -37,11 +37,7 @@ class DomainService:
             env_settings = get_settings()
             env_domains = []
             if env_settings.allowed_domains:
-                env_domains = [
-                    d.strip().lower()
-                    for d in env_settings.allowed_domains.split(",")
-                    if d.strip()
-                ]
+                env_domains = [d.strip().lower() for d in env_settings.allowed_domains.split(",") if d.strip()]
 
             settings = OrganizationSettings(
                 allowed_domains=env_domains,
@@ -69,11 +65,7 @@ class DomainService:
         # Fall back to env var if database is empty
         env_settings = get_settings()
         if env_settings.allowed_domains:
-            return [
-                d.strip().lower()
-                for d in env_settings.allowed_domains.split(",")
-                if d.strip()
-            ]
+            return [d.strip().lower() for d in env_settings.allowed_domains.split(",") if d.strip()]
 
         return []
 
@@ -135,10 +127,7 @@ class DomainService:
 
         # Avoid duplicates
         if domain not in org_settings.allowed_domains:
-            org_settings.allowed_domains = [
-                *org_settings.allowed_domains,
-                domain
-            ]
+            org_settings.allowed_domains = [*org_settings.allowed_domains, domain]
             await db.commit()
 
     async def remove_domain(self, domain: str, db: AsyncSession) -> None:
@@ -151,10 +140,7 @@ class DomainService:
         domain = domain.strip().lower()
         org_settings = await self.get_org_settings(db)
 
-        org_settings.allowed_domains = [
-            d for d in org_settings.allowed_domains
-            if d.lower() != domain
-        ]
+        org_settings.allowed_domains = [d for d in org_settings.allowed_domains if d.lower() != domain]
         await db.commit()
 
     async def should_be_admin(
@@ -183,9 +169,7 @@ class DomainService:
                 return True
 
         # Check if this is the first user
-        user_count = await db.scalar(
-            select(func.count()).select_from(User)
-        )
+        user_count = await db.scalar(select(func.count()).select_from(User))
         if user_count == 0:
             return True
 

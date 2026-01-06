@@ -7,8 +7,6 @@ from app.core.hpke_engine import (
     HPKECipherSuite,
     HPKEMode,
     HPKEKeyPair,
-    HPKEEncryptedMessage,
-    HPKEError,
     get_hpke_engine,
     hpke_available,
     HPKE_AVAILABLE,
@@ -16,10 +14,7 @@ from app.core.hpke_engine import (
 
 
 # Skip all tests if pyhpke is not available
-pytestmark = pytest.mark.skipif(
-    not HPKE_AVAILABLE,
-    reason="pyhpke not installed"
-)
+pytestmark = pytest.mark.skipif(not HPKE_AVAILABLE, reason="pyhpke not installed")
 
 
 # =============================================================================
@@ -60,7 +55,7 @@ class TestKeyGeneration:
         assert keypair is not None
         assert isinstance(keypair, HPKEKeyPair)
         assert len(keypair.private_key) == 32  # X25519 private key
-        assert len(keypair.public_key) == 32   # X25519 public key
+        assert len(keypair.public_key) == 32  # X25519 public key
         assert keypair.suite == HPKECipherSuite.X25519_SHA256_AES128GCM
 
     def test_generate_p256_keypair(self, engine):

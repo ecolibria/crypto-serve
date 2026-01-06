@@ -199,10 +199,7 @@ class OIDCProvider(OAuthProvider):
 
         # Username: prefer username, fall back to email or sub
         username = (
-            claims.get("preferred_username")
-            or claims.get("username")
-            or claims.get("email")
-            or claims.get("sub")
+            claims.get("preferred_username") or claims.get("username") or claims.get("email") or claims.get("sub")
         )
 
         return OAuthUserInfo(

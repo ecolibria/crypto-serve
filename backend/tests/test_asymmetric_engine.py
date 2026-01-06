@@ -4,13 +4,11 @@ import pytest
 import os
 
 from app.core.asymmetric_engine import (
-    asymmetric_engine,
     AsymmetricEngine,
     AsymmetricAlgorithm,
     AsymmetricError,
     KeyNotFoundError,
     DecryptionError,
-    UnsupportedAlgorithmError,
 )
 
 
@@ -415,9 +413,9 @@ class TestKeyManagement:
 
     def test_list_keys(self, fresh_engine):
         """Test listing keys."""
-        key1 = fresh_engine.generate_key_pair(context="ctx1")
-        key2 = fresh_engine.generate_key_pair(context="ctx2")
-        key3 = fresh_engine.generate_key_pair(context="ctx1")
+        fresh_engine.generate_key_pair(context="ctx1")
+        fresh_engine.generate_key_pair(context="ctx2")
+        fresh_engine.generate_key_pair(context="ctx1")
 
         all_keys = fresh_engine.list_keys()
         assert len(all_keys) == 3
@@ -455,12 +453,8 @@ class TestDecryptionErrors:
 
     def test_wrong_key_ecies(self, fresh_engine):
         """Test decryption with wrong ECIES key."""
-        key_pair1 = fresh_engine.generate_key_pair(
-            algorithm=AsymmetricAlgorithm.ECIES_P256
-        )
-        key_pair2 = fresh_engine.generate_key_pair(
-            algorithm=AsymmetricAlgorithm.ECIES_P256
-        )
+        key_pair1 = fresh_engine.generate_key_pair(algorithm=AsymmetricAlgorithm.ECIES_P256)
+        key_pair2 = fresh_engine.generate_key_pair(algorithm=AsymmetricAlgorithm.ECIES_P256)
 
         plaintext = b"Secret message"
         encrypted = fresh_engine.encrypt(

@@ -1,10 +1,9 @@
 """Tests for the identity manager."""
 
 import pytest
-from datetime import datetime, timedelta
 
 from app.core.identity_manager import identity_manager
-from app.models import Identity, IdentityType, IdentityStatus, User, Tenant
+from app.models import IdentityType, IdentityStatus, User
 
 
 @pytest.mark.asyncio
@@ -91,10 +90,7 @@ async def test_get_identity_by_token(db_session, test_user):
 @pytest.mark.asyncio
 async def test_get_identity_invalid_token(db_session):
     """Test retrieving identity with invalid token."""
-    retrieved = await identity_manager.get_identity_by_token(
-        db_session,
-        "invalid-token"
-    )
+    retrieved = await identity_manager.get_identity_by_token(db_session, "invalid-token")
     assert retrieved is None
 
 
@@ -112,11 +108,7 @@ async def test_revoke_identity(db_session, test_user):
     )
 
     # Revoke
-    success = await identity_manager.revoke_identity(
-        db_session,
-        identity.id,
-        test_user
-    )
+    success = await identity_manager.revoke_identity(db_session, identity.id, test_user)
     assert success
 
     # Refresh and check status
@@ -152,25 +144,15 @@ async def test_revoke_other_users_identity(db_session, test_user, test_tenant):
     await db_session.commit()
 
     # Try to revoke with other user
-    success = await identity_manager.revoke_identity(
-        db_session,
-        identity.id,
-        other_user
-    )
+    success = await identity_manager.revoke_identity(db_session, identity.id, other_user)
     assert not success
 
 
 @pytest.mark.asyncio
 async def test_identity_id_format():
     """Test identity ID generation format."""
-    dev_id = identity_manager.generate_identity_id(
-        IdentityType.DEVELOPER,
-        "Alice Smith"
-    )
-    svc_id = identity_manager.generate_identity_id(
-        IdentityType.SERVICE,
-        "Checkout Service"
-    )
+    dev_id = identity_manager.generate_identity_id(IdentityType.DEVELOPER, "Alice Smith")
+    svc_id = identity_manager.generate_identity_id(IdentityType.SERVICE, "Checkout Service")
 
     assert dev_id.startswith("dev_")
     assert svc_id.startswith("svc_")

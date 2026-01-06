@@ -309,22 +309,44 @@ class TestPolicyRuleEvaluation:
         engine = PolicyEngine()
 
         # Test >=
-        engine.add_policy(Policy(
-            name="test-gte",
-            rule="algorithm.key_bits >= 256",
-            severity=PolicySeverity.BLOCK,
-            message="Test",
-        ))
+        engine.add_policy(
+            Policy(
+                name="test-gte",
+                rule="algorithm.key_bits >= 256",
+                severity=PolicySeverity.BLOCK,
+                message="Test",
+            )
+        )
 
         context_pass = EvaluationContext(
             algorithm={"name": "AES", "key_bits": 256, "quantum_resistant": False, "hardware_acceleration": False},
-            context={"name": "test", "sensitivity": "low", "pii": False, "phi": False, "pci": False, "frameworks": [], "protection_lifetime_years": 1, "audit_level": "minimal", "frequency": "low"},
+            context={
+                "name": "test",
+                "sensitivity": "low",
+                "pii": False,
+                "phi": False,
+                "pci": False,
+                "frameworks": [],
+                "protection_lifetime_years": 1,
+                "audit_level": "minimal",
+                "frequency": "low",
+            },
             identity={"team": "test"},
             operation="encrypt",
         )
         context_fail = EvaluationContext(
             algorithm={"name": "AES", "key_bits": 128, "quantum_resistant": False, "hardware_acceleration": False},
-            context={"name": "test", "sensitivity": "low", "pii": False, "phi": False, "pci": False, "frameworks": [], "protection_lifetime_years": 1, "audit_level": "minimal", "frequency": "low"},
+            context={
+                "name": "test",
+                "sensitivity": "low",
+                "pii": False,
+                "phi": False,
+                "pci": False,
+                "frameworks": [],
+                "protection_lifetime_years": 1,
+                "audit_level": "minimal",
+                "frequency": "low",
+            },
             identity={"team": "test"},
             operation="encrypt",
         )
@@ -338,22 +360,44 @@ class TestPolicyRuleEvaluation:
     def test_boolean_checks(self):
         """Test boolean checks in rules."""
         engine = PolicyEngine()
-        engine.add_policy(Policy(
-            name="require-quantum",
-            rule="algorithm.quantum_resistant == True",
-            severity=PolicySeverity.BLOCK,
-            message="Quantum resistance required",
-        ))
+        engine.add_policy(
+            Policy(
+                name="require-quantum",
+                rule="algorithm.quantum_resistant == True",
+                severity=PolicySeverity.BLOCK,
+                message="Quantum resistance required",
+            )
+        )
 
         context_pass = EvaluationContext(
             algorithm={"name": "Kyber", "key_bits": 256, "quantum_resistant": True, "hardware_acceleration": False},
-            context={"name": "test", "sensitivity": "low", "pii": False, "phi": False, "pci": False, "frameworks": [], "protection_lifetime_years": 1, "audit_level": "minimal", "frequency": "low"},
+            context={
+                "name": "test",
+                "sensitivity": "low",
+                "pii": False,
+                "phi": False,
+                "pci": False,
+                "frameworks": [],
+                "protection_lifetime_years": 1,
+                "audit_level": "minimal",
+                "frequency": "low",
+            },
             identity={"team": "test"},
             operation="encrypt",
         )
         context_fail = EvaluationContext(
             algorithm={"name": "AES", "key_bits": 256, "quantum_resistant": False, "hardware_acceleration": False},
-            context={"name": "test", "sensitivity": "low", "pii": False, "phi": False, "pci": False, "frameworks": [], "protection_lifetime_years": 1, "audit_level": "minimal", "frequency": "low"},
+            context={
+                "name": "test",
+                "sensitivity": "low",
+                "pii": False,
+                "phi": False,
+                "pci": False,
+                "frameworks": [],
+                "protection_lifetime_years": 1,
+                "audit_level": "minimal",
+                "frequency": "low",
+            },
             identity={"team": "test"},
             operation="encrypt",
         )
@@ -367,22 +411,44 @@ class TestPolicyRuleEvaluation:
     def test_membership_in_check(self):
         """Test 'in' membership checks in rules."""
         engine = PolicyEngine()
-        engine.add_policy(Policy(
-            name="require-hipaa",
-            rule="'HIPAA' in context.frameworks",
-            severity=PolicySeverity.INFO,
-            message="HIPAA framework detected",
-        ))
+        engine.add_policy(
+            Policy(
+                name="require-hipaa",
+                rule="'HIPAA' in context.frameworks",
+                severity=PolicySeverity.INFO,
+                message="HIPAA framework detected",
+            )
+        )
 
         context_with_hipaa = EvaluationContext(
             algorithm={"name": "AES", "key_bits": 256, "quantum_resistant": False, "hardware_acceleration": False},
-            context={"name": "test", "sensitivity": "high", "pii": True, "phi": True, "pci": False, "frameworks": ["HIPAA", "SOC2"], "protection_lifetime_years": 7, "audit_level": "full", "frequency": "high"},
+            context={
+                "name": "test",
+                "sensitivity": "high",
+                "pii": True,
+                "phi": True,
+                "pci": False,
+                "frameworks": ["HIPAA", "SOC2"],
+                "protection_lifetime_years": 7,
+                "audit_level": "full",
+                "frequency": "high",
+            },
             identity={"team": "test"},
             operation="encrypt",
         )
         context_without_hipaa = EvaluationContext(
             algorithm={"name": "AES", "key_bits": 256, "quantum_resistant": False, "hardware_acceleration": False},
-            context={"name": "test", "sensitivity": "low", "pii": False, "phi": False, "pci": False, "frameworks": ["SOC2"], "protection_lifetime_years": 1, "audit_level": "minimal", "frequency": "low"},
+            context={
+                "name": "test",
+                "sensitivity": "low",
+                "pii": False,
+                "phi": False,
+                "pci": False,
+                "frameworks": ["SOC2"],
+                "protection_lifetime_years": 1,
+                "audit_level": "minimal",
+                "frequency": "low",
+            },
             identity={"team": "test"},
             operation="encrypt",
         )

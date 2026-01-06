@@ -28,6 +28,7 @@ security = HTTPBearer()
 
 class GenerateKeyRequest(BaseModel):
     """Request to generate a signing key pair."""
+
     algorithm: SignatureAlgorithm = Field(
         default=SignatureAlgorithm.ED25519,
         description="Signature algorithm (Ed25519 recommended)",
@@ -41,6 +42,7 @@ class GenerateKeyRequest(BaseModel):
 
 class PublicKeyJWK(BaseModel):
     """JWK representation of a public key."""
+
     kty: str
     crv: str | None = None
     x: str
@@ -52,6 +54,7 @@ class PublicKeyJWK(BaseModel):
 
 class GenerateKeyResponse(BaseModel):
     """Response with generated key information."""
+
     key_id: str
     algorithm: str
     context: str
@@ -62,6 +65,7 @@ class GenerateKeyResponse(BaseModel):
 
 class SignRequest(BaseModel):
     """Request to sign a message."""
+
     message: str = Field(
         description="Base64-encoded message to sign",
     )
@@ -76,6 +80,7 @@ class SignRequest(BaseModel):
 
 class SignResponse(BaseModel):
     """Response with signature."""
+
     signature: str = Field(description="Signature in requested format")
     algorithm: str
     key_id: str
@@ -84,6 +89,7 @@ class SignResponse(BaseModel):
 
 class VerifyRequest(BaseModel):
     """Request to verify a signature."""
+
     message: str = Field(
         description="Base64-encoded original message",
     )
@@ -101,6 +107,7 @@ class VerifyRequest(BaseModel):
 
 class VerifyResponse(BaseModel):
     """Response with verification result."""
+
     valid: bool
     algorithm: str
     key_id: str
@@ -109,6 +116,7 @@ class VerifyResponse(BaseModel):
 
 class GetPublicKeyResponse(BaseModel):
     """Response with public key."""
+
     key_id: str
     algorithm: str
     public_key: str | dict = Field(
@@ -119,6 +127,7 @@ class GetPublicKeyResponse(BaseModel):
 
 class ImportPublicKeyRequest(BaseModel):
     """Request to import a public key."""
+
     public_key: str | dict = Field(
         description="Public key data (PEM string or JWK object)",
     )
@@ -134,12 +143,14 @@ class ImportPublicKeyRequest(BaseModel):
 
 class ImportPublicKeyResponse(BaseModel):
     """Response with imported key ID."""
+
     key_id: str
     algorithm: str
 
 
 class KeyInfo(BaseModel):
     """Information about a signing key."""
+
     key_id: str
     algorithm: str
     context: str
@@ -149,11 +160,13 @@ class KeyInfo(BaseModel):
 
 class ListKeysResponse(BaseModel):
     """Response with list of keys."""
+
     keys: list[KeyInfo]
 
 
 class DeleteKeyResponse(BaseModel):
     """Response for key deletion."""
+
     deleted: bool
     key_id: str
 
@@ -352,10 +365,7 @@ async def get_public_key(
 
     # Get algorithm from key store
     key_info = signature_engine.list_keys()
-    algorithm = next(
-        (k["algorithm"] for k in key_info if k["key_id"] == key_id),
-        "unknown"
-    )
+    algorithm = next((k["algorithm"] for k in key_info if k["key_id"] == key_id), "unknown")
 
     return GetPublicKeyResponse(
         key_id=key_id,
@@ -416,10 +426,7 @@ async def import_public_key(
 
     # Get algorithm from key store
     key_info = signature_engine.list_keys()
-    algorithm = next(
-        (k["algorithm"] for k in key_info if k["key_id"] == key_id),
-        "unknown"
-    )
+    algorithm = next((k["algorithm"] for k in key_info if k["key_id"] == key_id), "unknown")
 
     return ImportPublicKeyResponse(
         key_id=key_id,

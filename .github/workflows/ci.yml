@@ -44,7 +44,7 @@ jobs:
         run: pip install ruff black
 
       - name: Run Ruff
-        run: ruff check backend/app backend/tests
+        run: ruff check backend/app backend/tests --config backend/ruff.toml
 
       - name: Check Black formatting
-        run: black --check backend/app backend/tests
+        run: black --check --line-length 120 backend/app backend/tests

@@ -3,11 +3,8 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBearer
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.models import Identity
 from app.core.password_engine import (
     PasswordEngine,
@@ -26,15 +23,16 @@ password_engine = PasswordEngine()
 
 class PasswordHashRequest(BaseModel):
     """Password hash request schema."""
+
     password: str = Field(..., description="Password to hash", min_length=1)
     algorithm: str = Field(
-        default="argon2id",
-        description="Algorithm: argon2id (recommended), bcrypt, scrypt, pbkdf2-sha256"
+        default="argon2id", description="Algorithm: argon2id (recommended), bcrypt, scrypt, pbkdf2-sha256"
     )
 
 
 class PasswordHashResponse(BaseModel):
     """Password hash response schema."""
+
     hash: str = Field(..., description="Password hash in PHC string format")
     algorithm: str
     params: dict = Field(..., description="Parameters used for hashing")
@@ -42,27 +40,28 @@ class PasswordHashResponse(BaseModel):
 
 class PasswordVerifyRequest(BaseModel):
     """Password verification request schema."""
+
     password: str = Field(..., description="Password to verify")
     hash: str = Field(..., description="Hash to verify against (PHC format)")
 
 
 class PasswordVerifyResponse(BaseModel):
     """Password verification response schema."""
+
     valid: bool
-    needs_rehash: bool = Field(
-        ...,
-        description="True if parameters are outdated and password should be rehashed"
-    )
+    needs_rehash: bool = Field(..., description="True if parameters are outdated and password should be rehashed")
     algorithm: str
 
 
 class PasswordStrengthRequest(BaseModel):
     """Password strength check request schema."""
+
     password: str = Field(..., description="Password to analyze")
 
 
 class PasswordStrengthResponse(BaseModel):
     """Password strength response schema."""
+
     score: int = Field(..., description="Strength score 0-100")
     strength: str = Field(..., description="Strength level: weak, fair, good, strong")
     length: int

@@ -33,9 +33,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.core.crypto_registry import (
     crypto_registry,
-    Algorithm,
     SecurityStatus,
-    get_deprecated_algorithms,
 )
 
 
@@ -43,8 +41,10 @@ from app.core.crypto_registry import (
 # Terminal Colors
 # =============================================================================
 
+
 class Colors:
     """ANSI color codes for terminal output."""
+
     RED = "\033[91m"
     GREEN = "\033[92m"
     YELLOW = "\033[93m"
@@ -57,7 +57,7 @@ class Colors:
 
     @classmethod
     def disable(cls):
-        for attr in ['RED', 'GREEN', 'YELLOW', 'BLUE', 'MAGENTA', 'CYAN', 'WHITE', 'BOLD', 'RESET']:
+        for attr in ["RED", "GREEN", "YELLOW", "BLUE", "MAGENTA", "CYAN", "WHITE", "BOLD", "RESET"]:
             setattr(cls, attr, "")
 
 
@@ -69,17 +69,20 @@ def colored(text: str, color: str) -> str:
 # Health Status Types
 # =============================================================================
 
+
 class HealthStatus(str, Enum):
     """Health status of a cryptographic component."""
-    HEALTHY = "healthy"         # All good
-    WARNING = "warning"         # Attention needed soon
-    DEGRADED = "degraded"       # Performance/security impact
-    CRITICAL = "critical"       # Immediate action required
-    UNKNOWN = "unknown"         # Cannot determine
+
+    HEALTHY = "healthy"  # All good
+    WARNING = "warning"  # Attention needed soon
+    DEGRADED = "degraded"  # Performance/security impact
+    CRITICAL = "critical"  # Immediate action required
+    UNKNOWN = "unknown"  # Cannot determine
 
 
 class ComponentType(str, Enum):
     """Types of cryptographic components."""
+
     KEY = "key"
     ALGORITHM = "algorithm"
     CONTEXT = "context"
@@ -90,6 +93,7 @@ class ComponentType(str, Enum):
 @dataclass
 class HealthIssue:
     """A health issue requiring attention."""
+
     component_type: ComponentType
     component_id: str
     status: HealthStatus
@@ -113,6 +117,7 @@ class HealthIssue:
 @dataclass
 class HealthReport:
     """Overall health report."""
+
     timestamp: datetime
     overall_status: HealthStatus
     issues: list[HealthIssue] = field(default_factory=list)
@@ -210,15 +215,23 @@ class APIDataStore(DataStoreInterface):
                 # Build key entries from bundle
                 if bundle.get("encryptionKey"):
                     enc_key = bundle["encryptionKey"]
-                    all_keys.append({
-                        "id": enc_key.get("id", f"{ctx_name}-enc"),
-                        "context": ctx_name,
-                        "algorithm": enc_key.get("algorithm", "AES-256-GCM"),
-                        "created_at": datetime.fromisoformat(enc_key.get("createdAt", datetime.now(timezone.utc).isoformat()).replace("Z", "+00:00")),
-                        "last_rotated": datetime.fromisoformat(enc_key.get("lastRotatedAt", datetime.now(timezone.utc).isoformat()).replace("Z", "+00:00")),
-                        "rotation_days": enc_key.get("rotationScheduleDays", 90),
-                        "data_encrypted_count": 0,  # Not available from bundle API
-                    })
+                    all_keys.append(
+                        {
+                            "id": enc_key.get("id", f"{ctx_name}-enc"),
+                            "context": ctx_name,
+                            "algorithm": enc_key.get("algorithm", "AES-256-GCM"),
+                            "created_at": datetime.fromisoformat(
+                                enc_key.get("createdAt", datetime.now(timezone.utc).isoformat()).replace("Z", "+00:00")
+                            ),
+                            "last_rotated": datetime.fromisoformat(
+                                enc_key.get("lastRotatedAt", datetime.now(timezone.utc).isoformat()).replace(
+                                    "Z", "+00:00"
+                                )
+                            ),
+                            "rotation_days": enc_key.get("rotationScheduleDays", 90),
+                            "data_encrypted_count": 0,  # Not available from bundle API
+                        }
+                    )
             except Exception as e:
                 print(f"Warning: Could not fetch keys for context {ctx_name}: {e}", file=sys.stderr)
 
@@ -233,12 +246,14 @@ class APIDataStore(DataStoreInterface):
             response = self._request("/api/v1/contexts")
             contexts = []
             for ctx in response:
-                contexts.append({
-                    "name": ctx.get("name"),
-                    "algorithm": ctx.get("algorithm", "AES-256-GCM"),
-                    "quantum_resistant": ctx.get("quantumResistant", False),
-                    "compliance": ctx.get("compliance", []),
-                })
+                contexts.append(
+                    {
+                        "name": ctx.get("name"),
+                        "algorithm": ctx.get("algorithm", "AES-256-GCM"),
+                        "quantum_resistant": ctx.get("quantumResistant", False),
+                        "compliance": ctx.get("compliance", []),
+                    }
+                )
             self._cache["contexts"] = contexts
             return contexts
         except Exception as e:
@@ -364,6 +379,7 @@ def get_data_store() -> DataStoreInterface:
 # Health Assessment
 # =============================================================================
 
+
 def assess_key_health(key: dict) -> list[HealthIssue]:
     """Assess the health of a single key."""
     issues = []
@@ -378,59 +394,69 @@ def assess_key_health(key: dict) -> list[HealthIssue]:
     days_until_due = rotation_days - days_since_rotation
 
     if days_until_due < 0:
-        issues.append(HealthIssue(
-            component_type=ComponentType.KEY,
-            component_id=key_id,
-            status=HealthStatus.CRITICAL,
-            message=f"Key rotation overdue by {abs(days_until_due)} days (context: {context})",
-            recommendation=f"Run: cryptoserve heal rotate-keys --key {key_id}",
-            auto_healable=True,
-            priority=1,
-        ))
+        issues.append(
+            HealthIssue(
+                component_type=ComponentType.KEY,
+                component_id=key_id,
+                status=HealthStatus.CRITICAL,
+                message=f"Key rotation overdue by {abs(days_until_due)} days (context: {context})",
+                recommendation=f"Run: cryptoserve heal rotate-keys --key {key_id}",
+                auto_healable=True,
+                priority=1,
+            )
+        )
     elif days_until_due < 30:
-        issues.append(HealthIssue(
-            component_type=ComponentType.KEY,
-            component_id=key_id,
-            status=HealthStatus.WARNING,
-            message=f"Key rotation due in {days_until_due} days (context: {context})",
-            recommendation=f"Schedule key rotation: cryptoserve heal rotate-keys --key {key_id}",
-            auto_healable=True,
-            priority=2,
-        ))
+        issues.append(
+            HealthIssue(
+                component_type=ComponentType.KEY,
+                component_id=key_id,
+                status=HealthStatus.WARNING,
+                message=f"Key rotation due in {days_until_due} days (context: {context})",
+                recommendation=f"Schedule key rotation: cryptoserve heal rotate-keys --key {key_id}",
+                auto_healable=True,
+                priority=2,
+            )
+        )
 
     # Check algorithm status
     algo_info = crypto_registry.get(algorithm)
     if algo_info:
         if algo_info.status == SecurityStatus.BROKEN:
-            issues.append(HealthIssue(
-                component_type=ComponentType.ALGORITHM,
-                component_id=algorithm,
-                status=HealthStatus.CRITICAL,
-                message=f"Key {key_id} uses BROKEN algorithm: {algorithm}",
-                recommendation=f"Migrate immediately: cryptoserve heal reencrypt --context {context} --algorithm AES-256-GCM",
-                auto_healable=True,
-                priority=0,  # Highest priority
-            ))
+            issues.append(
+                HealthIssue(
+                    component_type=ComponentType.ALGORITHM,
+                    component_id=algorithm,
+                    status=HealthStatus.CRITICAL,
+                    message=f"Key {key_id} uses BROKEN algorithm: {algorithm}",
+                    recommendation=f"Migrate immediately: cryptoserve heal reencrypt --context {context} --algorithm AES-256-GCM",
+                    auto_healable=True,
+                    priority=0,  # Highest priority
+                )
+            )
         elif algo_info.status == SecurityStatus.DEPRECATED:
-            issues.append(HealthIssue(
-                component_type=ComponentType.ALGORITHM,
-                component_id=algorithm,
-                status=HealthStatus.DEGRADED,
-                message=f"Key {key_id} uses DEPRECATED algorithm: {algorithm}",
-                recommendation=f"Migrate: cryptoserve heal reencrypt --context {context} --algorithm AES-256-GCM",
-                auto_healable=True,
-                priority=1,
-            ))
+            issues.append(
+                HealthIssue(
+                    component_type=ComponentType.ALGORITHM,
+                    component_id=algorithm,
+                    status=HealthStatus.DEGRADED,
+                    message=f"Key {key_id} uses DEPRECATED algorithm: {algorithm}",
+                    recommendation=f"Migrate: cryptoserve heal reencrypt --context {context} --algorithm AES-256-GCM",
+                    auto_healable=True,
+                    priority=1,
+                )
+            )
         elif algo_info.status == SecurityStatus.LEGACY:
-            issues.append(HealthIssue(
-                component_type=ComponentType.ALGORITHM,
-                component_id=algorithm,
-                status=HealthStatus.WARNING,
-                message=f"Key {key_id} uses LEGACY algorithm: {algorithm}",
-                recommendation=f"Consider migration: cryptoserve heal reencrypt --context {context}",
-                auto_healable=True,
-                priority=3,
-            ))
+            issues.append(
+                HealthIssue(
+                    component_type=ComponentType.ALGORITHM,
+                    component_id=algorithm,
+                    status=HealthStatus.WARNING,
+                    message=f"Key {key_id} uses LEGACY algorithm: {algorithm}",
+                    recommendation=f"Consider migration: cryptoserve heal reencrypt --context {context}",
+                    auto_healable=True,
+                    priority=3,
+                )
+            )
 
     return issues
 
@@ -448,15 +474,17 @@ def assess_system_health() -> HealthReport:
     contexts = get_data_store().get_contexts()
     non_quantum = [c for c in contexts if not c.get("quantum_resistant")]
     if non_quantum:
-        issues.append(HealthIssue(
-            component_type=ComponentType.CONTEXT,
-            component_id="quantum-readiness",
-            status=HealthStatus.WARNING,
-            message=f"{len(non_quantum)} context(s) not quantum-resistant",
-            recommendation="Plan PQC migration: cryptoserve heal upgrade-quantum",
-            auto_healable=False,
-            priority=5,
-        ))
+        issues.append(
+            HealthIssue(
+                component_type=ComponentType.CONTEXT,
+                component_id="quantum-readiness",
+                status=HealthStatus.WARNING,
+                message=f"{len(non_quantum)} context(s) not quantum-resistant",
+                recommendation="Plan PQC migration: cryptoserve heal upgrade-quantum",
+                auto_healable=False,
+                priority=5,
+            )
+        )
 
     # Determine overall status
     if any(i.status == HealthStatus.CRITICAL for i in issues):
@@ -479,7 +507,14 @@ def assess_system_health() -> HealthReport:
         "total_keys": len(keys),
         "total_contexts": len(contexts),
         "total_data_encrypted": sum(k.get("data_encrypted_count", 0) for k in keys),
-        "deprecated_algorithms": len([k for k in keys if crypto_registry.get(k["algorithm"]) and crypto_registry.get(k["algorithm"]).status in [SecurityStatus.DEPRECATED, SecurityStatus.BROKEN]]),
+        "deprecated_algorithms": len(
+            [
+                k
+                for k in keys
+                if crypto_registry.get(k["algorithm"])
+                and crypto_registry.get(k["algorithm"]).status in [SecurityStatus.DEPRECATED, SecurityStatus.BROKEN]
+            ]
+        ),
     }
 
     return HealthReport(
@@ -493,6 +528,7 @@ def assess_system_health() -> HealthReport:
 # =============================================================================
 # Command: status
 # =============================================================================
+
 
 def cmd_status(args) -> int:
     """Show system health status."""
@@ -539,7 +575,9 @@ def cmd_status(args) -> int:
         for issue in report.issues[:10]:
             issue_color = status_colors[issue.status]
             issue_icon = status_icons[issue.status]
-            print(f"  {colored(issue_icon, issue_color)} {colored(f'[{issue.status.value.upper()}]', issue_color)} {issue.message}")
+            print(
+                f"  {colored(issue_icon, issue_color)} {colored(f'[{issue.status.value.upper()}]', issue_color)} {issue.message}"
+            )
             print(f"    {colored('→', Colors.CYAN)} {issue.recommendation}")
             if issue.auto_healable:
                 print(f"    {colored('(auto-healable)', Colors.GREEN)}")
@@ -556,6 +594,7 @@ def cmd_status(args) -> int:
 # =============================================================================
 # Command: reencrypt
 # =============================================================================
+
 
 def cmd_reencrypt(args) -> int:
     """Re-encrypt data with a new algorithm."""
@@ -578,7 +617,9 @@ def cmd_reencrypt(args) -> int:
         return 3
 
     if algo_info.status not in [SecurityStatus.RECOMMENDED, SecurityStatus.ACCEPTABLE]:
-        print(colored(f"Warning: {target_algorithm} is not recommended (status: {algo_info.status.value})", Colors.YELLOW))
+        print(
+            colored(f"Warning: {target_algorithm} is not recommended (status: {algo_info.status.value})", Colors.YELLOW)
+        )
 
     print(f"\nContext: {colored(context, Colors.CYAN)}")
     print(f"Target Algorithm: {colored(target_algorithm, Colors.GREEN)}")
@@ -610,7 +651,7 @@ def cmd_reencrypt(args) -> int:
     print(colored("Re-encryption plan generated successfully!", Colors.GREEN))
     print("\nTo execute in production:")
     print(f"  POST /api/admin/contexts/{context}/reencrypt")
-    print(f"  {{ \"target_algorithm\": \"{target_algorithm}\" }}")
+    print(f'  {{ "target_algorithm": "{target_algorithm}" }}')
 
     return 0
 
@@ -618,6 +659,7 @@ def cmd_reencrypt(args) -> int:
 # =============================================================================
 # Command: rotate-keys
 # =============================================================================
+
 
 def cmd_rotate_keys(args) -> int:
     """Rotate encryption keys."""
@@ -675,12 +717,13 @@ def cmd_rotate_keys(args) -> int:
 # Command: upgrade-quantum
 # =============================================================================
 
+
 def cmd_upgrade_quantum(args) -> int:
     """Plan quantum-resistant upgrade."""
     print(f"\n{colored('Quantum Readiness Assessment', Colors.BOLD + Colors.MAGENTA)}")
     print("=" * 60)
 
-    contexts = get_data_store().get_contexts()
+    get_data_store().get_contexts()
     keys = get_data_store().get_keys()
 
     # Assess current state
@@ -752,6 +795,7 @@ def cmd_upgrade_quantum(args) -> int:
 # Command: heal
 # =============================================================================
 
+
 def cmd_heal(args) -> int:
     """Auto-heal all healable issues."""
     report = assess_system_health()
@@ -790,6 +834,7 @@ def cmd_heal(args) -> int:
 # Main Entry Point
 # =============================================================================
 
+
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser."""
     parser = argparse.ArgumentParser(
@@ -814,7 +859,7 @@ Examples:
 
   # Plan quantum migration
   cryptoserve heal upgrade-quantum --output quantum-plan.yaml
-        """
+        """,
     )
 
     parser.add_argument("--no-color", action="store_true", help="Disable colored output")

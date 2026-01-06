@@ -27,18 +27,10 @@ References:
 """
 
 import hashlib
-import os
 import secrets
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
-
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.asymmetric.utils import (
-    decode_dss_signature,
-    encode_dss_signature,
-)
 
 
 class ThresholdScheme(str, Enum):
@@ -327,19 +319,14 @@ class ThresholdEngine:
         # Generate random polynomial of degree (threshold - 1)
         # f(x) = a_0 + a_1*x + a_2*x^2 + ... + a_{t-1}*x^{t-1}
         # where a_0 is the secret key
-        coefficients = [
-            secrets.randbelow(self.CURVE_ORDER - 1) + 1
-            for _ in range(threshold)
-        ]
+        coefficients = [secrets.randbelow(self.CURVE_ORDER - 1) + 1 for _ in range(threshold)]
         secret_key = coefficients[0]
 
         # Compute public key: g^secret_key
         public_key = self._scalar_mult_g(secret_key)
 
         # Compute Feldman VSS commitments: g^a_i for each coefficient
-        verification_points = [
-            self._scalar_mult_g(coef).to_bytes() for coef in coefficients
-        ]
+        verification_points = [self._scalar_mult_g(coef).to_bytes() for coef in coefficients]
 
         # Generate shares for each participant
         shares = []
@@ -445,22 +432,16 @@ class ThresholdEngine:
             R = self._point_add(R, commitment)
 
         # Compute challenge: H(R || public_key || message)
-        challenge_input = (
-            R.to_bytes() + share.public_key + message
-        )
+        challenge_input = R.to_bytes() + share.public_key + message
         challenge_hash = hashlib.sha256(challenge_input).digest()
         challenge = int.from_bytes(challenge_hash, "big") % self.CURVE_ORDER
 
         # Compute Lagrange coefficient for this participant
         participant_ids = list(nonce_commitments.keys())
-        lagrange = self._lagrange_coefficient(
-            share.participant_id, participant_ids
-        )
+        lagrange = self._lagrange_coefficient(share.participant_id, participant_ids)
 
         # Compute signature share: s_i = k_i + c * lambda_i * x_i
-        s_share = (
-            nonce + challenge * lagrange * share.share_value
-        ) % self.CURVE_ORDER
+        s_share = (nonce + challenge * lagrange * share.share_value) % self.CURVE_ORDER
 
         return SignatureShare(
             participant_id=share.participant_id,
@@ -634,10 +615,7 @@ class ThresholdEngine:
             Tuple of (round1_output, polynomial_coefficients)
         """
         # Generate random polynomial
-        coefficients = [
-            secrets.randbelow(self.CURVE_ORDER - 1) + 1
-            for _ in range(threshold)
-        ]
+        coefficients = [secrets.randbelow(self.CURVE_ORDER - 1) + 1 for _ in range(threshold)]
 
         # Compute commitment to constant term: g^a_0
         commitment = self._scalar_mult_g(coefficients[0])
@@ -646,13 +624,8 @@ class ThresholdEngine:
         k = secrets.randbelow(self.CURVE_ORDER - 1) + 1
         R = self._scalar_mult_g(k)
 
-        challenge_input = (
-            commitment.to_bytes() + R.to_bytes() +
-            participant_id.to_bytes(4, "big")
-        )
-        challenge = int.from_bytes(
-            hashlib.sha256(challenge_input).digest(), "big"
-        ) % self.CURVE_ORDER
+        challenge_input = commitment.to_bytes() + R.to_bytes() + participant_id.to_bytes(4, "big")
+        challenge = int.from_bytes(hashlib.sha256(challenge_input).digest(), "big") % self.CURVE_ORDER
 
         response = (k + challenge * coefficients[0]) % self.CURVE_ORDER
 
@@ -686,13 +659,8 @@ class ThresholdEngine:
             response = int.from_bytes(output.proof[33:65], "big")
 
             # Recompute challenge
-            challenge_input = (
-                output.commitment + R.to_bytes() +
-                output.participant_id.to_bytes(4, "big")
-            )
-            challenge = int.from_bytes(
-                hashlib.sha256(challenge_input).digest(), "big"
-            ) % self.CURVE_ORDER
+            challenge_input = output.commitment + R.to_bytes() + output.participant_id.to_bytes(4, "big")
+            challenge = int.from_bytes(hashlib.sha256(challenge_input).digest(), "big") % self.CURVE_ORDER
 
             # Verify: g^response == R * commitment^challenge
             lhs = self._scalar_mult_g(response)
@@ -755,9 +723,7 @@ class ThresholdEngine:
             result = (result * x + coef) % self.CURVE_ORDER
         return result
 
-    def _lagrange_coefficient(
-        self, i: int, participant_ids: list[int]
-    ) -> int:
+    def _lagrange_coefficient(self, i: int, participant_ids: list[int]) -> int:
         """Compute Lagrange coefficient for participant i."""
         numerator = 1
         denominator = 1

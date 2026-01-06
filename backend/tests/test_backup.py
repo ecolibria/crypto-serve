@@ -1,9 +1,7 @@
 """Tests for backup and restore functionality."""
 
-import json
 import os
 import tempfile
-from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -166,7 +164,7 @@ class TestBackupCreateRestore:
         backup_path = os.path.join(temp_backup_dir, "manifest-test.tar.gz.enc")
         password = "manifest-password"
 
-        result = await backup_service.create_backup(
+        await backup_service.create_backup(
             output_path=backup_path,
             password=password,
             db=db_session,

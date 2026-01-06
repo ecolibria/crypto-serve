@@ -3,7 +3,6 @@
 Provides AST-based source code scanning for cryptographic detection.
 """
 
-import base64
 import hashlib
 from datetime import datetime, timezone
 from typing import Annotated
@@ -23,7 +22,9 @@ from app.core.code_scanner import (
 from app.api.crypto import get_sdk_identity
 
 
-def compute_finding_fingerprint(target_name: str, file_path: str | None, algorithm: str | None, title: str, line_number: int | None) -> str:
+def compute_finding_fingerprint(
+    target_name: str, file_path: str | None, algorithm: str | None, title: str, line_number: int | None
+) -> str:
     """Compute a fingerprint for deduplication across scans."""
     data = f"{target_name}|{file_path or ''}|{algorithm or ''}|{title}|{line_number or ''}"
     return hashlib.sha256(data.encode()).hexdigest()[:32]
@@ -82,6 +83,7 @@ def get_context_recommendation(algorithm: str | None, quantum_risk: str | None, 
         "and automatic algorithm selection based on your data classification."
     )
 
+
 router = APIRouter(prefix="/api/v1/code", tags=["code-analysis"])
 
 # Singleton scanner
@@ -90,15 +92,19 @@ code_scanner = CodeScanner()
 
 class CodeScanRequest(BaseModel):
     """Code scan request."""
+
     code: str = Field(..., description="Source code to analyze")
     language: str | None = Field(default=None, description="Language: python, javascript, go, java")
     filename: str | None = Field(default=None, description="Optional filename for context")
     persist: bool = Field(default=False, description="Persist results to security dashboard")
-    target_name: str | None = Field(default=None, description="Target name for dashboard (e.g., 'crypto-serve-backend')")
+    target_name: str | None = Field(
+        default=None, description="Target name for dashboard (e.g., 'crypto-serve-backend')"
+    )
 
 
 class CryptoUsageResponse(BaseModel):
     """A detected cryptographic usage."""
+
     algorithm: str
     category: str
     library: str
@@ -117,6 +123,7 @@ class CryptoUsageResponse(BaseModel):
 
 class CryptoFindingResponse(BaseModel):
     """A security finding."""
+
     severity: str
     title: str
     description: str
@@ -129,6 +136,7 @@ class CryptoFindingResponse(BaseModel):
 
 class CBOMResponse(BaseModel):
     """Cryptographic Bill of Materials."""
+
     version: str
     scan_timestamp: str
     files_scanned: int
@@ -140,6 +148,7 @@ class CBOMResponse(BaseModel):
 
 class CodeScanResponse(BaseModel):
     """Code scan response."""
+
     usages: list[CryptoUsageResponse]
     findings: list[CryptoFindingResponse]
     cbom: CBOMResponse
@@ -149,22 +158,24 @@ class CodeScanResponse(BaseModel):
 
 class DirectoryScanRequest(BaseModel):
     """Directory scan request."""
+
     path: str = Field(..., description="Directory path to scan")
     recursive: bool = Field(default=True, description="Scan subdirectories")
     exclude_patterns: list[str] | None = Field(
-        default=None,
-        description="Glob patterns to exclude (e.g., '**/node_modules/**')"
+        default=None, description="Glob patterns to exclude (e.g., '**/node_modules/**')"
     )
 
 
 class QuickAnalysisRequest(BaseModel):
     """Quick analysis request."""
+
     code: str = Field(..., description="Source code to analyze")
     language: str | None = Field(default=None, description="Language hint")
 
 
 class QuickAnalysisResponse(BaseModel):
     """Quick analysis response."""
+
     has_crypto: bool = Field(..., description="Whether crypto operations were detected")
     algorithms: list[str] = Field(..., description="Algorithms detected")
     weak_algorithms: list[str] = Field(..., description="Weak/broken algorithms found")
@@ -263,7 +274,7 @@ async def scan_code(
                 },
                 "files_scanned": result.files_scanned,
                 "scan_time_ms": result.scan_time_ms,
-            }
+            },
         )
         db.add(scan_record)
         await db.flush()
@@ -285,16 +296,18 @@ async def scan_code(
             # Check if this is a recurring finding
             is_new = fingerprint not in previous_findings
             prev_finding = previous_findings.get(fingerprint)
-            first_seen_scan_id = scan_record.id if is_new else (prev_finding.first_seen_scan_id if prev_finding else None)
-            first_detected_at = datetime.now(timezone.utc) if is_new else (prev_finding.first_detected_at if prev_finding else None)
+            first_seen_scan_id = (
+                scan_record.id if is_new else (prev_finding.first_seen_scan_id if prev_finding else None)
+            )
+            first_detected_at = (
+                datetime.now(timezone.utc) if is_new else (prev_finding.first_detected_at if prev_finding else None)
+            )
 
             # Generate context-aware recommendation
             # Check if this is a quantum-related finding based on title
             is_quantum_finding = "quantum" in f.title.lower()
             context_recommendation = get_context_recommendation(
-                algorithm=f.algorithm,
-                quantum_risk="high" if is_quantum_finding else None,
-                is_deprecated=False
+                algorithm=f.algorithm, quantum_risk="high" if is_quantum_finding else None, is_deprecated=False
             )
 
             finding_record = SecurityFinding(
@@ -331,13 +344,13 @@ async def scan_code(
 
                 is_new = fingerprint not in previous_findings
                 prev_finding = previous_findings.get(fingerprint)
-                first_detected_at = datetime.now(timezone.utc) if is_new else (prev_finding.first_detected_at if prev_finding else None)
+                first_detected_at = (
+                    datetime.now(timezone.utc) if is_new else (prev_finding.first_detected_at if prev_finding else None)
+                )
 
                 # Generate context-aware recommendation
                 context_recommendation = get_context_recommendation(
-                    algorithm=u.algorithm,
-                    quantum_risk=u.quantum_risk.value,
-                    is_deprecated=False
+                    algorithm=u.algorithm, quantum_risk=u.quantum_risk.value, is_deprecated=False
                 )
 
                 finding_record = SecurityFinding(
@@ -441,10 +454,7 @@ async def quick_analysis(
 
     algorithms = list(set(u.algorithm for u in result.usages))
     weak_algorithms = list(set(u.algorithm for u in result.usages if u.is_weak))
-    quantum_vulnerable = list(set(
-        u.algorithm for u in result.usages
-        if u.quantum_risk.value in ["high", "critical"]
-    ))
+    quantum_vulnerable = list(set(u.algorithm for u in result.usages if u.quantum_risk.value in ["high", "critical"]))
 
     # Determine risk level
     if any(f.severity.value == "critical" for f in result.findings):
@@ -669,6 +679,7 @@ async def generate_cbom(
 
 class CBOMExportRequest(BaseModel):
     """Request for CBOM export in various formats."""
+
     code: str = Field(..., description="Source code to analyze")
     language: str | None = Field(default=None, description="Language hint")
     filename: str | None = Field(default=None, description="Optional filename")
@@ -678,11 +689,12 @@ class CBOMExportRequest(BaseModel):
 
 class PQCRecommendationRequest(BaseModel):
     """Request for PQC migration recommendations."""
+
     code: str = Field(..., description="Source code to analyze")
     language: str | None = Field(default=None, description="Language hint")
     data_profile: str | None = Field(
         default=None,
-        description="Data sensitivity profile: healthcare, national_security, financial, general, short_lived"
+        description="Data sensitivity profile: healthcare, national_security, financial, general, short_lived",
     )
 
 
@@ -748,15 +760,17 @@ async def export_cbom(
 
     algorithms = []
     for usage in result.usages:
-        algorithms.append(DetectedAlgorithm(
-            name=usage.algorithm,
-            category=usage.category,
-            library=usage.library,
-            quantum_risk=usage.quantum_risk,
-            is_weak=usage.is_weak,
-            source=InventorySource.CODE_SCAN,
-            weakness_reason=usage.weakness_reason,
-        ))
+        algorithms.append(
+            DetectedAlgorithm(
+                name=usage.algorithm,
+                category=usage.category,
+                library=usage.library,
+                quantum_risk=usage.quantum_risk,
+                is_weak=usage.is_weak,
+                source=InventorySource.CODE_SCAN,
+                weakness_reason=usage.weakness_reason,
+            )
+        )
 
     inventory = CryptoInventory(
         identity_id=f"code-scan-{result.cbom.scan_timestamp}",
@@ -849,15 +863,17 @@ async def get_pqc_recommendations(
 
     algorithms = []
     for usage in result.usages:
-        algorithms.append(DetectedAlgorithm(
-            name=usage.algorithm,
-            category=usage.category,
-            library=usage.library,
-            quantum_risk=usage.quantum_risk,
-            is_weak=usage.is_weak,
-            source=InventorySource.CODE_SCAN,
-            weakness_reason=usage.weakness_reason,
-        ))
+        algorithms.append(
+            DetectedAlgorithm(
+                name=usage.algorithm,
+                category=usage.category,
+                library=usage.library,
+                quantum_risk=usage.quantum_risk,
+                is_weak=usage.is_weak,
+                source=InventorySource.CODE_SCAN,
+                weakness_reason=usage.weakness_reason,
+            )
+        )
 
     inventory = CryptoInventory(
         identity_id="code-scan",

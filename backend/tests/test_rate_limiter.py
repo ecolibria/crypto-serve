@@ -3,7 +3,6 @@
 import asyncio
 import pytest
 import time
-from unittest.mock import patch
 
 from app.core.rate_limiter import (
     RateLimiter,
@@ -167,18 +166,10 @@ class TestRateLimiter:
         return RateLimiter(
             backend=InMemoryBackend(),
             limits={
-                RateLimitType.IP: RateLimitConfig(
-                    requests_per_minute=10, burst_size=5
-                ),
-                RateLimitType.IDENTITY: RateLimitConfig(
-                    requests_per_minute=20, burst_size=10
-                ),
-                RateLimitType.CONTEXT: RateLimitConfig(
-                    requests_per_minute=30, burst_size=15
-                ),
-                RateLimitType.GLOBAL: RateLimitConfig(
-                    requests_per_minute=1000, burst_size=100
-                ),
+                RateLimitType.IP: RateLimitConfig(requests_per_minute=10, burst_size=5),
+                RateLimitType.IDENTITY: RateLimitConfig(requests_per_minute=20, burst_size=10),
+                RateLimitType.CONTEXT: RateLimitConfig(requests_per_minute=30, burst_size=15),
+                RateLimitType.GLOBAL: RateLimitConfig(requests_per_minute=1000, burst_size=100),
             },
         )
 
@@ -255,9 +246,7 @@ class TestRateLimiter:
     @pytest.mark.asyncio
     async def test_disabled_limit(self, limiter):
         """Disabled limits should always allow."""
-        limiter._limits[RateLimitType.IP] = RateLimitConfig(
-            requests_per_minute=1, burst_size=1, enabled=False
-        )
+        limiter._limits[RateLimitType.IP] = RateLimitConfig(requests_per_minute=1, burst_size=1, enabled=False)
 
         # Should always be allowed even with tiny limit
         for _ in range(100):

@@ -4,18 +4,18 @@ These endpoints are available to developers without logging in,
 enabling better DX for SDK users and CLI tools.
 """
 
-from typing import Optional
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
-from sqlalchemy import select
 
 router = APIRouter(prefix="/api/public", tags=["public"])
 
 
 # --- Schemas ---
 
+
 class ContextRecommendationRequest(BaseModel):
     """Input for context recommendation."""
+
     data_type: str  # pii, financial, health, auth, business, general
     compliance: str  # none, soc2, hipaa, pci, gdpr, multiple
     threat_level: str  # standard, elevated, maximum, quantum
@@ -24,6 +24,7 @@ class ContextRecommendationRequest(BaseModel):
 
 class ContextRecommendation(BaseModel):
     """Recommended context configuration."""
+
     context_name: str
     display_name: str
     description: str
@@ -38,6 +39,7 @@ class ContextRecommendation(BaseModel):
 
 class AvailableContext(BaseModel):
     """Publicly available context info."""
+
     name: str
     display_name: str
     description: str
@@ -46,6 +48,7 @@ class AvailableContext(BaseModel):
 
 
 # --- Context Recommendation Logic ---
+
 
 def generate_recommendation(
     data_type: str,
@@ -142,7 +145,7 @@ def generate_recommendation(
         rationale.append("Annual key rotation for standard protection")
 
     # Generate code example
-    code_example = f'''from cryptoserve import crypto
+    code_example = f"""from cryptoserve import crypto
 
 # Encrypt {data_type} data
 ciphertext = crypto.encrypt(
@@ -151,7 +154,7 @@ ciphertext = crypto.encrypt(
 )
 
 # Decrypt when needed
-plaintext = crypto.decrypt(ciphertext, context="{ctx_name}")'''
+plaintext = crypto.decrypt(ciphertext, context="{ctx_name}")"""
 
     return ContextRecommendation(
         context_name=ctx_name,
@@ -168,6 +171,7 @@ plaintext = crypto.decrypt(ciphertext, context="{ctx_name}")'''
 
 
 # --- Endpoints ---
+
 
 @router.post("/context-wizard", response_model=ContextRecommendation)
 async def get_context_recommendation(request: ContextRecommendationRequest):

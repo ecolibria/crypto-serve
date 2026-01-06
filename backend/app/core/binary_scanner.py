@@ -31,12 +31,10 @@ References:
 """
 
 import hashlib
-import struct
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Dict, Set, Tuple, BinaryIO
-import re
+from typing import List, Optional, Set, Tuple
 
 
 class CryptoCategory(str, Enum):
@@ -63,6 +61,7 @@ class CryptoSeverity(str, Enum):
 
 class ScannerError(Exception):
     """Exception raised when binary scanning fails."""
+
     pass
 
 
@@ -788,9 +787,7 @@ class BinaryScanner:
                 CryptoSeverity.INFO: "[INFO]",
             }
 
-            lines.append(
-                f"{severity_marker[finding.severity]} {finding.algorithm} - {finding.pattern_name}"
-            )
+            lines.append(f"{severity_marker[finding.severity]} {finding.algorithm} - {finding.pattern_name}")
             lines.append(f"  Offset: 0x{finding.offset:08X}")
             lines.append(f"  Confidence: {finding.confidence:.1%}")
             lines.append(f"  {finding.description}")

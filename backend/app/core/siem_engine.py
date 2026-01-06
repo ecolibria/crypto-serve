@@ -30,7 +30,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum, IntEnum
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 
 class EventCategory(str, Enum):
@@ -507,9 +507,7 @@ class SIEMEngine:
             parts.append(f"correlationId={event.correlation_id}")
 
         # Add timestamp
-        parts.append(
-            f"devTime={event.timestamp.strftime('%b %d %Y %H:%M:%S')}"
-        )
+        parts.append(f"devTime={event.timestamp.strftime('%b %d %Y %H:%M:%S')}")
 
         extension = "\t".join(parts)
 
@@ -555,10 +553,7 @@ class SIEMEngine:
             sd += f' correlationId="{event.correlation_id}"'
         sd += "]"
 
-        return (
-            f"<{priority}>{version} {timestamp} {hostname} {app_name} "
-            f"{proc_id} {msg_id} {sd} {event.message}"
-        )
+        return f"<{priority}>{version} {timestamp} {hostname} {app_name} " f"{proc_id} {msg_id} {sd} {event.message}"
 
     def _format_json(self, event: SecurityEvent) -> str:
         """Format event as JSON."""
@@ -593,9 +588,7 @@ class SIEMEngine:
             elif self._config.syslog_protocol == "tcp":
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(5)
-                sock.connect(
-                    (self._config.syslog_host, self._config.syslog_port)
-                )
+                sock.connect((self._config.syslog_host, self._config.syslog_port))
                 sock.sendall(message.encode("utf-8") + b"\n")
                 sock.close()
         except Exception as e:

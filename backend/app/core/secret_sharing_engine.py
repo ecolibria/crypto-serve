@@ -18,7 +18,6 @@ References:
 - Shamir, A. "How to share a secret." Communications of the ACM, 1979
 """
 
-import os
 import secrets
 from dataclasses import dataclass
 from typing import List, Tuple
@@ -140,7 +139,7 @@ class Share:
         if len(data) < 5 + data_len:
             raise ValueError("Share data truncated")
 
-        y = data[5:5 + data_len]
+        y = data[5 : 5 + data_len]
 
         return cls(x=x, y=y, threshold=threshold, total=total)
 
@@ -156,16 +155,19 @@ class Share:
 
 class SecretSharingError(Exception):
     """Secret sharing operation failed."""
+
     pass
 
 
 class InsufficientSharesError(SecretSharingError):
     """Not enough shares to reconstruct."""
+
     pass
 
 
 class InvalidShareError(SecretSharingError):
     """Share is invalid or corrupted."""
+
     pass
 
 
@@ -218,9 +220,7 @@ class SecretSharingEngine:
         if not secret:
             raise SecretSharingError("Secret cannot be empty")
         if len(secret) > self.MAX_SECRET_SIZE:
-            raise SecretSharingError(
-                f"Secret size {len(secret)} exceeds maximum {self.MAX_SECRET_SIZE} bytes"
-            )
+            raise SecretSharingError(f"Secret size {len(secret)} exceeds maximum {self.MAX_SECRET_SIZE} bytes")
 
         # Initialize GF256 tables
         GF256._init_tables()
@@ -277,9 +277,7 @@ class SecretSharingEngine:
         secret_len = len(shares[0].y)
 
         if len(shares) < threshold:
-            raise InsufficientSharesError(
-                f"Need at least {threshold} shares, got {len(shares)}"
-            )
+            raise InsufficientSharesError(f"Need at least {threshold} shares, got {len(shares)}")
 
         for share in shares[1:]:
             if share.threshold != threshold:
@@ -402,19 +400,13 @@ class SecretSharingEngine:
 
         threshold = shares[0].threshold
         if len(shares) < threshold:
-            raise InsufficientSharesError(
-                f"Need at least {threshold} shares"
-            )
+            raise InsufficientSharesError(f"Need at least {threshold} shares")
 
         if any(s.x == target_x for s in shares):
-            raise SecretSharingError(
-                f"Share with x={target_x} already exists"
-            )
+            raise SecretSharingError(f"Share with x={target_x} already exists")
 
         if target_x < 1 or target_x > self.MAX_SHARES:
-            raise SecretSharingError(
-                f"target_x must be between 1 and {self.MAX_SHARES}"
-            )
+            raise SecretSharingError(f"target_x must be between 1 and {self.MAX_SHARES}")
 
         GF256._init_tables()
 

@@ -13,6 +13,7 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 class UserResponse(BaseModel):
     """User response schema."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: str

@@ -52,21 +52,25 @@ class DecryptResult:
 
 class AEADModesError(Exception):
     """Base exception for AEAD modes errors."""
+
     pass
 
 
 class AuthenticationError(AEADModesError):
     """Authentication tag verification failed."""
+
     pass
 
 
 class InvalidKeyError(AEADModesError):
     """Invalid key size or format."""
+
     pass
 
 
 class InvalidNonceError(AEADModesError):
     """Invalid nonce size or format."""
+
     pass
 
 
@@ -138,9 +142,7 @@ class AEADModesEngine:
         if not isinstance(key, bytes):
             raise InvalidKeyError("Key must be bytes")
         if len(key) not in self.VALID_KEY_SIZES:
-            raise InvalidKeyError(
-                f"Key must be 16, 24, or 32 bytes, got {len(key)}"
-            )
+            raise InvalidKeyError(f"Key must be 16, 24, or 32 bytes, got {len(key)}")
 
     def _validate_nonce(self, nonce: bytes, mode: AEADMode) -> None:
         """Validate nonce for the given mode."""
@@ -149,9 +151,7 @@ class AEADModesEngine:
 
         if mode == AEADMode.OCB:
             if not (self.OCB_MIN_NONCE <= len(nonce) <= self.OCB_MAX_NONCE):
-                raise InvalidNonceError(
-                    f"OCB nonce must be 1-15 bytes, got {len(nonce)}"
-                )
+                raise InvalidNonceError(f"OCB nonce must be 1-15 bytes, got {len(nonce)}")
         elif mode == AEADMode.EAX:
             if len(nonce) == 0:
                 raise InvalidNonceError("EAX nonce cannot be empty")
@@ -350,9 +350,7 @@ class AEADModesEngine:
         tag = data[nonce_end:tag_end]
         ciphertext = data[tag_end:]
 
-        return self.decrypt(
-            ciphertext, key, nonce, tag, mode, associated_data
-        )
+        return self.decrypt(ciphertext, key, nonce, tag, mode, associated_data)
 
     def get_recommended_mode(self, use_case: str) -> AEADMode:
         """Get recommended AEAD mode for a use case.

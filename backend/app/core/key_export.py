@@ -30,11 +30,10 @@ from cryptography.hazmat.primitives.keywrap import aes_key_wrap, aes_key_unwrap
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography import x509
 
-from app.core.secure_memory import SecureBytes
-
 
 class KeyFormat(str, Enum):
     """Supported key export formats."""
+
     JWK = "jwk"  # JSON Web Key
     PEM = "pem"  # PEM encoded
     RAW = "raw"  # Raw bytes (for symmetric keys)
@@ -45,6 +44,7 @@ class KeyFormat(str, Enum):
 
 class KeyType(str, Enum):
     """Key types."""
+
     SYMMETRIC = "symmetric"
     EC_P256 = "ec-p256"
     EC_P384 = "ec-p384"
@@ -57,6 +57,7 @@ class KeyType(str, Enum):
 @dataclass
 class ExportedKey:
     """Exported key data."""
+
     key_data: bytes | dict | str
     format: KeyFormat
     key_type: KeyType
@@ -67,6 +68,7 @@ class ExportedKey:
 @dataclass
 class ImportedKey:
     """Imported key result."""
+
     key: Any  # cryptography key object or bytes
     key_type: KeyType
     is_private: bool
@@ -75,27 +77,32 @@ class ImportedKey:
 
 class KeyExportError(Exception):
     """Key export failed."""
+
     pass
 
 
 class KeyImportError(Exception):
     """Key import failed."""
+
     pass
 
 
 class PKCS12ExportError(Exception):
     """PKCS#12 export failed."""
+
     pass
 
 
 class PKCS12ImportError(Exception):
     """PKCS#12 import failed."""
+
     pass
 
 
 @dataclass
 class PKCS12ExportResult:
     """Result of PKCS#12 export operation."""
+
     pkcs12_data: bytes
     includes_chain: bool
     key_type: KeyType
@@ -106,6 +113,7 @@ class PKCS12ExportResult:
 @dataclass
 class PKCS12ImportResult:
     """Result of PKCS#12 import operation."""
+
     private_key: Any
     certificate: x509.Certificate
     additional_certs: list[x509.Certificate]
@@ -464,11 +472,14 @@ class KeyExportEngine:
 
     def _is_private_key(self, key: Any) -> bool:
         """Check if key is a private key."""
-        return isinstance(key, (
-            ed25519.Ed25519PrivateKey,
-            ec.EllipticCurvePrivateKey,
-            rsa.RSAPrivateKey,
-        ))
+        return isinstance(
+            key,
+            (
+                ed25519.Ed25519PrivateKey,
+                ec.EllipticCurvePrivateKey,
+                rsa.RSAPrivateKey,
+            ),
+        )
 
     def _key_to_jwk(self, key: Any, include_private: bool, kid: str | None) -> dict:
         """Convert key to JWK format."""
@@ -686,9 +697,7 @@ class KeyExportEngine:
 
         # Validate key matches certificate
         if not self._validate_key_cert_pair(private_key, cert):
-            raise PKCS12ExportError(
-                "Private key does not match certificate public key"
-            )
+            raise PKCS12ExportError("Private key does not match certificate public key")
 
         # Parse CA certs
         parsed_ca_certs: list[x509.Certificate] = []
@@ -697,13 +706,9 @@ class KeyExportEngine:
                 if isinstance(ca_cert, bytes):
                     try:
                         if b"-----BEGIN CERTIFICATE-----" in ca_cert:
-                            parsed_ca_certs.append(
-                                x509.load_pem_x509_certificate(ca_cert)
-                            )
+                            parsed_ca_certs.append(x509.load_pem_x509_certificate(ca_cert))
                         else:
-                            parsed_ca_certs.append(
-                                x509.load_der_x509_certificate(ca_cert)
-                            )
+                            parsed_ca_certs.append(x509.load_der_x509_certificate(ca_cert))
                     except Exception as e:
                         raise PKCS12ExportError(f"Failed to parse CA certificate: {e}")
                 else:
@@ -726,9 +731,7 @@ class KeyExportEngine:
                 cert=cert,
                 cas=parsed_ca_certs if parsed_ca_certs else None,
                 encryption_algorithm=(
-                    serialization.BestAvailableEncryption(pwd_bytes)
-                    if pwd_bytes
-                    else serialization.NoEncryption()
+                    serialization.BestAvailableEncryption(pwd_bytes) if pwd_bytes else serialization.NoEncryption()
                 ),
             )
         except Exception as e:
@@ -773,14 +776,10 @@ class KeyExportEngine:
 
         try:
             # Parse PKCS#12 data
-            private_key, certificate, additional_certs = (
-                pkcs12.load_key_and_certificates(pkcs12_data, pwd_bytes)
-            )
-        except ValueError as e:
+            private_key, certificate, additional_certs = pkcs12.load_key_and_certificates(pkcs12_data, pwd_bytes)
+        except ValueError:
             # Generic error to prevent password enumeration
-            raise PKCS12ImportError(
-                "Failed to decrypt PKCS#12 (wrong password or corrupted data)"
-            )
+            raise PKCS12ImportError("Failed to decrypt PKCS#12 (wrong password or corrupted data)")
         except Exception as e:
             raise PKCS12ImportError(f"Failed to parse PKCS#12: {e}")
 

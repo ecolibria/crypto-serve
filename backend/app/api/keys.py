@@ -36,6 +36,7 @@ router = APIRouter(prefix="/api/v1/contexts", tags=["keys"])
 # Helper Functions
 # =============================================================================
 
+
 def generate_key_id(context_name: str, key_type: str, version: int) -> str:
     """Generate a deterministic key ID."""
     data = f"{context_name}:{key_type}:{version}"
@@ -65,7 +66,7 @@ def build_key_info(
     algorithm: str,
 ) -> KeyInfo:
     """Build KeyInfo from a Key model or create synthetic one."""
-    now = datetime.now(timezone.utc)
+    datetime.now(timezone.utc)
     rotation_days = get_rotation_days(context)
 
     if key:
@@ -116,6 +117,7 @@ def get_algorithm_for_key_type(context: Context, key_type: KeyType) -> str:
 # API Endpoints
 # =============================================================================
 
+
 @router.get("/{name}/keys", response_model=KeyBundle)
 async def get_key_bundle(
     name: str,
@@ -128,12 +130,7 @@ async def get_key_bundle(
     for the specified context. Key material is never exposed.
     """
     # Get the context
-    result = await db.execute(
-        select(Context).where(
-            Context.name == name,
-            Context.tenant_id == user.tenant_id
-        )
-    )
+    result = await db.execute(select(Context).where(Context.name == name, Context.tenant_id == user.tenant_id))
     context = result.scalar_one_or_none()
 
     if not context:
@@ -144,17 +141,15 @@ async def get_key_bundle(
 
     # Get existing keys for this context
     keys_result = await db.execute(
-        select(Key).where(
-            Key.context == name,
-            Key.tenant_id == user.tenant_id,
-            Key.status == ModelKeyStatus.ACTIVE
-        ).order_by(Key.version.desc())
+        select(Key)
+        .where(Key.context == name, Key.tenant_id == user.tenant_id, Key.status == ModelKeyStatus.ACTIVE)
+        .order_by(Key.version.desc())
     )
-    keys = {k.id: k for k in keys_result.scalars().all()}
+    {k.id: k for k in keys_result.scalars().all()}
 
     # Build key bundle
-    now = datetime.now(timezone.utc)
-    rotation_days = get_rotation_days(context)
+    datetime.now(timezone.utc)
+    get_rotation_days(context)
 
     # Find or create key info for each type
     encryption_key = build_key_info(
@@ -209,12 +204,7 @@ async def get_key_history(
     Returns historical key rotation events for audit purposes.
     """
     # Verify context exists and user has access
-    result = await db.execute(
-        select(Context).where(
-            Context.name == name,
-            Context.tenant_id == user.tenant_id
-        )
-    )
+    result = await db.execute(select(Context).where(Context.name == name, Context.tenant_id == user.tenant_id))
     context = result.scalar_one_or_none()
 
     if not context:
@@ -225,10 +215,10 @@ async def get_key_history(
 
     # Get all keys for this context (including retired)
     keys_result = await db.execute(
-        select(Key).where(
-            Key.context == name,
-            Key.tenant_id == user.tenant_id
-        ).order_by(Key.version.desc()).limit(limit)
+        select(Key)
+        .where(Key.context == name, Key.tenant_id == user.tenant_id)
+        .order_by(Key.version.desc())
+        .limit(limit)
     )
     keys = keys_result.scalars().all()
 
@@ -237,33 +227,37 @@ async def get_key_history(
 
     # If no keys in DB, create synthetic history entry for initial key
     if not keys:
-        history.append(KeyHistoryEntry(
-            id=str(uuid4()),
-            context_id=name,
-            key_type=KeyType.ENCRYPTION,
-            version=1,
-            algorithm=context.algorithm or "AES-256-GCM",
-            created_at=context.created_at,
-            retired_at=None,
-            status=KeyStatus.ACTIVE,
-            rotation_reason="initial",
-            rotated_by="system",
-        ))
+        history.append(
+            KeyHistoryEntry(
+                id=str(uuid4()),
+                context_id=name,
+                key_type=KeyType.ENCRYPTION,
+                version=1,
+                algorithm=context.algorithm or "AES-256-GCM",
+                created_at=context.created_at,
+                retired_at=None,
+                status=KeyStatus.ACTIVE,
+                rotation_reason="initial",
+                rotated_by="system",
+            )
+        )
     else:
         for key in keys:
             key_status = KeyStatus.ACTIVE if key.status == ModelKeyStatus.ACTIVE else KeyStatus.RETIRED
-            history.append(KeyHistoryEntry(
-                id=key.id,
-                context_id=name,
-                key_type=KeyType.ENCRYPTION,  # Keys model doesn't track type yet
-                version=key.version,
-                algorithm=context.algorithm or "AES-256-GCM",
-                created_at=key.created_at,
-                retired_at=None if key.status == ModelKeyStatus.ACTIVE else key.created_at,
-                status=key_status,
-                rotation_reason="scheduled",
-                rotated_by="system",
-            ))
+            history.append(
+                KeyHistoryEntry(
+                    id=key.id,
+                    context_id=name,
+                    key_type=KeyType.ENCRYPTION,  # Keys model doesn't track type yet
+                    version=key.version,
+                    algorithm=context.algorithm or "AES-256-GCM",
+                    created_at=key.created_at,
+                    retired_at=None if key.status == ModelKeyStatus.ACTIVE else key.created_at,
+                    status=key_status,
+                    rotation_reason="scheduled",
+                    rotated_by="system",
+                )
+            )
 
     return history
 
@@ -281,12 +275,7 @@ async def rotate_key(
     For encryption keys, optionally re-encrypts existing data.
     """
     # Verify context exists and user has access
-    result = await db.execute(
-        select(Context).where(
-            Context.name == name,
-            Context.tenant_id == user.tenant_id
-        )
-    )
+    result = await db.execute(select(Context).where(Context.name == name, Context.tenant_id == user.tenant_id))
     context = result.scalar_one_or_none()
 
     if not context:
@@ -297,29 +286,26 @@ async def rotate_key(
 
     # Get current version
     version_result = await db.execute(
-        select(func.max(Key.version)).where(
-            Key.context == name,
-            Key.tenant_id == user.tenant_id
-        )
+        select(func.max(Key.version)).where(Key.context == name, Key.tenant_id == user.tenant_id)
     )
     current_version = version_result.scalar() or 0
     new_version = current_version + 1
 
     # Mark old keys as rotated
     await db.execute(
-        select(Key).where(
-            Key.context == name,
-            Key.tenant_id == user.tenant_id,
-            Key.status == ModelKeyStatus.ACTIVE
-        )
+        select(Key).where(Key.context == name, Key.tenant_id == user.tenant_id, Key.status == ModelKeyStatus.ACTIVE)
     )
-    old_keys = (await db.execute(
-        select(Key).where(
-            Key.context == name,
-            Key.tenant_id == user.tenant_id,
-            Key.status == ModelKeyStatus.ACTIVE
+    old_keys = (
+        (
+            await db.execute(
+                select(Key).where(
+                    Key.context == name, Key.tenant_id == user.tenant_id, Key.status == ModelKeyStatus.ACTIVE
+                )
+            )
         )
-    )).scalars().all()
+        .scalars()
+        .all()
+    )
 
     for old_key in old_keys:
         old_key.status = ModelKeyStatus.ROTATED
@@ -425,12 +411,7 @@ async def update_key_schedule(
     Valid range is 1-3650 days.
     """
     # Verify context exists and user has access
-    result = await db.execute(
-        select(Context).where(
-            Context.name == name,
-            Context.tenant_id == user.tenant_id
-        )
-    )
+    result = await db.execute(select(Context).where(Context.name == name, Context.tenant_id == user.tenant_id))
     context = result.scalar_one_or_none()
 
     if not context:

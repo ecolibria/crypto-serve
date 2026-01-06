@@ -69,31 +69,22 @@ class LocalKMSProvider(KMSProvider):
             self._master_key = self._get_ceremony_master_key()
             self._using_ceremony = True
             logger.info(
-                "Local KMS using Key Ceremony master key. "
-                "Enterprise mode active with Shamir's Secret Sharing."
+                "Local KMS using Key Ceremony master key. " "Enterprise mode active with Shamir's Secret Sharing."
             )
         else:
             # Simple mode: Get master key from config or environment
-            master_key_str = self.config.master_key_id or os.environ.get(
-                "CRYPTOSERVE_MASTER_KEY", ""
-            )
+            master_key_str = self.config.master_key_id or os.environ.get("CRYPTOSERVE_MASTER_KEY", "")
 
             if not master_key_str:
-                raise KMSError(
-                    "Master key not configured. Set CRYPTOSERVE_MASTER_KEY environment variable."
-                )
+                raise KMSError("Master key not configured. Set CRYPTOSERVE_MASTER_KEY environment variable.")
 
             # Validate master key strength
             if len(master_key_str) < 32:
-                logger.warning(
-                    "Master key is less than 32 characters. "
-                    "This is insecure for production use."
-                )
+                logger.warning("Master key is less than 32 characters. " "This is insecure for production use.")
 
             if "change-in-production" in master_key_str.lower():
                 raise KMSError(
-                    "Default development master key detected. "
-                    "Set a secure CRYPTOSERVE_MASTER_KEY for production."
+                    "Default development master key detected. " "Set a secure CRYPTOSERVE_MASTER_KEY for production."
                 )
 
             self._master_key = master_key_str.encode()
@@ -104,9 +95,7 @@ class LocalKMSProvider(KMSProvider):
             )
 
         # Get salt from config or environment
-        salt_str = self.config.options.get("salt") or os.environ.get(
-            "CRYPTOSERVE_HKDF_SALT", "cryptoserve-local-salt"
-        )
+        salt_str = self.config.options.get("salt") or os.environ.get("CRYPTOSERVE_HKDF_SALT", "cryptoserve-local-salt")
         self._salt = salt_str.encode()
 
         self._initialized = True
@@ -143,9 +132,7 @@ class LocalKMSProvider(KMSProvider):
         # Get the master key
         master_key = get_ceremony_master_key()
         if master_key is None:
-            raise KMSError(
-                "Failed to retrieve master key from ceremony service."
-            )
+            raise KMSError("Failed to retrieve master key from ceremony service.")
 
         return master_key
 

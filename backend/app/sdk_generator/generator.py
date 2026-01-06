@@ -1,6 +1,5 @@
 """SDK package generator."""
 
-import os
 import shutil
 import tempfile
 import hashlib
@@ -8,7 +7,6 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.models import Identity
-from app.core.identity_manager import identity_manager
 
 settings = get_settings()
 
@@ -251,7 +249,7 @@ IDENTITY = {{
         """Generate pyproject.toml and setup.py for the package."""
         # Create pyproject.toml (required for modern pip)
         # Use + for local version identifier per PEP 440
-        pyproject_content = f'''[build-system]
+        pyproject_content = f"""[build-system]
 requires = ["setuptools>=69.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
@@ -264,7 +262,7 @@ dependencies = ["requests>=2.28.0"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-'''
+"""
         (temp_path / "pyproject.toml").write_text(pyproject_content)
 
         # Also create setup.py for compatibility
@@ -283,7 +281,6 @@ setup(
     def _build_wheel(self, temp_path: Path) -> Path:
         """Build wheel package manually (no external tools required)."""
         import zipfile
-        import sys
 
         # Create dist directory
         dist_dir = temp_path / "dist"
@@ -326,9 +323,9 @@ Tag: py3-none-any
 
             # Create RECORD (list of files with hashes - simplified)
             record_lines = [
-                f"cryptoserve/__init__.py,sha256=,",
-                f"cryptoserve/client.py,sha256=,",
-                f"cryptoserve/_identity.py,sha256=,",
+                "cryptoserve/__init__.py,sha256=,",
+                "cryptoserve/client.py,sha256=,",
+                "cryptoserve/_identity.py,sha256=,",
                 f"cryptoserve-{version}.dist-info/METADATA,sha256=,",
                 f"cryptoserve-{version}.dist-info/WHEEL,sha256=,",
                 f"cryptoserve-{version}.dist-info/RECORD,,",

@@ -31,9 +31,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa, ec
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.hmac import HMAC
-from cryptography.x509 import Certificate, load_pem_x509_certificate
+from cryptography.x509 import load_pem_x509_certificate
 
 
 class CMSContentType(str, Enum):
@@ -266,7 +265,7 @@ class CMSEngine:
 
         # Load and validate certificate
         try:
-            cert = load_pem_x509_certificate(signer_certificate)
+            load_pem_x509_certificate(signer_certificate)
         except Exception as e:
             raise CMSError(f"Failed to load certificate: {e}")
 
@@ -373,9 +372,7 @@ class CMSEngine:
                         ec.ECDSA(hash_algo.__class__()),
                     )
                 else:
-                    raise CMSVerificationError(
-                        f"Unsupported key type: {type(public_key)}"
-                    )
+                    raise CMSVerificationError(f"Unsupported key type: {type(public_key)}")
 
                 verified_signers.append(signer)
             except Exception as e:
@@ -460,9 +457,7 @@ class CMSEngine:
                         ),
                     )
                 else:
-                    raise CMSError(
-                        f"Unsupported key type for key encryption: {type(public_key)}"
-                    )
+                    raise CMSError(f"Unsupported key type for key encryption: {type(public_key)}")
 
                 recipients.append(
                     RecipientInfo(
@@ -512,9 +507,7 @@ class CMSEngine:
 
         # Load private key
         try:
-            private_key = serialization.load_pem_private_key(
-                recipient_key, password=None
-            )
+            private_key = serialization.load_pem_private_key(recipient_key, password=None)
         except Exception as e:
             raise CMSDecryptionError(f"Failed to load private key: {e}")
 
@@ -540,9 +533,7 @@ class CMSEngine:
                     ),
                 )
             else:
-                raise CMSDecryptionError(
-                    f"Unsupported key type: {type(private_key)}"
-                )
+                raise CMSDecryptionError(f"Unsupported key type: {type(private_key)}")
         except Exception as e:
             raise CMSDecryptionError(f"Failed to decrypt content encryption key: {e}")
 
@@ -555,9 +546,7 @@ class CMSEngine:
             ):
                 aesgcm = AESGCM(cek)
                 # Append tag back to ciphertext for decryption
-                ciphertext_with_tag = (
-                    enveloped_data.encrypted_content + enveloped_data.auth_tag
-                )
+                ciphertext_with_tag = enveloped_data.encrypted_content + enveloped_data.auth_tag
                 plaintext = aesgcm.decrypt(
                     enveloped_data.iv_or_nonce,
                     ciphertext_with_tag,
@@ -570,10 +559,7 @@ class CMSEngine:
                     modes.CBC(enveloped_data.iv_or_nonce),
                 )
                 decryptor = cipher.decryptor()
-                padded = (
-                    decryptor.update(enveloped_data.encrypted_content)
-                    + decryptor.finalize()
-                )
+                padded = decryptor.update(enveloped_data.encrypted_content) + decryptor.finalize()
                 # Remove PKCS7 padding
                 pad_len = padded[-1]
                 plaintext = padded[:-pad_len]
@@ -612,9 +598,7 @@ class CMSEngine:
 
         expected_key_size = self.KEY_SIZES[encryption_algorithm]
         if len(key) != expected_key_size:
-            raise CMSError(
-                f"Key must be {expected_key_size} bytes for {encryption_algorithm}"
-            )
+            raise CMSError(f"Key must be {expected_key_size} bytes for {encryption_algorithm}")
 
         # Encrypt content
         if encryption_algorithm in (
@@ -676,9 +660,7 @@ class CMSEngine:
         algo = encrypted_data.encryption_algorithm
         expected_key_size = self.KEY_SIZES[algo]
         if len(key) != expected_key_size:
-            raise CMSDecryptionError(
-                f"Key must be {expected_key_size} bytes for {algo}"
-            )
+            raise CMSDecryptionError(f"Key must be {expected_key_size} bytes for {algo}")
 
         try:
             if algo in (
@@ -686,9 +668,7 @@ class CMSEngine:
                 CMSEncryptionAlgorithm.AES_256_GCM,
             ):
                 aesgcm = AESGCM(key)
-                ciphertext_with_tag = (
-                    encrypted_data.encrypted_content + encrypted_data.auth_tag
-                )
+                ciphertext_with_tag = encrypted_data.encrypted_content + encrypted_data.auth_tag
                 plaintext = aesgcm.decrypt(
                     encrypted_data.iv_or_nonce,
                     ciphertext_with_tag,
@@ -701,10 +681,7 @@ class CMSEngine:
                     modes.CBC(encrypted_data.iv_or_nonce),
                 )
                 decryptor = cipher.decryptor()
-                padded = (
-                    decryptor.update(encrypted_data.encrypted_content)
-                    + decryptor.finalize()
-                )
+                padded = decryptor.update(encrypted_data.encrypted_content) + decryptor.finalize()
                 # Remove PKCS7 padding
                 pad_len = padded[-1]
                 plaintext = padded[:-pad_len]
@@ -769,9 +746,7 @@ class CMSEngine:
                         ),
                     )
                 else:
-                    raise CMSError(
-                        f"Unsupported key type for key encryption: {type(public_key)}"
-                    )
+                    raise CMSError(f"Unsupported key type for key encryption: {type(public_key)}")
 
                 recipients.append(
                     RecipientInfo(
@@ -821,9 +796,7 @@ class CMSEngine:
 
         # Load private key
         try:
-            private_key = serialization.load_pem_private_key(
-                recipient_key, password=None
-            )
+            private_key = serialization.load_pem_private_key(recipient_key, password=None)
         except Exception as e:
             raise CMSVerificationError(f"Failed to load private key: {e}")
 
@@ -849,9 +822,7 @@ class CMSEngine:
                     ),
                 )
             else:
-                raise CMSVerificationError(
-                    f"Unsupported key type: {type(private_key)}"
-                )
+                raise CMSVerificationError(f"Unsupported key type: {type(private_key)}")
         except Exception as e:
             raise CMSVerificationError(f"Failed to decrypt MAC key: {e}")
 

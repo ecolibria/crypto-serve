@@ -16,6 +16,7 @@ class GUID(TypeDecorator):
     Uses CHAR(36) storage which works with both SQLite and PostgreSQL.
     This replaces postgresql.UUID for cross-database compatibility.
     """
+
     impl = String(36)
     cache_ok = True
 
@@ -36,6 +37,7 @@ class StringList(TypeDecorator):
     Uses JSON storage which works with both SQLite and PostgreSQL.
     This replaces ARRAY(String) for cross-database compatibility.
     """
+
     impl = Text
     cache_ok = True
 
@@ -59,6 +61,7 @@ class JSONType(TypeDecorator):
     Uses JSON storage which works with both SQLite and PostgreSQL.
     This replaces JSONB for cross-database compatibility.
     """
+
     impl = Text
     cache_ok = True
 
@@ -78,6 +81,7 @@ class JSONType(TypeDecorator):
 
 class Base(DeclarativeBase):
     """Base class for all models."""
+
     pass
 
 
@@ -109,12 +113,14 @@ def get_engine():
 
         if not is_sqlite:
             # PostgreSQL/MySQL connection pool settings for scaling
-            pool_options.update({
-                "pool_size": settings.db_pool_size,  # Base connections per instance
-                "max_overflow": settings.db_max_overflow,  # Extra connections under load
-                "pool_recycle": settings.db_pool_recycle,  # Recycle after N seconds (RDS timeout)
-                "pool_timeout": 30,  # Wait up to 30s for connection
-            })
+            pool_options.update(
+                {
+                    "pool_size": settings.db_pool_size,  # Base connections per instance
+                    "max_overflow": settings.db_max_overflow,  # Extra connections under load
+                    "pool_recycle": settings.db_pool_recycle,  # Recycle after N seconds (RDS timeout)
+                    "pool_timeout": 30,  # Wait up to 30s for connection
+                }
+            )
 
         _engine = create_async_engine(settings.database_url, **pool_options)
     return _engine

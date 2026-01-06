@@ -24,6 +24,7 @@ router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 
 # --- Dependency Functions ---
 
+
 async def require_invite_permission(
     user: Annotated[User, Depends(get_current_user)],
 ) -> User:
@@ -38,8 +39,10 @@ async def require_invite_permission(
 
 # --- Request/Response Schemas ---
 
+
 class SetupStatusResponse(BaseModel):
     """Setup wizard status response."""
+
     setupCompleted: bool
     setupCompletedAt: str | None = None
     hasAdmin: bool
@@ -53,6 +56,7 @@ class SetupStatusResponse(BaseModel):
 
 class CompleteSetupRequest(BaseModel):
     """Request to complete setup wizard."""
+
     organizationName: str | None = Field(None, max_length=255)
     allowedDomains: list[str] | None = None
     allowedGithubOrgs: list[str] | None = None
@@ -62,6 +66,7 @@ class CompleteSetupRequest(BaseModel):
 
 class CreateInvitationRequest(BaseModel):
     """Request to create a user invitation."""
+
     email: str = Field(..., min_length=5, max_length=255, pattern=r"^[^@]+@[^@]+\.[^@]+$")
     role: str = Field(default="developer")
     expiresDays: int = Field(default=7, ge=1, le=30)
@@ -69,6 +74,7 @@ class CreateInvitationRequest(BaseModel):
 
 class InvitationResponse(BaseModel):
     """User invitation response."""
+
     id: str
     email: str
     role: str
@@ -82,6 +88,7 @@ class InvitationResponse(BaseModel):
 
 class InvitationValidationResponse(BaseModel):
     """Invitation validation response."""
+
     valid: bool
     error: str | None = None
     email: str | None = None
@@ -91,6 +98,7 @@ class InvitationValidationResponse(BaseModel):
 
 class ProvisioningConfigRequest(BaseModel):
     """Request to update provisioning configuration."""
+
     provisioningMode: str | None = None
     defaultRole: str | None = None
     allowedDomains: list[str] | None = None
@@ -99,6 +107,7 @@ class ProvisioningConfigRequest(BaseModel):
 
 class ProvisioningConfigResponse(BaseModel):
     """Provisioning configuration response."""
+
     provisioningMode: str
     defaultRole: str
     allowedDomains: list[str]
@@ -107,10 +116,12 @@ class ProvisioningConfigResponse(BaseModel):
 
 class AddGithubOrgRequest(BaseModel):
     """Request to add a GitHub organization."""
+
     organization: str = Field(..., min_length=1, max_length=100)
 
 
 # --- Setup Wizard Endpoints ---
+
 
 @router.get("/setup/status", response_model=SetupStatusResponse)
 async def get_setup_status(
@@ -137,10 +148,7 @@ async def complete_setup(
     """
     # Verify user is admin
     if not user.is_admin and user.role not in ["admin", "owner"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can complete setup"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can complete setup")
 
     await onboarding_service.complete_setup(
         db=db,
@@ -158,6 +166,7 @@ async def complete_setup(
 
 
 # --- Invitation Endpoints ---
+
 
 @router.post("/invitations", response_model=InvitationResponse)
 async def create_invitation(
@@ -179,10 +188,7 @@ async def create_invitation(
             expires_days=data.expiresDays,
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     return InvitationResponse(
         id=invitation.id,
@@ -245,10 +251,7 @@ async def revoke_invitation(
     success = await onboarding_service.revoke_invitation(db, invitation_id)
 
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invitation not found or already used"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found or already used")
 
     return {"message": "Invitation revoked"}
 
@@ -279,6 +282,7 @@ async def validate_invitation_token(
 
 
 # --- Provisioning Configuration Endpoints ---
+
 
 @router.get("/config/provisioning", response_model=ProvisioningConfigResponse)
 async def get_provisioning_config(
@@ -312,8 +316,7 @@ async def update_provisioning_config(
     # Verify user is admin
     if not user.is_admin and user.role not in ["admin", "owner"]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can update provisioning configuration"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can update provisioning configuration"
         )
 
     try:
@@ -325,10 +328,7 @@ async def update_provisioning_config(
             allowed_github_orgs=data.allowedGithubOrgs,
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     return ProvisioningConfigResponse(
         provisioningMode=settings.provisioning_mode,
@@ -349,18 +349,12 @@ async def add_github_org(
     Only admins can add organizations.
     """
     if not user.is_admin and user.role not in ["admin", "owner"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can add GitHub organizations"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can add GitHub organizations")
 
     try:
         settings = await onboarding_service.add_allowed_github_org(db, data.organization)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     return {"allowedGithubOrgs": settings.allowed_github_orgs}
 
@@ -376,10 +370,7 @@ async def remove_github_org(
     Only admins can remove organizations.
     """
     if not user.is_admin and user.role not in ["admin", "owner"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can remove GitHub organizations"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can remove GitHub organizations")
 
     settings = await onboarding_service.remove_allowed_github_org(db, org)
     return {"allowedGithubOrgs": settings.allowed_github_orgs}

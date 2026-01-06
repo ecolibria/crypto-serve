@@ -7,7 +7,7 @@ import time
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import APIRouter, HTTPException, status, Depends, Response, Request, Cookie
+from fastapi import APIRouter, HTTPException, status, Depends, Response, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,19 +21,24 @@ from app.auth.jwt import create_access_token
 try:
     from slowapi import Limiter
     from slowapi.util import get_remote_address
+
     limiter = Limiter(key_func=get_remote_address)
 
     def rate_limit(limit_string):
         """Rate limit decorator."""
         return limiter.limit(limit_string)
+
 except ImportError:
     limiter = None
 
     def rate_limit(limit_string):
         """No-op decorator when rate limiting is not available."""
+
         def decorator(func):
             return func
+
         return decorator
+
 
 settings = get_settings()
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -47,11 +52,7 @@ def generate_oauth_state() -> str:
     timestamp = str(int(time.time()))
     nonce = secrets.token_hex(16)
     data = f"{timestamp}:{nonce}"
-    signature = hmac.new(
-        settings.oauth_state_secret.encode(),
-        data.encode(),
-        hashlib.sha256
-    ).hexdigest()[:16]
+    signature = hmac.new(settings.oauth_state_secret.encode(), data.encode(), hashlib.sha256).hexdigest()[:16]
     return f"{data}:{signature}"
 
 
@@ -69,15 +70,14 @@ def verify_oauth_state(state: str) -> bool:
 
         # Verify signature
         data = f"{timestamp}:{nonce}"
-        expected_signature = hmac.new(
-            settings.oauth_state_secret.encode(),
-            data.encode(),
-            hashlib.sha256
-        ).hexdigest()[:16]
+        expected_signature = hmac.new(settings.oauth_state_secret.encode(), data.encode(), hashlib.sha256).hexdigest()[
+            :16
+        ]
 
         return hmac.compare_digest(signature, expected_signature)
     except (ValueError, TypeError):
         return False
+
 
 GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token"
@@ -107,6 +107,7 @@ async def dev_login(
     # Validate CLI callback URL if provided (must be localhost)
     if cli_callback:
         from urllib.parse import urlparse
+
         parsed = urlparse(cli_callback)
         if parsed.hostname not in ("localhost", "127.0.0.1"):
             raise HTTPException(
@@ -116,6 +117,7 @@ async def dev_login(
 
     # Ensure default tenant exists and get it
     from app.core.tenant import get_or_create_default_tenant
+
     default_tenant = await get_or_create_default_tenant(db)
 
     # Find or create dev user
@@ -150,10 +152,13 @@ async def dev_login(
     if cli_callback:
         # CLI login flow - redirect to local callback with session info
         from urllib.parse import urlencode
-        callback_params = urlencode({
-            "session": jwt_token,
-            "user": user.github_username,
-        })
+
+        callback_params = urlencode(
+            {
+                "session": jwt_token,
+                "user": user.github_username,
+            }
+        )
         callback_url = f"{cli_callback}?{callback_params}"
 
         return RedirectResponse(
@@ -205,6 +210,7 @@ async def github_login(request: Request, cli_callback: str | None = None):
     # Validate CLI callback URL if provided (must be localhost)
     if cli_callback:
         from urllib.parse import urlparse
+
         parsed = urlparse(cli_callback)
         if parsed.hostname not in ("localhost", "127.0.0.1"):
             raise HTTPException(
@@ -333,15 +339,9 @@ async def github_callback(
         if emails_response.status_code == 200:
             emails = emails_response.json()
             # Collect all verified emails
-            verified_emails = [
-                e["email"] for e in emails
-                if e.get("verified", False)
-            ]
+            verified_emails = [e["email"] for e in emails if e.get("verified", False)]
             # Find primary email
-            primary_email_obj = next(
-                (e for e in emails if e.get("primary")),
-                None
-            )
+            primary_email_obj = next((e for e in emails if e.get("primary")), None)
             if primary_email_obj:
                 primary_email = primary_email_obj.get("email")
                 email_verified = primary_email_obj.get("verified", False)
@@ -370,10 +370,13 @@ async def github_callback(
                 if cli_callback:
                     # CLI login - return error to CLI
                     from urllib.parse import urlencode
-                    callback_params = urlencode({
-                        "error": "domain_not_allowed",
-                        "message": "Your email domain is not authorized",
-                    })
+
+                    callback_params = urlencode(
+                        {
+                            "error": "domain_not_allowed",
+                            "message": "Your email domain is not authorized",
+                        }
+                    )
                     response = RedirectResponse(
                         url=f"{cli_callback}?{callback_params}",
                         status_code=status.HTTP_302_FOUND,
@@ -396,6 +399,7 @@ async def github_callback(
 
     # Ensure default tenant exists and get it
     from app.core.tenant import get_or_create_default_tenant
+
     default_tenant = await get_or_create_default_tenant(db)
 
     # Find or create user
@@ -444,6 +448,7 @@ async def github_callback(
     if cli_callback:
         # CLI login flow - redirect to local callback with session info
         from urllib.parse import urlencode, urlparse
+
         parsed = urlparse(cli_callback)
 
         # Validate again for safety
@@ -454,10 +459,12 @@ async def github_callback(
             )
 
         # Build callback URL with session token and user info
-        callback_params = urlencode({
-            "session": jwt_token,
-            "user": user.github_username,
-        })
+        callback_params = urlencode(
+            {
+                "session": jwt_token,
+                "user": user.github_username,
+            }
+        )
         callback_url = f"{cli_callback}?{callback_params}"
 
         response = RedirectResponse(
@@ -498,7 +505,6 @@ async def logout(response: Response):
 @router.get("/me")
 async def get_me(user: User = Depends(get_db)):
     """Get current user info."""
-    from app.auth.jwt import get_current_user
     # This is a placeholder - actual implementation uses dependency
     pass
 

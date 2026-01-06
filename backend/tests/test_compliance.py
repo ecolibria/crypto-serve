@@ -2,7 +2,6 @@
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -173,6 +172,7 @@ async def test_keys(db_session: AsyncSession, test_tenant: Tenant, compliance_co
 # Helper Functions Tests
 # =============================================================================
 
+
 class TestGetFrameworkStatus:
     """Tests for get_framework_status helper."""
 
@@ -309,6 +309,7 @@ class TestGetAuditStatus:
 # Data Inventory Tests
 # =============================================================================
 
+
 class TestDataInventory:
     """Tests for data inventory functionality."""
 
@@ -346,6 +347,7 @@ class TestDataInventory:
 # =============================================================================
 # Risk Score Tests
 # =============================================================================
+
 
 class TestRiskScore:
     """Tests for risk scoring functionality."""
@@ -390,6 +392,7 @@ class TestRiskScore:
 # =============================================================================
 # Response Model Tests
 # =============================================================================
+
 
 class TestResponseModels:
     """Tests for Pydantic response models."""
@@ -463,7 +466,7 @@ class TestResponseModels:
 
     def test_data_inventory_summary_model(self):
         """Test DataInventorySummary model."""
-        from app.api.compliance import DataInventorySummary, DataInventoryItem
+        from app.api.compliance import DataInventorySummary
 
         summary = DataInventorySummary(
             total_contexts=10,
@@ -541,6 +544,7 @@ class TestResponseModels:
 # Enum Tests
 # =============================================================================
 
+
 class TestEnums:
     """Tests for enum definitions."""
 
@@ -568,6 +572,7 @@ class TestEnums:
 # =============================================================================
 # Integration Tests (with mocked auth)
 # =============================================================================
+
 
 class TestComplianceEndpoints:
     """Integration tests for compliance API endpoints."""

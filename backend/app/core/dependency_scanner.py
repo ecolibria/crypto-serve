@@ -9,13 +9,13 @@ dependency level rather than in the actual code.
 
 import re
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any
 
 
 class PackageType(str, Enum):
     """Package ecosystem type."""
+
     NPM = "npm"
     PYPI = "pypi"
     GO = "go"
@@ -26,6 +26,7 @@ class PackageType(str, Enum):
 
 class QuantumRisk(str, Enum):
     """Quantum computing risk level."""
+
     NONE = "none"
     LOW = "low"
     HIGH = "high"
@@ -35,6 +36,7 @@ class QuantumRisk(str, Enum):
 @dataclass
 class CryptoDependency:
     """A detected cryptographic dependency."""
+
     name: str
     version: str | None
     package_type: PackageType
@@ -50,6 +52,7 @@ class CryptoDependency:
 @dataclass
 class DependencyScanResult:
     """Result of dependency scanning."""
+
     dependencies: list[CryptoDependency]
     package_type: PackageType
     total_packages: int
@@ -61,6 +64,7 @@ class DependencyScanResult:
 
 class DependencyScannerError(Exception):
     """Dependency scanner error."""
+
     pass
 
 
@@ -178,7 +182,6 @@ CRYPTO_PACKAGES = {
             "quantum_risk": QuantumRisk.HIGH,
         },
     },
-
     # PyPI packages
     PackageType.PYPI: {
         "cryptography": {
@@ -271,7 +274,6 @@ CRYPTO_PACKAGES = {
             "description": "CryptoServe SDK - manages crypto agility",
         },
     },
-
     # Go packages
     PackageType.GO: {
         "crypto/aes": {
@@ -362,7 +364,6 @@ CRYPTO_PACKAGES = {
             "description": "Post-quantum + classical crypto",
         },
     },
-
     # Cargo (Rust) packages
     PackageType.CARGO: {
         "ring": {
@@ -450,18 +451,20 @@ class DependencyScanner:
         for name, version in deps.items():
             if name in packages:
                 pkg_info = packages[name]
-                crypto_deps.append(CryptoDependency(
-                    name=name,
-                    version=version,
-                    package_type=PackageType.NPM,
-                    category=pkg_info["category"],
-                    algorithms=pkg_info["algorithms"],
-                    quantum_risk=pkg_info["quantum_risk"],
-                    is_deprecated=pkg_info.get("is_deprecated", False),
-                    deprecation_reason=pkg_info.get("deprecation_reason"),
-                    recommended_replacement=pkg_info.get("recommended_replacement"),
-                    description=pkg_info.get("description"),
-                ))
+                crypto_deps.append(
+                    CryptoDependency(
+                        name=name,
+                        version=version,
+                        package_type=PackageType.NPM,
+                        category=pkg_info["category"],
+                        algorithms=pkg_info["algorithms"],
+                        quantum_risk=pkg_info["quantum_risk"],
+                        is_deprecated=pkg_info.get("is_deprecated", False),
+                        deprecation_reason=pkg_info.get("deprecation_reason"),
+                        recommended_replacement=pkg_info.get("recommended_replacement"),
+                        description=pkg_info.get("description"),
+                    )
+                )
 
         return self._build_result(crypto_deps, PackageType.NPM, len(deps))
 
@@ -486,18 +489,20 @@ class DependencyScanner:
         for name, version in deps.items():
             if name in packages:
                 pkg_info = packages[name]
-                crypto_deps.append(CryptoDependency(
-                    name=name,
-                    version=version,
-                    package_type=PackageType.PYPI,
-                    category=pkg_info["category"],
-                    algorithms=pkg_info["algorithms"],
-                    quantum_risk=pkg_info["quantum_risk"],
-                    is_deprecated=pkg_info.get("is_deprecated", False),
-                    deprecation_reason=pkg_info.get("deprecation_reason"),
-                    recommended_replacement=pkg_info.get("recommended_replacement"),
-                    description=pkg_info.get("description"),
-                ))
+                crypto_deps.append(
+                    CryptoDependency(
+                        name=name,
+                        version=version,
+                        package_type=PackageType.PYPI,
+                        category=pkg_info["category"],
+                        algorithms=pkg_info["algorithms"],
+                        quantum_risk=pkg_info["quantum_risk"],
+                        is_deprecated=pkg_info.get("is_deprecated", False),
+                        deprecation_reason=pkg_info.get("deprecation_reason"),
+                        recommended_replacement=pkg_info.get("recommended_replacement"),
+                        description=pkg_info.get("description"),
+                    )
+                )
 
         return self._build_result(crypto_deps, PackageType.PYPI, len(deps))
 
@@ -527,18 +532,20 @@ class DependencyScanner:
             for pkg_path in packages:
                 if path == pkg_path or path.endswith(pkg_path):
                     pkg_info = packages[pkg_path]
-                    crypto_deps.append(CryptoDependency(
-                        name=path,
-                        version=version,
-                        package_type=PackageType.GO,
-                        category=pkg_info["category"],
-                        algorithms=pkg_info["algorithms"],
-                        quantum_risk=pkg_info["quantum_risk"],
-                        is_deprecated=pkg_info.get("is_deprecated", False),
-                        deprecation_reason=pkg_info.get("deprecation_reason"),
-                        recommended_replacement=pkg_info.get("recommended_replacement"),
-                        description=pkg_info.get("description"),
-                    ))
+                    crypto_deps.append(
+                        CryptoDependency(
+                            name=path,
+                            version=version,
+                            package_type=PackageType.GO,
+                            category=pkg_info["category"],
+                            algorithms=pkg_info["algorithms"],
+                            quantum_risk=pkg_info["quantum_risk"],
+                            is_deprecated=pkg_info.get("is_deprecated", False),
+                            deprecation_reason=pkg_info.get("deprecation_reason"),
+                            recommended_replacement=pkg_info.get("recommended_replacement"),
+                            description=pkg_info.get("description"),
+                        )
+                    )
                     break
 
         return self._build_result(crypto_deps, PackageType.GO, len(deps))
@@ -564,7 +571,7 @@ class DependencyScanner:
                 if match:
                     deps[match.group(1)] = match.group(2)
                 else:
-                    match = re.match(r'([a-zA-Z0-9_-]+)\s*=\s*\{', line)
+                    match = re.match(r"([a-zA-Z0-9_-]+)\s*=\s*\{", line)
                     if match:
                         deps[match.group(1)] = None
 
@@ -574,18 +581,20 @@ class DependencyScanner:
         for name, version in deps.items():
             if name in packages:
                 pkg_info = packages[name]
-                crypto_deps.append(CryptoDependency(
-                    name=name,
-                    version=version,
-                    package_type=PackageType.CARGO,
-                    category=pkg_info["category"],
-                    algorithms=pkg_info["algorithms"],
-                    quantum_risk=pkg_info["quantum_risk"],
-                    is_deprecated=pkg_info.get("is_deprecated", False),
-                    deprecation_reason=pkg_info.get("deprecation_reason"),
-                    recommended_replacement=pkg_info.get("recommended_replacement"),
-                    description=pkg_info.get("description"),
-                ))
+                crypto_deps.append(
+                    CryptoDependency(
+                        name=name,
+                        version=version,
+                        package_type=PackageType.CARGO,
+                        category=pkg_info["category"],
+                        algorithms=pkg_info["algorithms"],
+                        quantum_risk=pkg_info["quantum_risk"],
+                        is_deprecated=pkg_info.get("is_deprecated", False),
+                        deprecation_reason=pkg_info.get("deprecation_reason"),
+                        recommended_replacement=pkg_info.get("recommended_replacement"),
+                        description=pkg_info.get("description"),
+                    )
+                )
 
         return self._build_result(crypto_deps, PackageType.CARGO, len(deps))
 
@@ -660,7 +669,4 @@ class DependencyScanner:
         if package_type:
             return {package_type.value: list(CRYPTO_PACKAGES.get(package_type, {}).keys())}
 
-        return {
-            pt.value: list(packages.keys())
-            for pt, packages in CRYPTO_PACKAGES.items()
-        }
+        return {pt.value: list(packages.keys()) for pt, packages in CRYPTO_PACKAGES.items()}

@@ -33,8 +33,10 @@ router = APIRouter(prefix="/api/rbac", tags=["rbac"])
 # Request/Response Models
 # =============================================================================
 
+
 class RoleInfo(BaseModel):
     """Role information."""
+
     role: str
     display_name: str
     description: str
@@ -43,18 +45,21 @@ class RoleInfo(BaseModel):
 
 class PermissionInfo(BaseModel):
     """Permission information."""
+
     permission: str
     action: str
 
 
 class ResourcePermissions(BaseModel):
     """Permissions grouped by resource."""
+
     resource: str
     actions: list[PermissionInfo]
 
 
 class UserPermissionsResponse(BaseModel):
     """User's effective permissions."""
+
     user_id: str
     role: str
     role_display_name: str
@@ -65,11 +70,13 @@ class UserPermissionsResponse(BaseModel):
 
 class UpdateRoleRequest(BaseModel):
     """Request to update a user's role."""
+
     role: str = Field(..., description="New role: owner, admin, developer, viewer, service_account")
 
 
 class UpdatePermissionsRequest(BaseModel):
     """Request to update custom permissions."""
+
     add_permissions: list[str] = Field(default_factory=list)
     remove_permissions: list[str] = Field(default_factory=list)
     deny_permissions: list[str] = Field(default_factory=list)
@@ -78,11 +85,13 @@ class UpdatePermissionsRequest(BaseModel):
 
 class CheckPermissionRequest(BaseModel):
     """Request to check a permission."""
+
     permission: str
 
 
 class CheckPermissionResponse(BaseModel):
     """Permission check result."""
+
     permission: str
     allowed: bool
     reason: str
@@ -91,6 +100,7 @@ class CheckPermissionResponse(BaseModel):
 # =============================================================================
 # Endpoints
 # =============================================================================
+
 
 @router.get("/roles", response_model=list[RoleInfo])
 async def get_available_roles(
@@ -297,8 +307,9 @@ async def update_user_permissions(
         )
 
     # Validate all permissions
-    for perm_str in (request.add_permissions + request.remove_permissions +
-                     request.deny_permissions + request.allow_permissions):
+    for perm_str in (
+        request.add_permissions + request.remove_permissions + request.deny_permissions + request.allow_permissions
+    ):
         try:
             Permission(perm_str)
         except ValueError:

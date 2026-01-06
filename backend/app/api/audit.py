@@ -5,7 +5,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select, and_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api/audit", tags=["audit"])
 
 class AuditLogResponse(BaseModel):
     """Audit log response schema."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -35,6 +36,7 @@ class AuditLogResponse(BaseModel):
 
 class AuditStats(BaseModel):
     """Audit statistics."""
+
     total_operations: int
     successful_operations: int
     failed_operations: int
@@ -54,18 +56,14 @@ async def list_audit_logs(
 ):
     """List audit logs for the current user's identities."""
     # Get user's identity IDs (use the identity's user_id to find all identities)
-    identity_result = await db.execute(
-        select(Identity.id).where(Identity.user_id == identity.user_id)
-    )
+    identity_result = await db.execute(select(Identity.id).where(Identity.user_id == identity.user_id))
     user_identity_ids = [row[0] for row in identity_result.fetchall()]
 
     if not user_identity_ids:
         return []
 
     # Build query
-    query = select(AuditLog).where(
-        AuditLog.identity_id.in_(user_identity_ids)
-    )
+    query = select(AuditLog).where(AuditLog.identity_id.in_(user_identity_ids))
 
     if identity_id:
         if identity_id not in user_identity_ids:
@@ -93,9 +91,7 @@ async def get_audit_stats(
 ):
     """Get audit statistics for the current user."""
     # Get user's identity IDs (use the identity's user_id to find all identities)
-    identity_result = await db.execute(
-        select(Identity.id).where(Identity.user_id == identity.user_id)
-    )
+    identity_result = await db.execute(select(Identity.id).where(Identity.user_id == identity.user_id))
     user_identity_ids = [row[0] for row in identity_result.fetchall()]
 
     if not user_identity_ids:
@@ -108,9 +104,7 @@ async def get_audit_stats(
         )
 
     # Get all logs for user's identities
-    result = await db.execute(
-        select(AuditLog).where(AuditLog.identity_id.in_(user_identity_ids))
-    )
+    result = await db.execute(select(AuditLog).where(AuditLog.identity_id.in_(user_identity_ids)))
     logs = result.scalars().all()
 
     # Calculate stats

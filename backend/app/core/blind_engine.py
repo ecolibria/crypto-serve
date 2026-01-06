@@ -27,14 +27,13 @@ References:
 """
 
 import hashlib
-import os
 import secrets
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Tuple
 
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 
 class BlindScheme(str, Enum):
@@ -285,9 +284,7 @@ class BlindEngine:
         """
         # Load private key
         try:
-            private_key = serialization.load_pem_private_key(
-                private_key_pem, password=None
-            )
+            private_key = serialization.load_pem_private_key(private_key_pem, password=None)
             if not isinstance(private_key, rsa.RSAPrivateKey):
                 raise BlindError("Not an RSA private key")
         except Exception as e:
@@ -665,10 +662,10 @@ class BlindEngine:
 
         # Store blinding factors
         blinding_data = (
-            alpha.to_bytes(32, "big") +
-            beta.to_bytes(32, "big") +
-            c_prime.to_bytes(32, "big") +
-            R_prime.to_bytes(32, "big")
+            alpha.to_bytes(32, "big")
+            + beta.to_bytes(32, "big")
+            + c_prime.to_bytes(32, "big")
+            + R_prime.to_bytes(32, "big")
         )
 
         blinding = BlindingResult(
@@ -716,7 +713,7 @@ class BlindEngine:
         # Extract blinding factors
         data = blinding.blinding_factor
         alpha = int.from_bytes(data[0:32], "big")
-        beta = int.from_bytes(data[32:64], "big")
+        int.from_bytes(data[32:64], "big")
         c_prime = int.from_bytes(data[64:96], "big")
         R_prime = int.from_bytes(data[96:128], "big")
 
@@ -724,11 +721,7 @@ class BlindEngine:
         s_prime = (s + alpha) % (SCHNORR_P - 1)
 
         # Signature is (R', c', s')
-        sig_data = (
-            R_prime.to_bytes(32, "big") +
-            c_prime.to_bytes(32, "big") +
-            s_prime.to_bytes(32, "big")
-        )
+        sig_data = R_prime.to_bytes(32, "big") + c_prime.to_bytes(32, "big") + s_prime.to_bytes(32, "big")
 
         return UnblindedSignature(
             signature=sig_data,
@@ -792,9 +785,7 @@ class BlindEngine:
         counter = 0
         output = b""
         while len(output) < byte_length:
-            h = hashlib.sha256(
-                message + counter.to_bytes(4, "big")
-            ).digest()
+            h = hashlib.sha256(message + counter.to_bytes(4, "big")).digest()
             output += h
             counter += 1
 

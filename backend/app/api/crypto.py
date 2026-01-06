@@ -22,9 +22,8 @@ from app.core.identity_manager import identity_manager
 from app.core.rate_limiter import (
     get_rate_limiter,
     RateLimitResult,
-    RateLimitExceeded,
 )
-from app.schemas.context import AlgorithmOverride, CipherMode
+from app.schemas.context import AlgorithmOverride
 
 router = APIRouter(prefix="/api/v1/crypto", tags=["crypto"])
 security = HTTPBearer()
@@ -32,22 +31,23 @@ security = HTTPBearer()
 
 class EncryptRequest(BaseModel):
     """Encryption request schema."""
+
     plaintext: str  # Base64 encoded
     context: str
     algorithm_override: AlgorithmOverride | None = Field(
-        default=None,
-        description="Optional: Override automatic algorithm selection"
+        default=None, description="Optional: Override automatic algorithm selection"
     )
     associated_data: str | None = Field(
         default=None,
         description="Optional: Additional authenticated data (AAD) - base64 encoded. "
-                    "AAD is authenticated but not encrypted. Supported by AEAD modes "
-                    "(GCM, CCM, ChaCha20-Poly1305). Must provide same AAD for decryption."
+        "AAD is authenticated but not encrypted. Supported by AEAD modes "
+        "(GCM, CCM, ChaCha20-Poly1305). Must provide same AAD for decryption.",
     )
 
 
 class AlgorithmInfo(BaseModel):
     """Information about the algorithm used."""
+
     name: str
     mode: str
     key_bits: int
@@ -56,30 +56,29 @@ class AlgorithmInfo(BaseModel):
 
 class EncryptResponse(BaseModel):
     """Encryption response schema."""
+
     ciphertext: str  # Base64 encoded
-    algorithm: AlgorithmInfo | None = Field(
-        default=None,
-        description="Algorithm used for encryption"
-    )
+    algorithm: AlgorithmInfo | None = Field(default=None, description="Algorithm used for encryption")
     warnings: list[str] = Field(
-        default_factory=list,
-        description="Any warnings about the encryption (e.g., deprecation)"
+        default_factory=list, description="Any warnings about the encryption (e.g., deprecation)"
     )
 
 
 class DecryptRequest(BaseModel):
     """Decryption request schema."""
+
     ciphertext: str  # Base64 encoded
     context: str
     associated_data: str | None = Field(
         default=None,
         description="Optional: Additional authenticated data (AAD) - base64 encoded. "
-                    "Must match AAD used during encryption if AAD was used."
+        "Must match AAD used during encryption if AAD was used.",
     )
 
 
 class DecryptResponse(BaseModel):
     """Decryption response schema."""
+
     plaintext: str  # Base64 encoded
 
 
@@ -105,9 +104,7 @@ async def get_sdk_identity(
     if payload and payload.get("type") == "access":
         app_id = payload.get("sub")
         if app_id:
-            result = await db.execute(
-                select(Application).where(Application.id == app_id)
-            )
+            result = await db.execute(select(Application).where(Application.id == app_id))
             app = result.scalar_one_or_none()
 
             if app and app.is_active:
@@ -115,7 +112,7 @@ async def get_sdk_identity(
                 try:
                     public_key = app.public_key
                     if isinstance(public_key, str):
-                        public_key = public_key.encode('utf-8')
+                        public_key = public_key.encode("utf-8")
                     verified_payload = token_manager.verify_access_token(token, public_key)
                     if verified_payload:
                         # Return a "virtual" Identity object from the Application
@@ -124,6 +121,7 @@ async def get_sdk_identity(
 
                         class ApplicationIdentity:
                             """Wrapper to make Application look like Identity for crypto endpoints."""
+
                             def __init__(self, app: Application):
                                 self.id = app.id
                                 self.tenant_id = app.tenant_id
@@ -274,7 +272,7 @@ async def encrypt(
     # Build algorithm info for response
     algorithm_info = AlgorithmInfo(
         name=result.algorithm,
-        mode=result.mode.value if hasattr(result.mode, 'value') else str(result.mode),
+        mode=result.mode.value if hasattr(result.mode, "value") else str(result.mode),
         key_bits=result.key_bits,
         description=result.description,
     )
@@ -362,11 +360,13 @@ async def decrypt(
 
 class KeyBundleRequest(BaseModel):
     """Request for encryption key bundle."""
+
     context: str = Field(..., description="Encryption context name")
 
 
 class KeyBundleResponse(BaseModel):
     """Response containing encryption key for local caching."""
+
     key: str = Field(..., description="Base64-encoded encryption key")
     key_id: str = Field(..., description="Key identifier")
     algorithm: str = Field(..., description="Algorithm name (e.g., AES-256-GCM)")
@@ -414,9 +414,7 @@ async def get_key_bundle(
     from app.core.key_manager import key_manager
 
     # 1. Get context and validate it exists
-    result = await db.execute(
-        select(Context).where(Context.name == data.context)
-    )
+    result = await db.execute(select(Context).where(Context.name == data.context))
     context = result.scalar_one_or_none()
 
     if not context:
@@ -463,6 +461,7 @@ async def get_key_bundle(
 
 class BatchEncryptItem(BaseModel):
     """Single item in a batch encryption request."""
+
     id: str = Field(..., description="Client-provided ID for tracking")
     plaintext: str = Field(..., description="Base64-encoded plaintext")
     associated_data: str | None = Field(default=None, description="Optional AAD (base64)")
@@ -470,6 +469,7 @@ class BatchEncryptItem(BaseModel):
 
 class BatchEncryptRequest(BaseModel):
     """Batch encryption request."""
+
     context: str = Field(..., description="Encryption context (all items use same context)")
     items: list[BatchEncryptItem] = Field(
         ...,
@@ -477,13 +477,13 @@ class BatchEncryptRequest(BaseModel):
         max_length=100,
     )
     fail_fast: bool = Field(
-        default=False,
-        description="If true, stop on first error. If false, continue and report all errors."
+        default=False, description="If true, stop on first error. If false, continue and report all errors."
     )
 
 
 class BatchEncryptResultItem(BaseModel):
     """Result of encrypting a single item."""
+
     id: str
     success: bool
     ciphertext: str | None = None
@@ -492,6 +492,7 @@ class BatchEncryptResultItem(BaseModel):
 
 class BatchEncryptResponse(BaseModel):
     """Batch encryption response."""
+
     context: str
     total: int
     successful: int
@@ -502,6 +503,7 @@ class BatchEncryptResponse(BaseModel):
 
 class BatchDecryptItem(BaseModel):
     """Single item in a batch decryption request."""
+
     id: str = Field(..., description="Client-provided ID for tracking")
     ciphertext: str = Field(..., description="Base64-encoded ciphertext")
     associated_data: str | None = Field(default=None, description="Optional AAD (base64)")
@@ -509,6 +511,7 @@ class BatchDecryptItem(BaseModel):
 
 class BatchDecryptRequest(BaseModel):
     """Batch decryption request."""
+
     context: str = Field(..., description="Encryption context (all items use same context)")
     items: list[BatchDecryptItem] = Field(
         ...,
@@ -516,13 +519,13 @@ class BatchDecryptRequest(BaseModel):
         max_length=100,
     )
     fail_fast: bool = Field(
-        default=False,
-        description="If true, stop on first error. If false, continue and report all errors."
+        default=False, description="If true, stop on first error. If false, continue and report all errors."
     )
 
 
 class BatchDecryptResultItem(BaseModel):
     """Result of decrypting a single item."""
+
     id: str
     success: bool
     plaintext: str | None = None
@@ -531,6 +534,7 @@ class BatchDecryptResultItem(BaseModel):
 
 class BatchDecryptResponse(BaseModel):
     """Batch decryption response."""
+
     context: str
     total: int
     successful: int
@@ -589,24 +593,28 @@ async def batch_encrypt(
             if algorithm_info is None:
                 algorithm_info = AlgorithmInfo(
                     name=result.algorithm,
-                    mode=result.mode.value if hasattr(result.mode, 'value') else str(result.mode),
+                    mode=result.mode.value if hasattr(result.mode, "value") else str(result.mode),
                     key_bits=result.key_bits,
                     description=result.description,
                 )
 
-            results.append(BatchEncryptResultItem(
-                id=item.id,
-                success=True,
-                ciphertext=base64.b64encode(result.ciphertext).decode("ascii"),
-            ))
+            results.append(
+                BatchEncryptResultItem(
+                    id=item.id,
+                    success=True,
+                    ciphertext=base64.b64encode(result.ciphertext).decode("ascii"),
+                )
+            )
             successful += 1
 
         except Exception as e:
-            results.append(BatchEncryptResultItem(
-                id=item.id,
-                success=False,
-                error=str(e),
-            ))
+            results.append(
+                BatchEncryptResultItem(
+                    id=item.id,
+                    success=False,
+                    error=str(e),
+                )
+            )
             failed += 1
 
             if data.fail_fast:
@@ -668,19 +676,23 @@ async def batch_decrypt(
                 associated_data=associated_data,
             )
 
-            results.append(BatchDecryptResultItem(
-                id=item.id,
-                success=True,
-                plaintext=base64.b64encode(plaintext).decode("ascii"),
-            ))
+            results.append(
+                BatchDecryptResultItem(
+                    id=item.id,
+                    success=True,
+                    plaintext=base64.b64encode(plaintext).decode("ascii"),
+                )
+            )
             successful += 1
 
         except Exception as e:
-            results.append(BatchDecryptResultItem(
-                id=item.id,
-                success=False,
-                error=str(e),
-            ))
+            results.append(
+                BatchDecryptResultItem(
+                    id=item.id,
+                    success=False,
+                    error=str(e),
+                )
+            )
             failed += 1
 
             if data.fail_fast:

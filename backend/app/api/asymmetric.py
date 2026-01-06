@@ -5,9 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.models import Identity
 from app.core.asymmetric_engine import (
     AsymmetricEngine,
@@ -28,16 +26,16 @@ asymmetric_engine = AsymmetricEngine()
 # Key Exchange
 # ============================================================================
 
+
 class KeyExchangeGenerateRequest(BaseModel):
     """Key exchange key generation request."""
-    algorithm: str = Field(
-        default="x25519",
-        description="Algorithm: x25519 (recommended), ecdh-p256, ecdh-p384"
-    )
+
+    algorithm: str = Field(default="x25519", description="Algorithm: x25519 (recommended), ecdh-p256, ecdh-p384")
 
 
 class KeyExchangeGenerateResponse(BaseModel):
     """Key exchange key generation response."""
+
     private_key: str = Field(..., description="Private key (base64)")
     public_key: str = Field(..., description="Public key (base64)")
     algorithm: str
@@ -45,6 +43,7 @@ class KeyExchangeGenerateResponse(BaseModel):
 
 class KeyExchangeDeriveRequest(BaseModel):
     """Key exchange derivation request."""
+
     private_key: str = Field(..., description="Your private key (base64)")
     peer_public_key: str = Field(..., description="Peer's public key (base64)")
     algorithm: str = Field(default="x25519")
@@ -54,6 +53,7 @@ class KeyExchangeDeriveRequest(BaseModel):
 
 class KeyExchangeDeriveResponse(BaseModel):
     """Key exchange derivation response."""
+
     shared_secret: str = Field(..., description="Derived shared secret (base64)")
     algorithm: str
     length_bytes: int
@@ -183,25 +183,28 @@ async def derive_shared_secret(
 # Hybrid Encryption (ECIES-style)
 # ============================================================================
 
+
 class HybridEncryptRequest(BaseModel):
     """Hybrid encryption request."""
+
     plaintext: str = Field(..., description="Data to encrypt (base64)")
     recipient_public_key: str = Field(..., description="Recipient's public key (base64)")
     algorithm: str = Field(
-        default="x25519-aes256gcm",
-        description="Algorithm: x25519-aes256gcm (recommended), ecies-p256"
+        default="x25519-aes256gcm", description="Algorithm: x25519-aes256gcm (recommended), ecies-p256"
     )
     aad: str | None = Field(default=None, description="Additional authenticated data (base64)")
 
 
 class HybridEncryptResponse(BaseModel):
     """Hybrid encryption response."""
+
     ciphertext: str = Field(..., description="Encrypted data with ephemeral public key (base64)")
     algorithm: str
 
 
 class HybridDecryptRequest(BaseModel):
     """Hybrid decryption request."""
+
     ciphertext: str = Field(..., description="Encrypted data (base64)")
     private_key: str = Field(..., description="Your private key (base64)")
     algorithm: str = Field(default="x25519-aes256gcm")
@@ -210,6 +213,7 @@ class HybridDecryptRequest(BaseModel):
 
 class HybridDecryptResponse(BaseModel):
     """Hybrid decryption response."""
+
     plaintext: str = Field(..., description="Decrypted data (base64)")
 
 
@@ -312,13 +316,16 @@ async def hybrid_decrypt(
 # RSA Operations
 # ============================================================================
 
+
 class RSAGenerateRequest(BaseModel):
     """RSA key generation request."""
+
     key_size: int = Field(default=2048, description="Key size in bits (2048, 3072, 4096)")
 
 
 class RSAGenerateResponse(BaseModel):
     """RSA key generation response."""
+
     private_key_pem: str = Field(..., description="Private key in PEM format")
     public_key_pem: str = Field(..., description="Public key in PEM format")
     key_size: int
@@ -326,6 +333,7 @@ class RSAGenerateResponse(BaseModel):
 
 class RSAEncryptRequest(BaseModel):
     """RSA encryption request (OAEP)."""
+
     plaintext: str = Field(..., description="Data to encrypt (base64)")
     public_key_pem: str = Field(..., description="RSA public key in PEM format")
     hash_algorithm: str = Field(default="sha256", description="Hash: sha256, sha384, sha512")
@@ -333,11 +341,13 @@ class RSAEncryptRequest(BaseModel):
 
 class RSAEncryptResponse(BaseModel):
     """RSA encryption response."""
+
     ciphertext: str = Field(..., description="Encrypted data (base64)")
 
 
 class RSADecryptRequest(BaseModel):
     """RSA decryption request."""
+
     ciphertext: str = Field(..., description="Encrypted data (base64)")
     private_key_pem: str = Field(..., description="RSA private key in PEM format")
     hash_algorithm: str = Field(default="sha256")
@@ -345,6 +355,7 @@ class RSADecryptRequest(BaseModel):
 
 class RSADecryptResponse(BaseModel):
     """RSA decryption response."""
+
     plaintext: str = Field(..., description="Decrypted data (base64)")
 
 

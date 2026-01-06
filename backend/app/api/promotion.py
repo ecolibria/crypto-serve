@@ -7,7 +7,7 @@ Provides endpoints for application promotion workflow:
 - Check promotion status
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -20,8 +20,6 @@ from app.auth.jwt import get_current_user
 from app.models import User
 from app.models.application import Application, ApplicationStatus
 from app.core.promotion import (
-    PromotionReadiness,
-    ExpeditedRequest,
     ExpediteePriority,
     check_promotion_readiness,
     create_expedited_request,
@@ -38,17 +36,20 @@ router = APIRouter(prefix="/api/v1/applications", tags=["promotion"])
 
 class PromotionRequest(BaseModel):
     """Request to promote an application."""
+
     target_environment: str = Field("production", description="Target environment")
 
 
 class ExpeditedPromotionRequest(BaseModel):
     """Request for expedited promotion approval."""
+
     priority: ExpediteePriority = Field(..., description="Priority level")
     justification: str = Field(..., min_length=10, max_length=1000, description="Justification for expedited approval")
 
 
 class PromotionResponse(BaseModel):
     """Response for promotion readiness check."""
+
     app_id: str
     app_name: str
     current_environment: str
@@ -65,6 +66,7 @@ class PromotionResponse(BaseModel):
 
 class ExpeditedResponse(BaseModel):
     """Response for expedited promotion request."""
+
     request_id: str
     app_id: str
     app_name: str
@@ -89,11 +91,7 @@ async def check_app_promotion_readiness(
 ):
     """Check if an application is ready for promotion."""
     # Get application
-    result = await db.execute(
-        select(Application)
-        .where(Application.id == app_id)
-        .where(Application.user_id == user.id)
-    )
+    result = await db.execute(select(Application).where(Application.id == app_id).where(Application.user_id == user.id))
     application = result.scalar_one_or_none()
 
     if not application:
@@ -116,7 +114,9 @@ async def check_app_promotion_readiness(
 
     # Check readiness with user trust score
     readiness = await check_promotion_readiness(
-        db, application, target,
+        db,
+        application,
+        target,
         user_id=user.id,
         tenant_id=user.tenant_id,
     )
@@ -159,11 +159,7 @@ async def request_promotion(
 ):
     """Request promotion of an application."""
     # Get application
-    result = await db.execute(
-        select(Application)
-        .where(Application.id == app_id)
-        .where(Application.user_id == user.id)
-    )
+    result = await db.execute(select(Application).where(Application.id == app_id).where(Application.user_id == user.id))
     application = result.scalar_one_or_none()
 
     if not application:
@@ -174,7 +170,9 @@ async def request_promotion(
 
     # Check readiness with user trust score
     readiness = await check_promotion_readiness(
-        db, application, data.target_environment,
+        db,
+        application,
+        data.target_environment,
         user_id=user.id,
         tenant_id=user.tenant_id,
     )
@@ -188,6 +186,7 @@ async def request_promotion(
     if readiness.requires_approval:
         # Submit for admin approval - create expedited request with NORMAL priority
         from app.core.promotion import ExpediteePriority as CoreExpediteePriority
+
         approval_request = await create_expedited_request(
             db=db,
             application=application,
@@ -229,11 +228,7 @@ async def request_expedited_promotion(
 ):
     """Request expedited promotion approval (bypasses thresholds)."""
     # Get application
-    result = await db.execute(
-        select(Application)
-        .where(Application.id == app_id)
-        .where(Application.user_id == user.id)
-    )
+    result = await db.execute(select(Application).where(Application.id == app_id).where(Application.user_id == user.id))
     application = result.scalar_one_or_none()
 
     if not application:

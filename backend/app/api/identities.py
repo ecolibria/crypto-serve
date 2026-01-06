@@ -20,6 +20,7 @@ router = APIRouter(prefix="/api/identities", tags=["identities"])
 
 class IdentityCreate(BaseModel):
     """Identity creation schema."""
+
     name: str
     type: IdentityType = IdentityType.DEVELOPER
     team: str
@@ -30,6 +31,7 @@ class IdentityCreate(BaseModel):
 
 class IdentityResponse(BaseModel):
     """Identity response schema."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -46,6 +48,7 @@ class IdentityResponse(BaseModel):
 
 class IdentityCreateResponse(BaseModel):
     """Response when creating a new identity."""
+
     identity: IdentityResponse
     token: str
     sdk_download_url: str
@@ -57,11 +60,7 @@ async def list_identities(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """List all identities for the current user."""
-    result = await db.execute(
-        select(Identity)
-        .where(Identity.user_id == user.id)
-        .order_by(Identity.created_at.desc())
-    )
+    result = await db.execute(select(Identity).where(Identity.user_id == user.id).order_by(Identity.created_at.desc()))
     identities = result.scalars().all()
     return identities
 
@@ -100,11 +99,7 @@ async def get_identity(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get a specific identity."""
-    result = await db.execute(
-        select(Identity)
-        .where(Identity.id == identity_id)
-        .where(Identity.user_id == user.id)
-    )
+    result = await db.execute(select(Identity).where(Identity.id == identity_id).where(Identity.user_id == user.id))
     identity = result.scalar_one_or_none()
 
     if not identity:

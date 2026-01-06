@@ -11,7 +11,7 @@ Tests cover:
 """
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -25,7 +25,6 @@ from app.core.promotion import (
     TIER_REQUIREMENTS,
     get_context_tier,
     get_tier_display,
-    get_context_stats,
     check_context_readiness,
     check_promotion_readiness,
     create_expedited_request,
@@ -459,8 +458,8 @@ class TestCheckPromotionReadiness:
         # session-tokens (Tier 1): ready
         # user-pii (Tier 2): not ready
         mock_stats.side_effect = [
-            (50, 24.0, 3),   # session-tokens: ready
-            (10, 5.0, 1),    # user-pii: not ready (needs 50 ops, 24h, 2 days)
+            (50, 24.0, 3),  # session-tokens: ready
+            (10, 5.0, 1),  # user-pii: not ready (needs 50 ops, 24h, 2 days)
         ]
 
         readiness = await check_promotion_readiness(mock_db, mock_app, "production")
@@ -610,6 +609,7 @@ class TestPromotionAPIModels:
             PromotionResponse,
             ExpeditedResponse,
         )
+
         assert PromotionRequest is not None
         assert ExpeditedPromotionRequest is not None
         assert PromotionResponse is not None
@@ -710,7 +710,7 @@ class TestPromotionAPIRouter:
         # Get all route paths
         route_paths = []
         for route in router.routes:
-            if hasattr(route, 'path'):
+            if hasattr(route, "path"):
                 route_paths.append(route.path)
 
         # Check for promotion paths (path includes app_id parameter)
@@ -724,7 +724,7 @@ class TestPromotionAPIRouter:
         # Get all route paths
         route_paths = []
         for route in router.routes:
-            if hasattr(route, 'path'):
+            if hasattr(route, "path"):
                 route_paths.append(route.path)
 
         # Check for expedite path
@@ -791,8 +791,8 @@ class TestPromotionReadinessAggregation:
 
         # Both contexts ready
         mock_stats.side_effect = [
-            (50, 24.0, 3),     # session-tokens (Tier 1): ready
-            (150, 72.0, 5),   # pci (Tier 3): ready
+            (50, 24.0, 3),  # session-tokens (Tier 1): ready
+            (150, 72.0, 5),  # pci (Tier 3): ready
         ]
 
         readiness = await check_promotion_readiness(mock_db, mock_app, "production")
@@ -814,7 +814,7 @@ class TestPromotionReadinessAggregation:
 
         # Both contexts not ready
         mock_stats.side_effect = [
-            (5, 0.5, 1),   # session-tokens (Tier 1): not ready
+            (5, 0.5, 1),  # session-tokens (Tier 1): not ready
             (25, 4.0, 1),  # user-pii (Tier 2): not ready, needs more time
         ]
 

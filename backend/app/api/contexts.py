@@ -30,8 +30,10 @@ router = APIRouter(prefix="/api/contexts", tags=["contexts"])
 # Response Schemas
 # =============================================================================
 
+
 class ContextResponse(BaseModel):
     """Context response schema with full 5-layer config."""
+
     model_config = ConfigDict(from_attributes=True)
 
     name: str
@@ -55,6 +57,7 @@ class ContextResponse(BaseModel):
 
 class ContextListResponse(BaseModel):
     """Simplified context for list views."""
+
     model_config = ConfigDict(from_attributes=True)
 
     name: str
@@ -70,8 +73,10 @@ class ContextListResponse(BaseModel):
 # Legacy Create Schema (backward compatible)
 # =============================================================================
 
+
 class ContextCreateLegacy(BaseModel):
     """Legacy context creation schema for backward compatibility."""
+
     name: str
     display_name: str
     description: str
@@ -82,6 +87,7 @@ class ContextCreateLegacy(BaseModel):
 
 class ContextUpdateSchema(BaseModel):
     """Schema for updating an existing context."""
+
     name: str
     display_name: str
     description: str
@@ -93,6 +99,7 @@ class ContextUpdateSchema(BaseModel):
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
 
 def context_to_response(ctx: Context) -> dict[str, Any]:
     """Convert Context model to response dict with computed derived requirements."""
@@ -149,17 +156,14 @@ def context_to_response(ctx: Context) -> dict[str, Any]:
 # API Endpoints
 # =============================================================================
 
+
 @router.get("", response_model=list[ContextListResponse])
 async def list_contexts(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """List all available contexts for the user's tenant."""
-    result = await db.execute(
-        select(Context)
-        .where(Context.tenant_id == user.tenant_id)
-        .order_by(Context.name)
-    )
+    result = await db.execute(select(Context).where(Context.tenant_id == user.tenant_id).order_by(Context.name))
     contexts = result.scalars().all()
     return [context_to_response(ctx) for ctx in contexts]
 
@@ -171,12 +175,7 @@ async def get_context(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get a specific context with full 5-layer configuration."""
-    result = await db.execute(
-        select(Context).where(
-            Context.name == name,
-            Context.tenant_id == user.tenant_id
-        )
-    )
+    result = await db.execute(select(Context).where(Context.name == name, Context.tenant_id == user.tenant_id))
     context = result.scalar_one_or_none()
 
     if not context:
@@ -199,12 +198,7 @@ async def create_context(
     The algorithm is automatically resolved based on the configuration.
     """
     # Check if context already exists for this tenant
-    result = await db.execute(
-        select(Context).where(
-            Context.name == data.name,
-            Context.tenant_id == user.tenant_id
-        )
-    )
+    result = await db.execute(select(Context).where(Context.name == data.name, Context.tenant_id == user.tenant_id))
     existing = result.scalar_one_or_none()
 
     if existing:
@@ -247,12 +241,7 @@ async def create_context_legacy(
 ):
     """Create a context using legacy simple schema (backward compatible)."""
     # Check if context already exists for this tenant
-    result = await db.execute(
-        select(Context).where(
-            Context.name == data.name,
-            Context.tenant_id == user.tenant_id
-        )
-    )
+    result = await db.execute(select(Context).where(Context.name == data.name, Context.tenant_id == user.tenant_id))
     existing = result.scalar_one_or_none()
 
     if existing:
@@ -286,12 +275,7 @@ async def update_context(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update an existing context's configuration."""
-    result = await db.execute(
-        select(Context).where(
-            Context.name == name,
-            Context.tenant_id == user.tenant_id
-        )
-    )
+    result = await db.execute(select(Context).where(Context.name == name, Context.tenant_id == user.tenant_id))
     context = result.scalar_one_or_none()
 
     if not context:
@@ -338,12 +322,7 @@ async def resolve_context_algorithm(
 
     Returns the algorithm resolution with full rationale.
     """
-    result = await db.execute(
-        select(Context).where(
-            Context.name == name,
-            Context.tenant_id == user.tenant_id
-        )
-    )
+    result = await db.execute(select(Context).where(Context.name == name, Context.tenant_id == user.tenant_id))
     context = result.scalar_one_or_none()
 
     if not context:

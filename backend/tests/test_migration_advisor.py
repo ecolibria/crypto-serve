@@ -10,10 +10,6 @@ from app.core.migration_advisor import (
     RiskLevel,
     Urgency,
     Compatibility,
-    MigrationAssessment,
-    Recommendation,
-    MigrationPlan,
-    MigrationPreview,
 )
 from app.core.crypto_registry import SecurityStatus
 

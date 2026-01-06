@@ -20,6 +20,7 @@ _providers: dict[KMSBackend, type[KMSProvider]] = {
 # Register AWS KMS if boto3 is available
 try:
     from .aws import AWSKMSProvider
+
     _providers[KMSBackend.AWS_KMS] = AWSKMSProvider
 except ImportError:
     pass  # boto3 not installed
@@ -72,10 +73,7 @@ def _get_config_from_env() -> KMSConfig:
     try:
         backend = KMSBackend(backend_str)
     except ValueError:
-        raise KMSError(
-            f"Unknown KMS backend: {backend_str}. "
-            f"Supported: {', '.join(b.value for b in KMSBackend)}"
-        )
+        raise KMSError(f"Unknown KMS backend: {backend_str}. " f"Supported: {', '.join(b.value for b in KMSBackend)}")
 
     config = KMSConfig(
         backend=backend,
@@ -86,9 +84,7 @@ def _get_config_from_env() -> KMSConfig:
 
     # Build credentials based on backend
     if backend == KMSBackend.LOCAL:
-        config.master_key_id = os.environ.get(
-            "CRYPTOSERVE_MASTER_KEY", ""
-        )
+        config.master_key_id = os.environ.get("CRYPTOSERVE_MASTER_KEY", "")
         config.options["salt"] = os.environ.get("CRYPTOSERVE_HKDF_SALT", "")
 
     elif backend == KMSBackend.AWS_KMS:

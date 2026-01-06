@@ -18,6 +18,7 @@ from app.database import Base, StringList, GUID
 
 class ApplicationStatus(str, Enum):
     """Status of application."""
+
     ACTIVE = "active"
     EXPIRED = "expired"
     REVOKED = "revoked"
@@ -32,18 +33,9 @@ class Application(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
 
     # Tenant isolation
-    tenant_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[str] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=False, index=True)
 
-    user_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("users.id"),
-        nullable=False
-    )
+    user_id: Mapped[str] = mapped_column(GUID(), ForeignKey("users.id"), nullable=False)
 
     # Application metadata
     name: Mapped[str] = mapped_column(String(256), nullable=False)
@@ -52,50 +44,25 @@ class Application(Base):
     environment: Mapped[str] = mapped_column(String(32), nullable=False)
 
     # Encryption contexts this application can use
-    allowed_contexts: Mapped[list[str]] = mapped_column(
-        StringList(),
-        nullable=False
-    )
+    allowed_contexts: Mapped[list[str]] = mapped_column(StringList(), nullable=False)
 
     # Status tracking
-    status: Mapped[ApplicationStatus] = mapped_column(
-        String(16),
-        default=ApplicationStatus.ACTIVE.value
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
-    )
-    expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False
-    )
-    last_used_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True
-    )
+    status: Mapped[ApplicationStatus] = mapped_column(String(16), default=ApplicationStatus.ACTIVE.value)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Ed25519 keypair (per-application)
     public_key: Mapped[str] = mapped_column(Text, nullable=False)
     private_key_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     key_created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
     # Refresh token tracking (hash stored, not the token itself)
-    refresh_token_hash: Mapped[str | None] = mapped_column(
-        String(64),
-        nullable=True
-    )
-    refresh_token_expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True
-    )
-    refresh_token_rotated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True
-    )
+    refresh_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    refresh_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    refresh_token_rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="applications")

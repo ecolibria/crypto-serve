@@ -31,79 +31,45 @@ class Context(Base):
     """
 
     __tablename__ = "contexts"
-    __table_args__ = (
-        UniqueConstraint("tenant_id", "name", name="uq_context_tenant_name"),
-    )
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_context_tenant_name"),)
 
     name: Mapped[str] = mapped_column(String(64), primary_key=True)
 
     # Tenant isolation
-    tenant_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[str] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=False, index=True)
     display_name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
     # 5-layer configuration stored as JSON
     config: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONType(),
-        nullable=True,
-        default=None,
-        comment="5-layer context configuration"
+        JSONType(), nullable=True, default=None, comment="5-layer context configuration"
     )
 
     # Cached derived requirements (computed from config)
     derived: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONType(),
-        nullable=True,
-        default=None,
-        comment="Cached derived requirements from algorithm resolver"
+        JSONType(), nullable=True, default=None, comment="Cached derived requirements from algorithm resolver"
     )
 
     # Legacy fields for backward compatibility
-    data_examples: Mapped[list[str] | None] = mapped_column(
-        StringList(),
-        nullable=True
-    )
-    compliance_tags: Mapped[list[str] | None] = mapped_column(
-        StringList(),
-        nullable=True
-    )
-    algorithm: Mapped[str] = mapped_column(
-        String(64),  # Increased for hybrid algorithm names
-        default="AES-256-GCM"
-    )
+    data_examples: Mapped[list[str] | None] = mapped_column(StringList(), nullable=True)
+    compliance_tags: Mapped[list[str] | None] = mapped_column(StringList(), nullable=True)
+    algorithm: Mapped[str] = mapped_column(String(64), default="AES-256-GCM")  # Increased for hybrid algorithm names
 
     # Algorithm policy enforcement (admin-controlled)
     # Policy structure: {"allowed_ciphers": ["AES"], "allowed_modes": ["gcm"],
     #                    "min_key_bits": 256, "require_quantum_safe": false}
     algorithm_policy: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONType(),
-        nullable=True,
-        default=None,
-        comment="Admin-defined algorithm policy constraints"
+        JSONType(), nullable=True, default=None, comment="Admin-defined algorithm policy constraints"
     )
     # Enforcement level: "none" (dev override allowed), "warn" (log but allow),
     # "enforce" (reject violations)
     policy_enforcement: Mapped[str] = mapped_column(
-        String(16),
-        default="none",
-        nullable=False,
-        comment="Policy enforcement level: none, warn, enforce"
+        String(16), default="none", nullable=False, comment="Policy enforcement level: none, warn, enforce"
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-        default=None,
-        onupdate=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), nullable=True, default=None, onupdate=lambda: datetime.now(timezone.utc)
     )
 
     # Relationships

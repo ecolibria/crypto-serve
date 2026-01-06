@@ -28,16 +28,19 @@ router = APIRouter(prefix="/api/v1/crypto/hpke", tags=["hpke"])
 # Request/Response Models
 # ============================================================================
 
+
 class HPKEKeyPairRequest(BaseModel):
     """HPKE key pair generation request."""
+
     suite: str = Field(
         default="x25519-sha256-aes128gcm",
-        description="Cipher suite: x25519-sha256-aes128gcm (recommended), p256-sha256-aes128gcm, p384-sha384-aes256gcm"
+        description="Cipher suite: x25519-sha256-aes128gcm (recommended), p256-sha256-aes128gcm, p384-sha384-aes256gcm",
     )
 
 
 class HPKEKeyPairResponse(BaseModel):
     """HPKE key pair generation response."""
+
     private_key: str = Field(..., description="Private key (base64)")
     public_key: str = Field(..., description="Public key (base64)")
     suite: str
@@ -45,6 +48,7 @@ class HPKEKeyPairResponse(BaseModel):
 
 class HPKEEncryptRequest(BaseModel):
     """HPKE encryption request (Base mode)."""
+
     plaintext: str = Field(..., description="Data to encrypt (base64)")
     recipient_public_key: str = Field(..., description="Recipient's public key (base64)")
     suite: str = Field(default="x25519-sha256-aes128gcm")
@@ -54,6 +58,7 @@ class HPKEEncryptRequest(BaseModel):
 
 class HPKEEncryptResponse(BaseModel):
     """HPKE encryption response."""
+
     enc: str = Field(..., description="Encapsulated key (base64)")
     ciphertext: str = Field(..., description="Encrypted data (base64)")
     suite: str
@@ -62,6 +67,7 @@ class HPKEEncryptResponse(BaseModel):
 
 class HPKEDecryptRequest(BaseModel):
     """HPKE decryption request (Base mode)."""
+
     enc: str = Field(..., description="Encapsulated key (base64)")
     ciphertext: str = Field(..., description="Encrypted data (base64)")
     recipient_private_key: str = Field(..., description="Recipient's private key (base64)")
@@ -72,11 +78,13 @@ class HPKEDecryptRequest(BaseModel):
 
 class HPKEDecryptResponse(BaseModel):
     """HPKE decryption response."""
+
     plaintext: str = Field(..., description="Decrypted data (base64)")
 
 
 class HPKEAuthEncryptRequest(BaseModel):
     """HPKE authenticated encryption request (Auth mode)."""
+
     plaintext: str = Field(..., description="Data to encrypt (base64)")
     sender_private_key: str = Field(..., description="Sender's private key for authentication (base64)")
     recipient_public_key: str = Field(..., description="Recipient's public key (base64)")
@@ -87,6 +95,7 @@ class HPKEAuthEncryptRequest(BaseModel):
 
 class HPKEAuthDecryptRequest(BaseModel):
     """HPKE authenticated decryption request (Auth mode)."""
+
     enc: str = Field(..., description="Encapsulated key (base64)")
     ciphertext: str = Field(..., description="Encrypted data (base64)")
     recipient_private_key: str = Field(..., description="Recipient's private key (base64)")
@@ -98,6 +107,7 @@ class HPKEAuthDecryptRequest(BaseModel):
 
 class HPKEPSKEncryptRequest(BaseModel):
     """HPKE PSK encryption request."""
+
     plaintext: str = Field(..., description="Data to encrypt (base64)")
     recipient_public_key: str = Field(..., description="Recipient's public key (base64)")
     psk: str = Field(..., description="Pre-shared key (base64)")
@@ -109,6 +119,7 @@ class HPKEPSKEncryptRequest(BaseModel):
 
 class HPKEPSKDecryptRequest(BaseModel):
     """HPKE PSK decryption request."""
+
     enc: str = Field(..., description="Encapsulated key (base64)")
     ciphertext: str = Field(..., description="Encrypted data (base64)")
     recipient_private_key: str = Field(..., description="Recipient's private key (base64)")
@@ -121,6 +132,7 @@ class HPKEPSKDecryptRequest(BaseModel):
 
 class HPKESuiteInfo(BaseModel):
     """HPKE cipher suite information."""
+
     suite: str
     name: str
     kem: str
@@ -135,12 +147,12 @@ class HPKESuiteInfo(BaseModel):
 # Helper Functions
 # ============================================================================
 
+
 def _get_engine() -> HPKEEngine:
     """Get HPKE engine, checking availability."""
     if not hpke_available():
         raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="HPKE not available. Install pyhpke: pip install pyhpke"
+            status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="HPKE not available. Install pyhpke: pip install pyhpke"
         )
     return get_hpke_engine()
 
@@ -152,8 +164,7 @@ def _parse_suite(suite_str: str) -> HPKECipherSuite:
     except ValueError:
         valid_suites = [s.value for s in HPKECipherSuite]
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown cipher suite: {suite_str}. Valid: {valid_suites}"
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown cipher suite: {suite_str}. Valid: {valid_suites}"
         )
 
 
@@ -164,10 +175,7 @@ def _decode_b64(data: str | None, field_name: str) -> bytes | None:
     try:
         return base64.b64decode(data)
     except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid base64 in {field_name}"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid base64 in {field_name}")
 
 
 def _decode_b64_required(data: str, field_name: str) -> bytes:
@@ -175,15 +183,13 @@ def _decode_b64_required(data: str, field_name: str) -> bytes:
     try:
         return base64.b64decode(data)
     except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid base64 in {field_name}"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid base64 in {field_name}")
 
 
 # ============================================================================
 # Endpoints
 # ============================================================================
+
 
 @router.get("/suites", response_model=list[HPKESuiteInfo])
 async def list_cipher_suites(

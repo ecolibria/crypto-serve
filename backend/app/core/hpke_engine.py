@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 # Check if pyhpke is available
 try:
     from pyhpke import CipherSuite, KEMId, KDFId, AEADId
+
     HPKE_AVAILABLE = True
 except ImportError:
     HPKE_AVAILABLE = False
@@ -45,6 +46,7 @@ except ImportError:
 
 class HPKECipherSuite(str, Enum):
     """Supported HPKE cipher suites."""
+
     # X25519-based (recommended for most use cases)
     X25519_SHA256_AES128GCM = "x25519-sha256-aes128gcm"
     X25519_SHA256_CHACHA20 = "x25519-sha256-chacha20poly1305"
@@ -59,15 +61,17 @@ class HPKECipherSuite(str, Enum):
 
 class HPKEMode(str, Enum):
     """HPKE modes of operation."""
-    BASE = "base"           # No sender authentication
-    PSK = "psk"             # Pre-shared key authentication
-    AUTH = "auth"           # Sender public key authentication
-    AUTH_PSK = "auth_psk"   # Both sender auth and PSK
+
+    BASE = "base"  # No sender authentication
+    PSK = "psk"  # Pre-shared key authentication
+    AUTH = "auth"  # Sender public key authentication
+    AUTH_PSK = "auth_psk"  # Both sender auth and PSK
 
 
 @dataclass
 class HPKEKeyPair:
     """HPKE key pair."""
+
     private_key: bytes
     public_key: bytes
     suite: HPKECipherSuite
@@ -76,16 +80,18 @@ class HPKEKeyPair:
 @dataclass
 class HPKEEncryptedMessage:
     """HPKE encrypted message with encapsulated key."""
-    enc: bytes              # Encapsulated key
-    ciphertext: bytes       # Encrypted message
+
+    enc: bytes  # Encapsulated key
+    ciphertext: bytes  # Encrypted message
     suite: HPKECipherSuite
     mode: HPKEMode
-    info: bytes = b""       # Optional context info
-    aad: bytes = b""        # Additional authenticated data
+    info: bytes = b""  # Optional context info
+    aad: bytes = b""  # Additional authenticated data
 
 
 class HPKEError(Exception):
     """HPKE operation error."""
+
     pass
 
 
@@ -98,29 +104,17 @@ class HPKEEngine:
 
     # Map cipher suite enum to pyhpke components
     _SUITE_MAP = {
-        HPKECipherSuite.X25519_SHA256_AES128GCM: (
-            "DHKEM_X25519_HKDF_SHA256", "HKDF_SHA256", "AES128_GCM"
-        ),
-        HPKECipherSuite.X25519_SHA256_CHACHA20: (
-            "DHKEM_X25519_HKDF_SHA256", "HKDF_SHA256", "CHACHA20_POLY1305"
-        ),
-        HPKECipherSuite.P256_SHA256_AES128GCM: (
-            "DHKEM_P256_HKDF_SHA256", "HKDF_SHA256", "AES128_GCM"
-        ),
-        HPKECipherSuite.P256_SHA256_CHACHA20: (
-            "DHKEM_P256_HKDF_SHA256", "HKDF_SHA256", "CHACHA20_POLY1305"
-        ),
-        HPKECipherSuite.P384_SHA384_AES256GCM: (
-            "DHKEM_P384_HKDF_SHA384", "HKDF_SHA384", "AES256_GCM"
-        ),
+        HPKECipherSuite.X25519_SHA256_AES128GCM: ("DHKEM_X25519_HKDF_SHA256", "HKDF_SHA256", "AES128_GCM"),
+        HPKECipherSuite.X25519_SHA256_CHACHA20: ("DHKEM_X25519_HKDF_SHA256", "HKDF_SHA256", "CHACHA20_POLY1305"),
+        HPKECipherSuite.P256_SHA256_AES128GCM: ("DHKEM_P256_HKDF_SHA256", "HKDF_SHA256", "AES128_GCM"),
+        HPKECipherSuite.P256_SHA256_CHACHA20: ("DHKEM_P256_HKDF_SHA256", "HKDF_SHA256", "CHACHA20_POLY1305"),
+        HPKECipherSuite.P384_SHA384_AES256GCM: ("DHKEM_P384_HKDF_SHA384", "HKDF_SHA384", "AES256_GCM"),
     }
 
     def __init__(self):
         """Initialize HPKE engine."""
         if not HPKE_AVAILABLE:
-            raise HPKEError(
-                "HPKE requires pyhpke. Install with: pip install pyhpke"
-            )
+            raise HPKEError("HPKE requires pyhpke. Install with: pip install pyhpke")
 
     def _get_cipher_suite(self, suite: HPKECipherSuite) -> "CipherSuite":
         """Get pyhpke CipherSuite from enum."""
@@ -353,9 +347,7 @@ class HPKEEngine:
         pk = cs.kem.deserialize_public_key(recipient_public_key)
 
         # Create PSK sender context
-        enc, sender = cs.create_sender_context(
-            pk, info=info, psk=psk, psk_id=psk_id
-        )
+        enc, sender = cs.create_sender_context(pk, info=info, psk=psk, psk_id=psk_id)
 
         # Encrypt
         ciphertext = sender.seal(plaintext, aad=aad)
@@ -473,10 +465,7 @@ class HPKEEngine:
         Returns:
             List of cipher suite information
         """
-        return [
-            {"suite": suite.value, **self.get_suite_info(suite)}
-            for suite in HPKECipherSuite
-        ]
+        return [{"suite": suite.value, **self.get_suite_info(suite)} for suite in HPKECipherSuite]
 
 
 # Singleton instance (created on first use to avoid import errors)

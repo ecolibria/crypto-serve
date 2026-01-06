@@ -6,7 +6,7 @@ Implements OAuth 2.0 / OIDC flow for Okta authentication.
 from typing import Any
 import httpx
 
-from app.auth.providers.base import OAuthProvider, OAuthConfig, OAuthUserInfo
+from app.auth.providers.base import OAuthProvider, OAuthUserInfo
 
 
 class OktaProvider(OAuthProvider):
@@ -121,11 +121,7 @@ class OktaProvider(OAuthProvider):
                 verified_emails.append(email)
 
             # Username: prefer preferred_username, fallback to email
-            username = (
-                user_data.get("preferred_username")
-                or user_data.get("email")
-                or user_data.get("sub")
-            )
+            username = user_data.get("preferred_username") or user_data.get("email") or user_data.get("sub")
 
             return OAuthUserInfo(
                 provider_id=user_data["sub"],

@@ -3,9 +3,9 @@
 import pytest
 from datetime import datetime, timedelta, timezone
 
-from app.core.crypto_engine import crypto_engine, CryptoError, ContextNotFoundError, AuthorizationError
+from app.core.crypto_engine import crypto_engine, ContextNotFoundError, AuthorizationError
 from app.core.key_manager import key_manager
-from app.models import Identity, IdentityType, IdentityStatus, User, Context, Tenant
+from app.models import Identity, IdentityType, IdentityStatus, Context
 
 
 @pytest.mark.asyncio
@@ -200,7 +200,7 @@ async def test_audit_log_algorithm_tracking(db_session, test_user, test_context,
 
     # Encrypt some data
     plaintext = b"Test data for algorithm tracking"
-    result = await crypto_engine.encrypt(
+    await crypto_engine.encrypt(
         db=db_session,
         plaintext=plaintext,
         context_name="test-context",

@@ -43,9 +43,21 @@ identity_id_var: ContextVar[str | None] = ContextVar("identity_id", default=None
 
 # Sensitive fields to mask in logs
 SENSITIVE_FIELDS = {
-    "password", "secret", "token", "key", "credential", "authorization",
-    "api_key", "apikey", "access_token", "refresh_token", "session",
-    "cookie", "master_key", "private_key", "secret_key",
+    "password",
+    "secret",
+    "token",
+    "key",
+    "credential",
+    "authorization",
+    "api_key",
+    "apikey",
+    "access_token",
+    "refresh_token",
+    "session",
+    "cookie",
+    "master_key",
+    "private_key",
+    "secret_key",
 }
 
 
@@ -69,6 +81,7 @@ def mask_sensitive(data: dict[str, Any]) -> dict[str, Any]:
 @dataclass
 class LogContext:
     """Context for structured logging."""
+
     request_id: str | None = None
     correlation_id: str | None = None
     user_id: str | None = None
@@ -121,11 +134,11 @@ class HumanFormatter(logging.Formatter):
     """Human-readable log formatter for development."""
 
     COLORS = {
-        "DEBUG": "\033[36m",    # Cyan
-        "INFO": "\033[32m",     # Green
+        "DEBUG": "\033[36m",  # Cyan
+        "INFO": "\033[32m",  # Green
         "WARNING": "\033[33m",  # Yellow
-        "ERROR": "\033[31m",    # Red
-        "CRITICAL": "\033[35m", # Magenta
+        "ERROR": "\033[31m",  # Red
+        "CRITICAL": "\033[35m",  # Magenta
     }
     RESET = "\033[0m"
 
@@ -150,10 +163,7 @@ class HumanFormatter(logging.Formatter):
         timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         level = record.levelname[:4]
 
-        message = (
-            f"{color}{timestamp} {level}{self.RESET} "
-            f"[{record.name}] {prefix}{record.getMessage()}{extra_str}"
-        )
+        message = f"{color}{timestamp} {level}{self.RESET} " f"[{record.name}] {prefix}{record.getMessage()}{extra_str}"
 
         if record.exc_info:
             message += "\n" + self.formatException(record.exc_info)
@@ -241,11 +251,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Generate or extract request ID
-        request_id = (
-            request.headers.get("X-Request-ID")
-            or request.headers.get("X-Correlation-ID")
-            or str(uuid.uuid4())
-        )
+        request_id = request.headers.get("X-Request-ID") or request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
 
         # Extract correlation ID (for distributed tracing)
         correlation_id = request.headers.get("X-Correlation-ID") or request_id
@@ -315,6 +321,7 @@ def set_user_context(user_id: str | None = None, identity_id: str | None = None)
 
 def log_operation(operation: str):
     """Decorator to log function execution with timing."""
+
     def decorator(func: Callable):
         logger = get_logger(func.__module__)
 
@@ -363,6 +370,7 @@ def log_operation(operation: str):
                 raise
 
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper

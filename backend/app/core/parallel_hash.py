@@ -22,16 +22,15 @@ native implementations or processing in separate processes.
 """
 
 import math
-import struct
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import multiprocessing
 
 # cSHAKE support from pycryptodome
 try:
     from Crypto.Hash import cSHAKE128, cSHAKE256
+
     CSHAKE_AVAILABLE = True
 except ImportError:
     CSHAKE_AVAILABLE = False
@@ -41,6 +40,7 @@ except ImportError:
 
 class ParallelHashVariant(str, Enum):
     """ParallelHash variants."""
+
     PARALLEL_HASH_128 = "parallelhash128"  # 128-bit security
     PARALLEL_HASH_256 = "parallelhash256"  # 256-bit security
 
@@ -48,6 +48,7 @@ class ParallelHashVariant(str, Enum):
 @dataclass
 class ParallelHashResult:
     """Result of a ParallelHash operation."""
+
     digest: bytes
     variant: ParallelHashVariant
     block_size: int
@@ -59,6 +60,7 @@ class ParallelHashResult:
 
 class ParallelHashError(Exception):
     """ParallelHash operation error."""
+
     pass
 
 
@@ -76,11 +78,11 @@ def _left_encode(x: int) -> bytes:
         Encoded bytes
     """
     if x == 0:
-        return b'\x01\x00'
+        return b"\x01\x00"
 
     # Calculate bytes needed
     n = (x.bit_length() + 7) // 8
-    encoded = x.to_bytes(n, byteorder='big')
+    encoded = x.to_bytes(n, byteorder="big")
     return bytes([n]) + encoded
 
 
@@ -98,11 +100,11 @@ def _right_encode(x: int) -> bytes:
         Encoded bytes
     """
     if x == 0:
-        return b'\x00\x01'
+        return b"\x00\x01"
 
     # Calculate bytes needed
     n = (x.bit_length() + 7) // 8
-    encoded = x.to_bytes(n, byteorder='big')
+    encoded = x.to_bytes(n, byteorder="big")
     return encoded + bytes([n])
 
 
@@ -201,9 +203,7 @@ class ParallelHashEngine:
     def __init__(self):
         """Initialize ParallelHash engine."""
         if not CSHAKE_AVAILABLE:
-            raise ParallelHashError(
-                "ParallelHash requires pycryptodome. Install with: pip install pycryptodome"
-            )
+            raise ParallelHashError("ParallelHash requires pycryptodome. Install with: pip install pycryptodome")
 
     def hash(
         self,

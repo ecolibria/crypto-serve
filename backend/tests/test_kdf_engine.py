@@ -8,9 +8,6 @@ from app.core.kdf_engine import (
     KDFEngine,
     KDFAlgorithm,
     KBKDFCounterLocation,
-    DeriveResult,
-    MultiKeyResult,
-    KDFError,
     InvalidKeyMaterialError,
 )
 
@@ -397,9 +394,7 @@ class TestEncryptionAndMACKeys:
 
     def test_derive_enc_mac_keys(self, engine, master_key):
         """Test deriving encryption and MAC keys."""
-        enc_key, mac_key = engine.derive_encryption_and_mac_keys(
-            master_key=master_key
-        )
+        enc_key, mac_key = engine.derive_encryption_and_mac_keys(master_key=master_key)
 
         assert len(enc_key) == 32
         assert len(mac_key) == 32

@@ -11,12 +11,14 @@ from app.database import Base, StringList, GUID
 
 class IdentityType(str, Enum):
     """Type of identity."""
+
     DEVELOPER = "developer"
     SERVICE = "service"
 
 
 class IdentityStatus(str, Enum):
     """Status of identity."""
+
     ACTIVE = "active"
     EXPIRED = "expired"
     REVOKED = "revoked"
@@ -30,45 +32,18 @@ class Identity(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
 
     # Tenant isolation
-    tenant_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[str] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=False, index=True)
 
-    user_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("users.id"),
-        nullable=False
-    )
-    type: Mapped[IdentityType] = mapped_column(
-        SQLEnum(IdentityType),
-        nullable=False
-    )
+    user_id: Mapped[str] = mapped_column(GUID(), ForeignKey("users.id"), nullable=False)
+    type: Mapped[IdentityType] = mapped_column(SQLEnum(IdentityType), nullable=False)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     team: Mapped[str] = mapped_column(String(64), nullable=False)
     environment: Mapped[str] = mapped_column(String(32), nullable=False)
-    allowed_contexts: Mapped[list[str]] = mapped_column(
-        StringList(),
-        nullable=False
-    )
-    status: Mapped[IdentityStatus] = mapped_column(
-        SQLEnum(IdentityStatus),
-        default=IdentityStatus.ACTIVE
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
-    )
-    expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False
-    )
-    last_used_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True
-    )
+    allowed_contexts: Mapped[list[str]] = mapped_column(StringList(), nullable=False)
+    status: Mapped[IdentityStatus] = mapped_column(SQLEnum(IdentityStatus), default=IdentityStatus.ACTIVE)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="identities")

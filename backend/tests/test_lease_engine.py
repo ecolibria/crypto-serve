@@ -2,7 +2,6 @@
 
 import time
 import threading
-from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -15,8 +14,6 @@ from app.core.lease_engine import (
     LeaseRevokedError,
     LeaseStatus,
     LeaseEventType,
-    Lease,
-    LeaseStats,
     lease_engine,
 )
 
@@ -336,14 +333,10 @@ class TestLeaseProperties:
 
     def test_can_renew_property(self, engine):
         """Test can_renew property."""
-        renewable = engine.create_lease(
-            secret=b"s1", ttl_seconds=60, renewable=True
-        )
+        renewable = engine.create_lease(secret=b"s1", ttl_seconds=60, renewable=True)
         assert renewable.can_renew is True
 
-        non_renewable = engine.create_lease(
-            secret=b"s2", ttl_seconds=60, renewable=False
-        )
+        non_renewable = engine.create_lease(secret=b"s2", ttl_seconds=60, renewable=False)
         assert non_renewable.can_renew is False
 
 

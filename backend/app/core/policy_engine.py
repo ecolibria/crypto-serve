@@ -21,16 +21,17 @@ import operator
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 
 class PolicySeverity(str, Enum):
     """Policy enforcement severity levels."""
-    BLOCK = "block"    # Reject the operation
-    WARN = "warn"      # Allow but log warning
-    INFO = "info"      # Informational only
+
+    BLOCK = "block"  # Reject the operation
+    WARN = "warn"  # Allow but log warning
+    INFO = "info"  # Informational only
 
 
 class PolicyViolation(Exception):
@@ -45,6 +46,7 @@ class PolicyViolation(Exception):
 @dataclass
 class PolicyResult:
     """Result of evaluating a single policy."""
+
     policy_name: str
     passed: bool
     severity: PolicySeverity
@@ -63,6 +65,7 @@ class EvaluationContext:
     - operation: encrypt or decrypt
     - data: metadata about the data being processed
     """
+
     algorithm: dict = field(default_factory=dict)
     context: dict = field(default_factory=dict)
     identity: dict = field(default_factory=dict)
@@ -77,19 +80,12 @@ class Policy(BaseModel):
     name: str = Field(description="Unique policy identifier")
     description: str = Field(default="", description="Human-readable description")
     rule: str = Field(description="Rule expression to evaluate")
-    severity: PolicySeverity = Field(
-        default=PolicySeverity.WARN,
-        description="What to do when rule fails"
-    )
+    severity: PolicySeverity = Field(default=PolicySeverity.WARN, description="What to do when rule fails")
     message: str = Field(description="Message shown when rule fails")
     enabled: bool = Field(default=True, description="Whether policy is active")
-    contexts: list[str] = Field(
-        default_factory=list,
-        description="Contexts this policy applies to (empty = all)"
-    )
+    contexts: list[str] = Field(default_factory=list, description="Contexts this policy applies to (empty = all)")
     operations: list[str] = Field(
-        default_factory=list,
-        description="Operations this applies to: encrypt, decrypt (empty = all)"
+        default_factory=list, description="Operations this applies to: encrypt, decrypt (empty = all)"
     )
 
 
@@ -283,11 +279,11 @@ class PolicyEngine:
         i = 0
         while i <= len(rule) - len(op_with_spaces):
             char = rule[i]
-            if char == '(':
+            if char == "(":
                 depth += 1
-            elif char == ')':
+            elif char == ")":
                 depth -= 1
-            elif depth == 0 and rule[i:i + len(op_with_spaces)] == op_with_spaces:
+            elif depth == 0 and rule[i : i + len(op_with_spaces)] == op_with_spaces:
                 return i
             i += 1
         return None
@@ -316,9 +312,9 @@ class PolicyEngine:
             depth = 0
             matched = True
             for i, char in enumerate(stripped):
-                if char == '(':
+                if char == "(":
                     depth += 1
-                elif char == ')':
+                elif char == ")":
                     depth -= 1
                     if depth == 0 and i < len(stripped) - 1:
                         # Closing paren before end means these aren't wrapping parens
@@ -331,17 +327,15 @@ class PolicyEngine:
         or_pos = self._find_top_level_operator(stripped, "or")
         if or_pos is not None:
             left = stripped[:or_pos]
-            right = stripped[or_pos + 4:]  # len(" or ") = 4
-            return self._parse_and_eval(left, namespace) or \
-                   self._parse_and_eval(right, namespace)
+            right = stripped[or_pos + 4 :]  # len(" or ") = 4
+            return self._parse_and_eval(left, namespace) or self._parse_and_eval(right, namespace)
 
         # Handle 'and' at top level
         and_pos = self._find_top_level_operator(stripped, "and")
         if and_pos is not None:
             left = stripped[:and_pos]
-            right = stripped[and_pos + 5:]  # len(" and ") = 5
-            return self._parse_and_eval(left, namespace) and \
-                   self._parse_and_eval(right, namespace)
+            right = stripped[and_pos + 5 :]  # len(" and ") = 5
+            return self._parse_and_eval(left, namespace) and self._parse_and_eval(right, namespace)
 
         # Handle 'not' prefix (after checking for 'not in' operator below)
         # Parse comparison expression - check operators BEFORE 'not' prefix
@@ -365,8 +359,7 @@ class PolicyEngine:
         expr = expr.strip()
 
         # String literal
-        if (expr.startswith("'") and expr.endswith("'")) or \
-           (expr.startswith('"') and expr.endswith('"')):
+        if (expr.startswith("'") and expr.endswith("'")) or (expr.startswith('"') and expr.endswith('"')):
             return expr[1:-1]
 
         # List literal
@@ -429,6 +422,7 @@ class DotDict(dict):
 # Helper Functions
 # =============================================================================
 
+
 def build_evaluation_context(
     context_config: dict | None,
     context_derived: dict | None,
@@ -476,17 +470,19 @@ def build_evaluation_context(
         threat_model = context_config.get("threat_model", {})
         access_patterns = context_config.get("access_patterns", {})
 
-        context.update({
-            "sensitivity": data_identity.get("sensitivity", "medium"),
-            "pii": data_identity.get("pii", False),
-            "phi": data_identity.get("phi", False),
-            "pci": data_identity.get("pci", False),
-            "notification_required": data_identity.get("notification_required", False),
-            "frameworks": regulatory.get("frameworks", []),
-            "protection_lifetime_years": threat_model.get("protection_lifetime_years", 5),
-            "frequency": access_patterns.get("frequency", "medium"),
-            "audit_level": context_derived.get("audit_level", "standard") if context_derived else "standard",
-        })
+        context.update(
+            {
+                "sensitivity": data_identity.get("sensitivity", "medium"),
+                "pii": data_identity.get("pii", False),
+                "phi": data_identity.get("phi", False),
+                "pci": data_identity.get("pci", False),
+                "notification_required": data_identity.get("notification_required", False),
+                "frameworks": regulatory.get("frameworks", []),
+                "protection_lifetime_years": threat_model.get("protection_lifetime_years", 5),
+                "frequency": access_patterns.get("frequency", "medium"),
+                "audit_level": context_derived.get("audit_level", "standard") if context_derived else "standard",
+            }
+        )
 
     return EvaluationContext(
         algorithm=algorithm,

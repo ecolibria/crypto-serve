@@ -25,24 +25,22 @@ import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
 
 from app.core.crypto_inventory import (
     CryptoInventory,
-    DetectedLibrary,
-    DetectedAlgorithm,
-    QuantumRisk,
 )
 
 
 class CBOMVersion(str, Enum):
     """CBOM specification versions."""
+
     V1_0 = "1.0"
 
 
 @dataclass
 class CryptoComponent:
     """A cryptographic component in the CBOM."""
+
     bom_ref: str
     type: str  # library, algorithm, protocol
     name: str
@@ -58,6 +56,7 @@ class CryptoComponent:
 @dataclass
 class QuantumReadiness:
     """Quantum readiness assessment."""
+
     score: float  # 0-100
     has_pqc: bool
     vulnerable_count: int
@@ -70,6 +69,7 @@ class QuantumReadiness:
 @dataclass
 class CBOM:
     """Cryptographic Bill of Materials - complete crypto inventory."""
+
     id: str
     version: str
     created_at: str
@@ -152,7 +152,7 @@ class CBOMService:
                 properties={
                     "deprecation_reason": lib.deprecation_reason,
                     "recommendation": lib.recommendation,
-                }
+                },
             )
             components.append(component)
 
@@ -170,7 +170,7 @@ class CBOMService:
                 properties={
                     "library": algo.library,
                     "weakness_reason": algo.weakness_reason,
-                }
+                },
             )
             components.append(component)
 
@@ -307,15 +307,14 @@ class CBOMService:
                         {"name": "crypto:category", "value": comp.category},
                         {"name": "crypto:quantum-risk", "value": comp.quantum_risk},
                         {"name": "crypto:is-deprecated", "value": str(comp.is_deprecated).lower()},
-                    ]
+                    ],
                 }
 
                 # Add algorithms as properties
                 if comp.algorithms:
-                    cdx_component["properties"].append({
-                        "name": "crypto:algorithms",
-                        "value": ",".join(comp.algorithms)
-                    })
+                    cdx_component["properties"].append(
+                        {"name": "crypto:algorithms", "value": ",".join(comp.algorithms)}
+                    )
 
                 components.append(cdx_component)
 
@@ -328,13 +327,7 @@ class CBOMService:
             "version": 1,
             "metadata": {
                 "timestamp": cbom.created_at,
-                "tools": [
-                    {
-                        "vendor": "CryptoServe",
-                        "name": "crypto-inventory",
-                        "version": "1.0.0"
-                    }
-                ],
+                "tools": [{"vendor": "CryptoServe", "name": "crypto-inventory", "version": "1.0.0"}],
                 "component": {
                     "type": "application",
                     "name": cbom.identity_name,
@@ -347,28 +340,20 @@ class CBOMService:
                     {"name": "cbom:quantum-readiness-score", "value": str(cbom.quantum_readiness.score)},
                     {"name": "cbom:risk-level", "value": cbom.quantum_readiness.risk_level},
                     {"name": "cbom:migration-urgency", "value": cbom.quantum_readiness.migration_urgency},
-                ]
+                ],
             },
             "components": components,
             # Embed full CBOM as extension for detailed crypto analysis
-            "extensions": {
-                "cbom": cbom.to_dict()
-            }
+            "extensions": {"cbom": cbom.to_dict()},
         }
 
         # Add git info if available
         if cbom.git_repo:
-            cyclonedx["metadata"]["properties"].append({
-                "name": "git:repo", "value": cbom.git_repo
-            })
+            cyclonedx["metadata"]["properties"].append({"name": "git:repo", "value": cbom.git_repo})
         if cbom.git_branch:
-            cyclonedx["metadata"]["properties"].append({
-                "name": "git:branch", "value": cbom.git_branch
-            })
+            cyclonedx["metadata"]["properties"].append({"name": "git:branch", "value": cbom.git_branch})
         if cbom.git_commit:
-            cyclonedx["metadata"]["properties"].append({
-                "name": "git:commit", "value": cbom.git_commit
-            })
+            cyclonedx["metadata"]["properties"].append({"name": "git:commit", "value": cbom.git_commit})
 
         return cyclonedx
 
@@ -411,15 +396,13 @@ class CBOMService:
                     "downloadLocation": "NOASSERTION",
                     "filesAnalyzed": False,
                     "primaryPackagePurpose": "LIBRARY",
-                    "externalRefs": []
+                    "externalRefs": [],
                 }
 
                 if comp.purl:
-                    pkg["externalRefs"].append({
-                        "referenceCategory": "PACKAGE-MANAGER",
-                        "referenceType": "purl",
-                        "referenceLocator": comp.purl
-                    })
+                    pkg["externalRefs"].append(
+                        {"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": comp.purl}
+                    )
 
                 packages.append(pkg)
 
@@ -428,18 +411,20 @@ class CBOMService:
             {
                 "spdxElementId": spdx_id,
                 "relationshipType": "DESCRIBES",
-                "relatedSpdxElement": f"SPDXRef-Application-{cbom.identity_id}"
+                "relatedSpdxElement": f"SPDXRef-Application-{cbom.identity_id}",
             }
         ]
 
         # Add DEPENDS_ON relationships for crypto libraries
         for comp in cbom.components:
             if comp.type == "library":
-                relationships.append({
-                    "spdxElementId": f"SPDXRef-Application-{cbom.identity_id}",
-                    "relationshipType": "DEPENDS_ON",
-                    "relatedSpdxElement": f"SPDXRef-{comp.bom_ref}"
-                })
+                relationships.append(
+                    {
+                        "spdxElementId": f"SPDXRef-Application-{cbom.identity_id}",
+                        "relationshipType": "DEPENDS_ON",
+                        "relatedSpdxElement": f"SPDXRef-{comp.bom_ref}",
+                    }
+                )
 
         # Build annotations for CBOM data
         annotations = [
@@ -447,7 +432,7 @@ class CBOMService:
                 "annotationDate": cbom.created_at,
                 "annotationType": "OTHER",
                 "annotator": "Tool: CryptoServe crypto-inventory",
-                "comment": f"CBOM Data (JSON): {__import__('json').dumps(cbom.to_dict())}"
+                "comment": f"CBOM Data (JSON): {__import__('json').dumps(cbom.to_dict())}",
             }
         ]
 
@@ -460,11 +445,11 @@ class CBOMService:
             "creationInfo": {
                 "created": cbom.created_at,
                 "creators": ["Tool: CryptoServe-1.0.0"],
-                "licenseListVersion": "3.19"
+                "licenseListVersion": "3.19",
             },
             "packages": packages,
             "relationships": relationships,
-            "annotations": annotations
+            "annotations": annotations,
         }
 
         return spdx

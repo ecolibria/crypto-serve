@@ -24,6 +24,7 @@ from app.models import (
 
 # --- Fixtures ---
 
+
 @pytest.fixture
 async def tenant_a(db_session: AsyncSession) -> Tenant:
     """Create tenant A for testing."""
@@ -130,6 +131,7 @@ async def context_tenant_b(db_session: AsyncSession, tenant_b: Tenant) -> Contex
 
 # --- Tenant Model Tests ---
 
+
 class TestTenantModel:
     """Tests for the Tenant model."""
 
@@ -149,9 +151,7 @@ class TestTenantModel:
         await db_session.commit()
 
         # Verify it was created
-        result = await db_session.execute(
-            select(Tenant).where(Tenant.slug == "test-tenant")
-        )
+        result = await db_session.execute(select(Tenant).where(Tenant.slug == "test-tenant"))
         saved = result.scalar_one_or_none()
         assert saved is not None
         assert saved.name == "Test Tenant"
@@ -210,6 +210,7 @@ class TestTenantModel:
 
 # --- User Tenant Isolation Tests ---
 
+
 class TestUserTenantIsolation:
     """Tests for user tenant isolation."""
 
@@ -234,15 +235,11 @@ class TestUserTenantIsolation:
     ):
         """Test that users are isolated by tenant."""
         # Query users for tenant A
-        result_a = await db_session.execute(
-            select(User).where(User.tenant_id == tenant_a.id)
-        )
+        result_a = await db_session.execute(select(User).where(User.tenant_id == tenant_a.id))
         users_a = result_a.scalars().all()
 
         # Query users for tenant B
-        result_b = await db_session.execute(
-            select(User).where(User.tenant_id == tenant_b.id)
-        )
+        result_b = await db_session.execute(select(User).where(User.tenant_id == tenant_b.id))
         users_b = result_b.scalars().all()
 
         # Each tenant should only see their own users
@@ -253,6 +250,7 @@ class TestUserTenantIsolation:
 
 
 # --- Context Tenant Isolation Tests ---
+
 
 class TestContextTenantIsolation:
     """Tests for context tenant isolation."""
@@ -277,15 +275,11 @@ class TestContextTenantIsolation:
     ):
         """Test that contexts are isolated by tenant."""
         # Query contexts for tenant A
-        result_a = await db_session.execute(
-            select(Context).where(Context.tenant_id == tenant_a.id)
-        )
+        result_a = await db_session.execute(select(Context).where(Context.tenant_id == tenant_a.id))
         contexts_a = result_a.scalars().all()
 
         # Query contexts for tenant B
-        result_b = await db_session.execute(
-            select(Context).where(Context.tenant_id == tenant_b.id)
-        )
+        result_b = await db_session.execute(select(Context).where(Context.tenant_id == tenant_b.id))
         contexts_b = result_b.scalars().all()
 
         # Each tenant should only see their own contexts
@@ -333,6 +327,7 @@ class TestContextTenantIsolation:
 
 
 # --- Identity Tenant Isolation Tests ---
+
 
 class TestIdentityTenantIsolation:
     """Tests for identity tenant isolation."""
@@ -405,15 +400,11 @@ class TestIdentityTenantIsolation:
         await db_session.commit()
 
         # Query identities for tenant A
-        result_a = await db_session.execute(
-            select(Identity).where(Identity.tenant_id == tenant_a.id)
-        )
+        result_a = await db_session.execute(select(Identity).where(Identity.tenant_id == tenant_a.id))
         identities_a = result_a.scalars().all()
 
         # Query identities for tenant B
-        result_b = await db_session.execute(
-            select(Identity).where(Identity.tenant_id == tenant_b.id)
-        )
+        result_b = await db_session.execute(select(Identity).where(Identity.tenant_id == tenant_b.id))
         identities_b = result_b.scalars().all()
 
         # Each tenant should only see their own identities
@@ -424,6 +415,7 @@ class TestIdentityTenantIsolation:
 
 
 # --- Audit Log Tenant Isolation Tests ---
+
 
 class TestAuditLogTenantIsolation:
     """Tests for audit log tenant isolation."""
@@ -486,15 +478,11 @@ class TestAuditLogTenantIsolation:
         await db_session.commit()
 
         # Query logs for tenant A
-        result_a = await db_session.execute(
-            select(AuditLog).where(AuditLog.tenant_id == tenant_a.id)
-        )
+        result_a = await db_session.execute(select(AuditLog).where(AuditLog.tenant_id == tenant_a.id))
         logs_a = result_a.scalars().all()
 
         # Query logs for tenant B
-        result_b = await db_session.execute(
-            select(AuditLog).where(AuditLog.tenant_id == tenant_b.id)
-        )
+        result_b = await db_session.execute(select(AuditLog).where(AuditLog.tenant_id == tenant_b.id))
         logs_b = result_b.scalars().all()
 
         # Each tenant should only see their own logs
@@ -505,6 +493,7 @@ class TestAuditLogTenantIsolation:
 
 
 # --- Policy Tenant Isolation Tests ---
+
 
 class TestPolicyTenantIsolation:
     """Tests for policy tenant isolation."""
@@ -569,15 +558,11 @@ class TestPolicyTenantIsolation:
         await db_session.commit()
 
         # Query policies for tenant A
-        result_a = await db_session.execute(
-            select(Policy).where(Policy.tenant_id == tenant_a.id)
-        )
+        result_a = await db_session.execute(select(Policy).where(Policy.tenant_id == tenant_a.id))
         policies_a = result_a.scalars().all()
 
         # Query policies for tenant B
-        result_b = await db_session.execute(
-            select(Policy).where(Policy.tenant_id == tenant_b.id)
-        )
+        result_b = await db_session.execute(select(Policy).where(Policy.tenant_id == tenant_b.id))
         policies_b = result_b.scalars().all()
 
         # Each tenant should only see their own policies
@@ -588,6 +573,7 @@ class TestPolicyTenantIsolation:
 
 
 # --- Cross-Tenant Access Prevention Tests ---
+
 
 class TestCrossTenantPrevention:
     """Tests to verify cross-tenant access is prevented."""
@@ -604,8 +590,7 @@ class TestCrossTenantPrevention:
         # User A tries to query contexts with tenant A filter
         result = await db_session.execute(
             select(Context).where(
-                Context.tenant_id == tenant_a.id,
-                Context.name == context_tenant_b.name  # Trying to access B's context
+                Context.tenant_id == tenant_a.id, Context.name == context_tenant_b.name  # Trying to access B's context
             )
         )
         context = result.scalar_one_or_none()
@@ -624,10 +609,7 @@ class TestCrossTenantPrevention:
         """Verify that querying with tenant filter excludes other tenant's users."""
         # Query users with tenant A filter trying to find user B
         result = await db_session.execute(
-            select(User).where(
-                User.tenant_id == tenant_a.id,
-                User.id == user_tenant_b.id  # Trying to access B's user
-            )
+            select(User).where(User.tenant_id == tenant_a.id, User.id == user_tenant_b.id)  # Trying to access B's user
         )
         user = result.scalar_one_or_none()
 
@@ -647,9 +629,7 @@ class TestCrossTenantPrevention:
         all_contexts = result_all.scalars().all()
 
         # WITH tenant filter - sees only own contexts (GOOD)
-        result_a = await db_session.execute(
-            select(Context).where(Context.tenant_id == context_tenant_a.tenant_id)
-        )
+        result_a = await db_session.execute(select(Context).where(Context.tenant_id == context_tenant_a.tenant_id))
         tenant_a_contexts = result_a.scalars().all()
 
         # Without filter, we see both; with filter, we see only one

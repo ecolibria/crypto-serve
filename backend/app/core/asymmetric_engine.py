@@ -28,6 +28,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 class AsymmetricAlgorithm(str, Enum):
     """Supported asymmetric encryption algorithms."""
+
     X25519_AESGCM = "x25519-aesgcm"  # Recommended
     X25519_CHACHA20 = "x25519-chacha20"  # Alternative
     ECIES_P256 = "ecies-p256"  # NIST curve
@@ -38,6 +39,7 @@ class AsymmetricAlgorithm(str, Enum):
 
 class KeyExchangeAlgorithm(str, Enum):
     """Supported key exchange algorithms."""
+
     X25519 = "x25519"  # Recommended: Modern, fast
     ECDH_P256 = "ecdh-p256"  # NIST P-256
     ECDH_P384 = "ecdh-p384"  # NIST P-384
@@ -47,6 +49,7 @@ class KeyExchangeAlgorithm(str, Enum):
 @dataclass
 class KeyPair:
     """Asymmetric key pair."""
+
     private_key: Any
     public_key: Any
     algorithm: AsymmetricAlgorithm
@@ -57,6 +60,7 @@ class KeyPair:
 @dataclass
 class EncryptResult:
     """Result of asymmetric encryption."""
+
     ciphertext: bytes
     ephemeral_public_key: bytes | None  # For X25519/ECIES
     algorithm: AsymmetricAlgorithm
@@ -66,27 +70,32 @@ class EncryptResult:
 @dataclass
 class DecryptResult:
     """Result of asymmetric decryption."""
+
     plaintext: bytes
     algorithm: AsymmetricAlgorithm
 
 
 class AsymmetricError(Exception):
     """Asymmetric operation failed."""
+
     pass
 
 
 class KeyNotFoundError(AsymmetricError):
     """Key not found."""
+
     pass
 
 
 class DecryptionError(AsymmetricError):
     """Decryption failed."""
+
     pass
 
 
 class UnsupportedAlgorithmError(AsymmetricError):
     """Algorithm not supported."""
+
     pass
 
 
@@ -164,6 +173,7 @@ class AsymmetricEngine:
             KeyPair with public and private keys
         """
         import secrets
+
         key_id = f"asym_{context}_{secrets.token_hex(8)}"
 
         if algorithm in [AsymmetricAlgorithm.X25519_AESGCM, AsymmetricAlgorithm.X25519_CHACHA20]:
@@ -401,7 +411,6 @@ class AsymmetricEngine:
         )
 
         # Package: ephemeral_public_key || nonce || ciphertext
-        key_size = 65 if algorithm == AsymmetricAlgorithm.ECIES_P256 else 97
         packed = ephemeral_bytes + nonce + ciphertext
 
         return EncryptResult(
@@ -425,14 +434,12 @@ class AsymmetricEngine:
 
             # Parse packed format
             ephemeral_bytes = packed_ciphertext[:key_size]
-            nonce = packed_ciphertext[key_size:key_size + 12]
-            ciphertext = packed_ciphertext[key_size + 12:]
+            nonce = packed_ciphertext[key_size : key_size + 12]
+            ciphertext = packed_ciphertext[key_size + 12 :]
 
             # Reconstruct ephemeral public key
             curve = private_key.curve
-            ephemeral_public = ec.EllipticCurvePublicKey.from_encoded_point(
-                curve, ephemeral_bytes
-            )
+            ephemeral_public = ec.EllipticCurvePublicKey.from_encoded_point(curve, ephemeral_bytes)
 
             # Perform key exchange
             shared_secret = private_key.exchange(ec.ECDH(), ephemeral_public)
@@ -550,9 +557,9 @@ class AsymmetricEngine:
             elif mode == 0x01:
                 # Hybrid decryption
                 key_len = int.from_bytes(packed_ciphertext[1:3], "big")
-                encrypted_key = packed_ciphertext[3:3 + key_len]
-                nonce = packed_ciphertext[3 + key_len:3 + key_len + 12]
-                encrypted_message = packed_ciphertext[3 + key_len + 12:]
+                encrypted_key = packed_ciphertext[3 : 3 + key_len]
+                nonce = packed_ciphertext[3 + key_len : 3 + key_len + 12]
+                encrypted_message = packed_ciphertext[3 + key_len + 12 :]
 
                 # Decrypt AES key
                 aes_key = private_key.decrypt(
@@ -660,13 +667,9 @@ class AsymmetricEngine:
             if algorithm in [AsymmetricAlgorithm.X25519_AESGCM, AsymmetricAlgorithm.X25519_CHACHA20]:
                 public_key = X25519PublicKey.from_public_bytes(public_key_data)
             elif algorithm == AsymmetricAlgorithm.ECIES_P256:
-                public_key = ec.EllipticCurvePublicKey.from_encoded_point(
-                    ec.SECP256R1(), public_key_data
-                )
+                public_key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), public_key_data)
             elif algorithm == AsymmetricAlgorithm.ECIES_P384:
-                public_key = ec.EllipticCurvePublicKey.from_encoded_point(
-                    ec.SECP384R1(), public_key_data
-                )
+                public_key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP384R1(), public_key_data)
             else:
                 raise AsymmetricError(f"Raw format not supported for {algorithm}")
         else:
@@ -690,12 +693,14 @@ class AsymmetricEngine:
         for key_id, key_pair in self._keys.items():
             if context and not key_id.startswith(f"asym_{context}_"):
                 continue
-            keys.append({
-                "key_id": key_id,
-                "algorithm": key_pair.algorithm.value,
-                "has_private_key": key_pair.private_key is not None,
-                "created_at": key_pair.created_at.isoformat(),
-            })
+            keys.append(
+                {
+                    "key_id": key_id,
+                    "algorithm": key_pair.algorithm.value,
+                    "has_private_key": key_pair.private_key is not None,
+                    "created_at": key_pair.created_at.isoformat(),
+                }
+            )
         return keys
 
     def delete_key(self, key_id: str) -> bool:
@@ -794,7 +799,6 @@ class AsymmetricEngine:
 
         else:
             raise AsymmetricError(f"Unsupported key type: {kty}")
-
 
     # ==================== Key Exchange ====================
 
@@ -974,8 +978,8 @@ class AsymmetricEngine:
 
                 # Unpack
                 ephemeral_bytes = ciphertext[:key_size]
-                nonce = ciphertext[key_size:key_size + 12]
-                encrypted = ciphertext[key_size + 12:]
+                nonce = ciphertext[key_size : key_size + 12]
+                encrypted = ciphertext[key_size + 12 :]
 
                 ephemeral_pub = ec.EllipticCurvePublicKey.from_encoded_point(curve, ephemeral_bytes)
 
@@ -1062,9 +1066,7 @@ class AsymmetricEngine:
             Plaintext
         """
         try:
-            private_key = serialization.load_pem_private_key(
-                private_key_pem.encode(), password=None
-            )
+            private_key = serialization.load_pem_private_key(private_key_pem.encode(), password=None)
 
             if not isinstance(private_key, rsa.RSAPrivateKey):
                 raise AsymmetricError("Not an RSA private key")

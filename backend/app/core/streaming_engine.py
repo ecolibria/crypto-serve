@@ -24,6 +24,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM, ChaCha20Poly1305
 
 class StreamingAlgorithm(str, Enum):
     """Supported streaming encryption algorithms."""
+
     AES_256_GCM = "aes-256-gcm"
     CHACHA20_POLY1305 = "chacha20-poly1305"
 
@@ -31,6 +32,7 @@ class StreamingAlgorithm(str, Enum):
 @dataclass
 class StreamingConfig:
     """Configuration for streaming encryption."""
+
     algorithm: StreamingAlgorithm = StreamingAlgorithm.AES_256_GCM
     chunk_size: int = 64 * 1024  # 64KB default
     nonce_prefix: bytes | None = None  # Optional nonce prefix
@@ -39,6 +41,7 @@ class StreamingConfig:
 @dataclass
 class StreamingResult:
     """Result of streaming operation."""
+
     bytes_processed: int
     chunks_processed: int
     algorithm: StreamingAlgorithm
@@ -47,16 +50,19 @@ class StreamingResult:
 
 class StreamingError(Exception):
     """Streaming operation failed."""
+
     pass
 
 
 class ChunkAuthenticationError(StreamingError):
     """Chunk authentication failed."""
+
     pass
 
 
 class ChunkSequenceError(StreamingError):
     """Chunk sequence error (reordering detected)."""
+
     pass
 
 
@@ -242,9 +248,7 @@ class StreamingEngine:
 
             # Verify sequence
             if chunk_index != expected_chunk_index:
-                raise ChunkSequenceError(
-                    f"Expected chunk {expected_chunk_index}, got {chunk_index}"
-                )
+                raise ChunkSequenceError(f"Expected chunk {expected_chunk_index}, got {chunk_index}")
 
             output_stream.write(plaintext)
             bytes_processed += len(plaintext)
@@ -361,8 +365,8 @@ class StreamingEngine:
             buffer += data
 
             while len(buffer) >= self.config.chunk_size:
-                chunk = buffer[:self.config.chunk_size]
-                buffer = buffer[self.config.chunk_size:]
+                chunk = buffer[: self.config.chunk_size]
+                buffer = buffer[self.config.chunk_size :]
 
                 encrypted = self._encrypt_chunk(
                     cipher,
@@ -417,8 +421,8 @@ class StreamingEngine:
             # Parse header if not done
             if not header_parsed:
                 if len(buffer) >= self.HEADER_SIZE:
-                    header = buffer[:self.HEADER_SIZE]
-                    buffer = buffer[self.HEADER_SIZE:]
+                    header = buffer[: self.HEADER_SIZE]
+                    buffer = buffer[self.HEADER_SIZE :]
                     _, _, nonce_prefix = self._parse_header(header)
                     cipher = self._get_cipher(key)
                     header_parsed = True
@@ -444,9 +448,7 @@ class StreamingEngine:
                 )
 
                 if chunk_index != expected_chunk_index:
-                    raise ChunkSequenceError(
-                        f"Expected chunk {expected_chunk_index}, got {chunk_index}"
-                    )
+                    raise ChunkSequenceError(f"Expected chunk {expected_chunk_index}, got {chunk_index}")
 
                 yield plaintext
                 expected_chunk_index += 1
@@ -469,10 +471,10 @@ class StreamingEngine:
         """Create stream header."""
         algorithm_byte = 0 if self.config.algorithm == StreamingAlgorithm.AES_256_GCM else 1
         return (
-            self.MAGIC +
-            bytes([self.VERSION, algorithm_byte]) +
-            struct.pack(">I", self.config.chunk_size) +
-            nonce_prefix
+            self.MAGIC
+            + bytes([self.VERSION, algorithm_byte])
+            + struct.pack(">I", self.config.chunk_size)
+            + nonce_prefix
         )
 
     def _parse_header(self, header: bytes) -> tuple[StreamingAlgorithm, int, bytes]:
@@ -601,8 +603,8 @@ class StreamingEncryptor:
         self._buffer += data
 
         while len(self._buffer) >= self.config.chunk_size:
-            chunk = self._buffer[:self.config.chunk_size]
-            self._buffer = self._buffer[self.config.chunk_size:]
+            chunk = self._buffer[: self.config.chunk_size]
+            self._buffer = self._buffer[self.config.chunk_size :]
 
             encrypted = self._engine._encrypt_chunk(
                 self._cipher,
@@ -704,9 +706,7 @@ class StreamingDecryptor:
         )
 
         if chunk_index != self._expected_chunk_index:
-            raise ChunkSequenceError(
-                f"Expected chunk {self._expected_chunk_index}, got {chunk_index}"
-            )
+            raise ChunkSequenceError(f"Expected chunk {self._expected_chunk_index}, got {chunk_index}")
 
         self._expected_chunk_index += 1
 

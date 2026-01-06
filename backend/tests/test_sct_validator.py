@@ -2,7 +2,6 @@
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from unittest.mock import MagicMock, patch
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
@@ -17,7 +16,6 @@ from app.core.sct_validator import (
     HashAlgorithm,
     SignatureAlgorithm,
     CTLogInfo,
-    SCT_EXTENSION_OID,
     sct_validator,
 )
 
@@ -45,29 +43,26 @@ def sample_sct_data():
     - signature: hash_alg(1) + sig_alg(1) + 2-byte length + signature
     """
     # Create a minimal valid SCT
-    version = b'\x00'  # v1
-    log_id = b'\x01' * 32  # 32 byte log ID
-    timestamp = (1704067200000).to_bytes(8, 'big')  # 2024-01-01 00:00:00 UTC in ms
-    extensions_length = b'\x00\x00'  # 0 bytes of extensions
-    extensions = b''
-    hash_alg = b'\x04'  # SHA256
-    sig_alg = b'\x03'  # ECDSA
-    signature = b'\x30\x46' + b'\x02\x21' + b'\x00' + b'\xaa' * 32 + b'\x02\x21' + b'\x00' + b'\xbb' * 32
-    sig_length = len(signature).to_bytes(2, 'big')
+    version = b"\x00"  # v1
+    log_id = b"\x01" * 32  # 32 byte log ID
+    timestamp = (1704067200000).to_bytes(8, "big")  # 2024-01-01 00:00:00 UTC in ms
+    extensions_length = b"\x00\x00"  # 0 bytes of extensions
+    extensions = b""
+    hash_alg = b"\x04"  # SHA256
+    sig_alg = b"\x03"  # ECDSA
+    signature = b"\x30\x46" + b"\x02\x21" + b"\x00" + b"\xaa" * 32 + b"\x02\x21" + b"\x00" + b"\xbb" * 32
+    sig_length = len(signature).to_bytes(2, "big")
 
-    return (
-        version + log_id + timestamp + extensions_length + extensions +
-        hash_alg + sig_alg + sig_length + signature
-    )
+    return version + log_id + timestamp + extensions_length + extensions + hash_alg + sig_alg + sig_length + signature
 
 
 @pytest.fixture
 def sample_sct_list(sample_sct_data):
     """Create a sample SCT list with length prefix."""
     # Single SCT with length prefix
-    sct_with_length = len(sample_sct_data).to_bytes(2, 'big') + sample_sct_data
+    sct_with_length = len(sample_sct_data).to_bytes(2, "big") + sample_sct_data
     # List with total length prefix
-    return len(sct_with_length).to_bytes(2, 'big') + sct_with_length
+    return len(sct_with_length).to_bytes(2, "big") + sct_with_length
 
 
 @pytest.fixture
@@ -82,13 +77,15 @@ def self_signed_cert():
     private_key = ec.generate_private_key(ec.SECP256R1())
 
     # Create certificate
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "California"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, "San Francisco"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test Org"),
-        x509.NameAttribute(NameOID.COMMON_NAME, "test.example.com"),
-    ])
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+            x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "California"),
+            x509.NameAttribute(NameOID.LOCALITY_NAME, "San Francisco"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test Org"),
+            x509.NameAttribute(NameOID.COMMON_NAME, "test.example.com"),
+        ]
+    )
 
     cert = (
         x509.CertificateBuilder()
@@ -119,7 +116,7 @@ class TestSCTParser:
         assert sct is not None
         assert sct.version == SCTVersion.V1
         assert len(sct.log_id) == 32
-        assert sct.log_id == b'\x01' * 32
+        assert sct.log_id == b"\x01" * 32
         assert sct.timestamp.year == 2024
         assert sct.hash_algorithm == HashAlgorithm.SHA256
         assert sct.signature_algorithm == SignatureAlgorithm.ECDSA
@@ -127,12 +124,12 @@ class TestSCTParser:
 
     def test_parse_sct_too_short(self):
         """Test parsing fails for data that's too short."""
-        sct = SCTParser.parse_sct(b'\x00' * 10)
+        sct = SCTParser.parse_sct(b"\x00" * 10)
         assert sct is None
 
     def test_parse_sct_empty(self):
         """Test parsing fails for empty data."""
-        sct = SCTParser.parse_sct(b'')
+        sct = SCTParser.parse_sct(b"")
         assert sct is None
 
     def test_parse_sct_list(self, sample_sct_list):
@@ -144,12 +141,12 @@ class TestSCTParser:
 
     def test_parse_sct_list_empty(self):
         """Test parsing empty SCT list."""
-        scts = SCTParser.parse_sct_list(b'\x00\x00')  # Length 0
+        scts = SCTParser.parse_sct_list(b"\x00\x00")  # Length 0
         assert len(scts) == 0
 
     def test_parse_sct_list_too_short(self):
         """Test parsing fails gracefully for short data."""
-        scts = SCTParser.parse_sct_list(b'\x00')  # Only 1 byte
+        scts = SCTParser.parse_sct_list(b"\x00")  # Only 1 byte
         assert len(scts) == 0
 
 
@@ -185,9 +182,11 @@ class TestSCTValidator:
         # Create cert with 90-day lifetime
         private_key = ec.generate_private_key(ec.SECP256R1())
 
-        subject = issuer = x509.Name([
-            x509.NameAttribute(NameOID.COMMON_NAME, "test.example.com"),
-        ])
+        subject = issuer = x509.Name(
+            [
+                x509.NameAttribute(NameOID.COMMON_NAME, "test.example.com"),
+            ]
+        )
 
         cert = (
             x509.CertificateBuilder()
@@ -208,9 +207,11 @@ class TestSCTValidator:
         # Create cert with 1-year lifetime
         private_key = ec.generate_private_key(ec.SECP256R1())
 
-        subject = issuer = x509.Name([
-            x509.NameAttribute(NameOID.COMMON_NAME, "test.example.com"),
-        ])
+        subject = issuer = x509.Name(
+            [
+                x509.NameAttribute(NameOID.COMMON_NAME, "test.example.com"),
+            ]
+        )
 
         cert = (
             x509.CertificateBuilder()
@@ -242,12 +243,12 @@ class TestSCTValidator:
         future_timestamp = datetime.now(timezone.utc) + timedelta(days=1)
         sct = SCT(
             version=SCTVersion.V1,
-            log_id=b'\x01' * 32,
+            log_id=b"\x01" * 32,
             timestamp=future_timestamp,
-            extensions=b'',
+            extensions=b"",
             hash_algorithm=HashAlgorithm.SHA256,
             signature_algorithm=SignatureAlgorithm.ECDSA,
-            signature=b'\x00' * 64,
+            signature=b"\x00" * 64,
         )
 
         result = validator.validate_sct(sct, self_signed_cert)
@@ -268,27 +269,27 @@ class TestSCTDataStructures:
         """Test SCT log_id_hex property."""
         sct = SCT(
             version=SCTVersion.V1,
-            log_id=bytes.fromhex('a4b90990b418581487bb13a2cc67700a3c359804f91bdfb8e377cd0ec80ddc10'),
+            log_id=bytes.fromhex("a4b90990b418581487bb13a2cc67700a3c359804f91bdfb8e377cd0ec80ddc10"),
             timestamp=datetime.now(timezone.utc),
-            extensions=b'',
+            extensions=b"",
             hash_algorithm=HashAlgorithm.SHA256,
             signature_algorithm=SignatureAlgorithm.ECDSA,
-            signature=b'\x00' * 64,
+            signature=b"\x00" * 64,
         )
 
-        assert sct.log_id_hex == 'a4b90990b418581487bb13a2cc67700a3c359804f91bdfb8e377cd0ec80ddc10'
+        assert sct.log_id_hex == "a4b90990b418581487bb13a2cc67700a3c359804f91bdfb8e377cd0ec80ddc10"
 
     def test_sct_timestamp_ms(self):
         """Test SCT timestamp_ms property."""
         ts = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
         sct = SCT(
             version=SCTVersion.V1,
-            log_id=b'\x01' * 32,
+            log_id=b"\x01" * 32,
             timestamp=ts,
-            extensions=b'',
+            extensions=b"",
             hash_algorithm=HashAlgorithm.SHA256,
             signature_algorithm=SignatureAlgorithm.ECDSA,
-            signature=b'\x00' * 64,
+            signature=b"\x00" * 64,
         )
 
         assert sct.timestamp_ms == 1704067200000
@@ -299,7 +300,7 @@ class TestSCTDataStructures:
             log_id="test_id",
             name="Test Log",
             url="https://ct.test.com/",
-            public_key=b'\x00' * 64,
+            public_key=b"\x00" * 64,
             operator="Test Operator",
             status="active",
         )
@@ -376,7 +377,7 @@ class TestSCTValidatorIntegration:
     def test_full_validation_flow(self, validator, self_signed_cert):
         """Test complete validation workflow."""
         # 1. Extract SCTs
-        scts = validator.extract_scts_from_certificate(self_signed_cert)
+        validator.extract_scts_from_certificate(self_signed_cert)
 
         # 2. Validate (should report no SCTs)
         result = validator.validate_certificate_scts(self_signed_cert, min_scts=2)
@@ -394,7 +395,7 @@ class TestSCTValidatorIntegration:
                 log_id="abc123",
                 name="Custom Test Log",
                 url="https://ct.custom.test/",
-                public_key=b'\x00' * 64,
+                public_key=b"\x00" * 64,
                 operator="Custom Operator",
             ),
         }

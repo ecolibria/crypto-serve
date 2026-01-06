@@ -10,7 +10,6 @@ Default parameters follow OWASP 2024 recommendations.
 """
 
 import base64
-import hashlib
 import os
 import secrets
 from dataclasses import dataclass
@@ -22,6 +21,7 @@ from typing import Any
 try:
     import argon2
     from argon2 import PasswordHasher, Type
+
     ARGON2_AVAILABLE = True
 except ImportError:
     ARGON2_AVAILABLE = False
@@ -29,6 +29,7 @@ except ImportError:
 # bcrypt support
 try:
     import bcrypt
+
     BCRYPT_AVAILABLE = True
 except ImportError:
     BCRYPT_AVAILABLE = False
@@ -41,6 +42,7 @@ from cryptography.hazmat.primitives import hashes
 
 class PasswordAlgorithm(str, Enum):
     """Supported password hashing algorithms."""
+
     ARGON2ID = "argon2id"  # Recommended
     ARGON2I = "argon2i"  # For side-channel resistance
     ARGON2D = "argon2d"  # For GPU resistance
@@ -52,6 +54,7 @@ class PasswordAlgorithm(str, Enum):
 @dataclass
 class Argon2Params:
     """Argon2 parameters (OWASP 2024 recommendations)."""
+
     time_cost: int = 3  # Iterations
     memory_cost: int = 65536  # 64 MiB in KiB
     parallelism: int = 4
@@ -63,12 +66,14 @@ class Argon2Params:
 @dataclass
 class BcryptParams:
     """bcrypt parameters."""
+
     rounds: int = 12  # 2^12 iterations
 
 
 @dataclass
 class ScryptParams:
     """scrypt parameters (OWASP recommendations)."""
+
     n: int = 2**17  # CPU/memory cost (128 MiB)
     r: int = 8  # Block size
     p: int = 1  # Parallelism
@@ -79,6 +84,7 @@ class ScryptParams:
 @dataclass
 class PBKDF2Params:
     """PBKDF2 parameters (OWASP 2024)."""
+
     iterations: int = 600_000  # For SHA-256
     hash_algorithm: str = "sha256"
     key_length: int = 32
@@ -88,6 +94,7 @@ class PBKDF2Params:
 @dataclass
 class PasswordHashResult:
     """Result of password hashing."""
+
     hash: str  # PHC string format or algorithm-specific
     algorithm: PasswordAlgorithm
     params: dict
@@ -97,6 +104,7 @@ class PasswordHashResult:
 @dataclass
 class PasswordVerifyResult:
     """Result of password verification."""
+
     valid: bool
     needs_rehash: bool  # True if params are outdated
     algorithm: PasswordAlgorithm
@@ -104,16 +112,19 @@ class PasswordVerifyResult:
 
 class PasswordHashError(Exception):
     """Password hashing failed."""
+
     pass
 
 
 class PasswordVerifyError(Exception):
     """Password verification failed."""
+
     pass
 
 
 class UnsupportedAlgorithmError(Exception):
     """Algorithm not available."""
+
     pass
 
 
@@ -230,14 +241,18 @@ class PasswordEngine:
             charset_size += 32
 
         import math
+
         entropy = length * math.log2(charset_size) if charset_size > 0 else 0
 
         # Score: 0-100
-        score = min(100, int(
-            (min(length, 16) / 16) * 40 +  # Length (up to 40 points)
-            (char_sets / 4) * 30 +  # Character diversity (up to 30 points)
-            (min(entropy, 60) / 60) * 30  # Entropy (up to 30 points)
-        ))
+        score = min(
+            100,
+            int(
+                (min(length, 16) / 16) * 40  # Length (up to 40 points)
+                + (char_sets / 4) * 30  # Character diversity (up to 30 points)
+                + (min(entropy, 60) / 60) * 30  # Entropy (up to 30 points)
+            ),
+        )
 
         if score >= 80:
             strength = "strong"
@@ -257,9 +272,7 @@ class PasswordEngine:
             "has_uppercase": has_upper,
             "has_digits": has_digit,
             "has_special": has_special,
-            "recommendations": self._get_recommendations(
-                length, has_lower, has_upper, has_digit, has_special
-            ),
+            "recommendations": self._get_recommendations(length, has_lower, has_upper, has_digit, has_special),
         }
 
     def generate_password(
@@ -328,9 +341,7 @@ class PasswordEngine:
     def _hash_argon2(self, password: str, params: Argon2Params) -> str:
         """Hash with Argon2."""
         if not ARGON2_AVAILABLE:
-            raise UnsupportedAlgorithmError(
-                "argon2-cffi is not installed. Install with: pip install argon2-cffi"
-            )
+            raise UnsupportedAlgorithmError("argon2-cffi is not installed. Install with: pip install argon2-cffi")
 
         type_map = {
             "id": Type.ID,
@@ -372,9 +383,7 @@ class PasswordEngine:
     def _hash_bcrypt(self, password: str, params: BcryptParams) -> str:
         """Hash with bcrypt."""
         if not BCRYPT_AVAILABLE:
-            raise UnsupportedAlgorithmError(
-                "bcrypt is not installed. Install with: pip install bcrypt"
-            )
+            raise UnsupportedAlgorithmError("bcrypt is not installed. Install with: pip install bcrypt")
 
         salt = bcrypt.gensalt(rounds=params.rounds)
         hash_bytes = bcrypt.hashpw(password.encode("utf-8"), salt)

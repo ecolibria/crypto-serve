@@ -1,13 +1,11 @@
 """JOSE (JWS, JWE, JWK) API routes."""
 
 import base64
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.models import Identity
 from app.core.jose_engine import (
     JOSEEngine,
@@ -31,22 +29,21 @@ jose_engine = JOSEEngine()
 # JWS (JSON Web Signature) - RFC 7515
 # ============================================================================
 
+
 class JWSCreateRequest(BaseModel):
     """JWS creation request schema."""
+
     payload: str = Field(..., description="Payload to sign (base64 encoded)")
     key: str = Field(..., description="Signing key (JWK JSON or base64 symmetric key)")
     algorithm: str = Field(
-        default="EdDSA",
-        description="JWS algorithm: EdDSA (recommended), ES256, ES384, HS256, HS384, HS512"
+        default="EdDSA", description="JWS algorithm: EdDSA (recommended), ES256, ES384, HS256, HS384, HS512"
     )
-    additional_headers: dict | None = Field(
-        default=None,
-        description="Additional protected header claims"
-    )
+    additional_headers: dict | None = Field(default=None, description="Additional protected header claims")
 
 
 class JWSCreateResponse(BaseModel):
     """JWS creation response schema."""
+
     jws: str = Field(..., description="JWS compact serialization (header.payload.signature)")
     header: dict
     algorithm: str
@@ -54,16 +51,17 @@ class JWSCreateResponse(BaseModel):
 
 class JWSVerifyRequest(BaseModel):
     """JWS verification request schema."""
+
     jws: str = Field(..., description="JWS compact serialization to verify")
     key: str = Field(..., description="Verification key (JWK JSON or base64 symmetric key)")
     algorithms: list[str] | None = Field(
-        default=None,
-        description="Allowed algorithms (for algorithm confusion prevention)"
+        default=None, description="Allowed algorithms (for algorithm confusion prevention)"
     )
 
 
 class JWSVerifyResponse(BaseModel):
     """JWS verification response schema."""
+
     valid: bool
     payload: str = Field(..., description="Verified payload (base64 encoded)")
     header: dict
@@ -159,7 +157,7 @@ async def verify_jws(
             key=key,
             algorithms=allowed_algorithms,
         )
-    except InvalidJWSError as e:
+    except InvalidJWSError:
         return JWSVerifyResponse(
             valid=False,
             payload="",
@@ -184,26 +182,22 @@ async def verify_jws(
 # JWE (JSON Web Encryption) - RFC 7516
 # ============================================================================
 
+
 class JWECreateRequest(BaseModel):
     """JWE creation request schema."""
+
     plaintext: str = Field(..., description="Data to encrypt (base64 encoded)")
     key: str = Field(..., description="Encryption key (JWK JSON or base64 symmetric key)")
-    algorithm: str = Field(
-        default="dir",
-        description="Key management algorithm: dir, A128KW, A256KW, ECDH-ES"
-    )
+    algorithm: str = Field(default="dir", description="Key management algorithm: dir, A128KW, A256KW, ECDH-ES")
     encryption: str = Field(
-        default="A256GCM",
-        description="Content encryption: A128GCM, A256GCM, A128CBC-HS256, A256CBC-HS512"
+        default="A256GCM", description="Content encryption: A128GCM, A256GCM, A128CBC-HS256, A256CBC-HS512"
     )
-    aad: str | None = Field(
-        default=None,
-        description="Additional authenticated data (base64 encoded)"
-    )
+    aad: str | None = Field(default=None, description="Additional authenticated data (base64 encoded)")
 
 
 class JWECreateResponse(BaseModel):
     """JWE creation response schema."""
+
     jwe: str = Field(..., description="JWE compact serialization")
     header: dict
     algorithm: str
@@ -212,12 +206,14 @@ class JWECreateResponse(BaseModel):
 
 class JWEDecryptRequest(BaseModel):
     """JWE decryption request schema."""
+
     jwe: str = Field(..., description="JWE compact serialization to decrypt")
     key: str = Field(..., description="Decryption key")
 
 
 class JWEDecryptResponse(BaseModel):
     """JWE decryption response schema."""
+
     plaintext: str = Field(..., description="Decrypted plaintext (base64 encoded)")
     header: dict
     algorithm: str
@@ -344,51 +340,35 @@ async def decrypt_jwe(
 # JWK (JSON Web Key) - RFC 7517
 # ============================================================================
 
+
 class JWKGenerateRequest(BaseModel):
     """JWK generation request schema."""
-    key_type: str = Field(
-        ...,
-        description="Key type: EC (P-256, P-384), OKP (Ed25519, X25519), oct (symmetric)"
-    )
-    curve: str | None = Field(
-        default=None,
-        description="Curve for EC/OKP keys: P-256, P-384, Ed25519, X25519"
-    )
-    size: int | None = Field(
-        default=None,
-        description="Key size in bits for symmetric keys (128, 256)"
-    )
-    use: str | None = Field(
-        default=None,
-        description="Key use: sig (signature) or enc (encryption)"
-    )
-    kid: str | None = Field(
-        default=None,
-        description="Key ID"
-    )
+
+    key_type: str = Field(..., description="Key type: EC (P-256, P-384), OKP (Ed25519, X25519), oct (symmetric)")
+    curve: str | None = Field(default=None, description="Curve for EC/OKP keys: P-256, P-384, Ed25519, X25519")
+    size: int | None = Field(default=None, description="Key size in bits for symmetric keys (128, 256)")
+    use: str | None = Field(default=None, description="Key use: sig (signature) or enc (encryption)")
+    kid: str | None = Field(default=None, description="Key ID")
 
 
 class JWKGenerateResponse(BaseModel):
     """JWK generation response schema."""
+
     private_jwk: dict = Field(..., description="Private JWK (keep secret)")
     public_jwk: dict | None = Field(None, description="Public JWK (for asymmetric keys)")
 
 
 class JWKConvertRequest(BaseModel):
     """JWK conversion request schema."""
+
     key: str = Field(..., description="Key in PEM, DER, or raw format (base64 encoded)")
-    format: str = Field(
-        default="pem",
-        description="Input format: pem, der, raw"
-    )
-    key_type: str | None = Field(
-        default=None,
-        description="Key type hint for raw keys"
-    )
+    format: str = Field(default="pem", description="Input format: pem, der, raw")
+    key_type: str | None = Field(default=None, description="Key type hint for raw keys")
 
 
 class JWKConvertResponse(BaseModel):
     """JWK conversion response schema."""
+
     jwk: dict
 
 
@@ -445,6 +425,7 @@ async def generate_jwk(
 
 class JWKThumbprintRequest(BaseModel):
     """JWK thumbprint request schema."""
+
     jwk: str = Field(..., description="JWK as JSON string")
 
 
@@ -459,6 +440,7 @@ async def get_jwk_thumbprint(
     as a key identifier.
     """
     import json as json_module
+
     try:
         jwk_dict = json_module.loads(data.jwk)
     except json_module.JSONDecodeError:
@@ -481,6 +463,7 @@ async def get_jwk_thumbprint(
 # ============================================================================
 # Helpers
 # ============================================================================
+
 
 def _parse_key(key_str: str):
     """Parse a key from string (JWK JSON or base64 bytes) and convert to crypto key."""

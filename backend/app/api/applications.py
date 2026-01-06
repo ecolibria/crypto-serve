@@ -35,6 +35,7 @@ router = APIRouter(prefix="/api/v1/applications", tags=["applications"])
 
 class ApplicationCreate(BaseModel):
     """Application creation schema."""
+
     name: str = Field(..., min_length=1, max_length=256)
     description: str | None = Field(None, max_length=1024)
     team: str = Field(..., min_length=1, max_length=64)
@@ -49,6 +50,7 @@ class SDKRegisterRequest(BaseModel):
     Used by the SDK to auto-register applications on first use.
     If an app with the same name+environment exists, returns existing credentials.
     """
+
     app_name: str = Field(..., min_length=1, max_length=256)
     team: str = Field("default", min_length=1, max_length=64)
     environment: str = Field("development", max_length=32)
@@ -58,6 +60,7 @@ class SDKRegisterRequest(BaseModel):
 
 class SDKRegisterResponse(BaseModel):
     """SDK self-registration response."""
+
     app_id: str
     app_name: str
     environment: str
@@ -70,6 +73,7 @@ class SDKRegisterResponse(BaseModel):
 
 class ApplicationUpdate(BaseModel):
     """Application update schema."""
+
     name: str | None = Field(None, min_length=1, max_length=256)
     description: str | None = Field(None, max_length=1024)
     allowed_contexts: list[str] | None = None
@@ -77,6 +81,7 @@ class ApplicationUpdate(BaseModel):
 
 class ApplicationResponse(BaseModel):
     """Application response schema."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -96,6 +101,7 @@ class ApplicationResponse(BaseModel):
 
 class ApplicationCreateResponse(BaseModel):
     """Response when creating a new application."""
+
     application: ApplicationResponse
     access_token: str
     refresh_token: str
@@ -104,6 +110,7 @@ class ApplicationCreateResponse(BaseModel):
 
 class TokenInfo(BaseModel):
     """Token information response."""
+
     access_token_algorithm: str = "Ed25519"
     access_token_lifetime_seconds: int = 3600
     refresh_token_active: bool
@@ -114,17 +121,20 @@ class TokenInfo(BaseModel):
 
 class TokenRefreshRequest(BaseModel):
     """Token refresh request."""
+
     refresh_token: str
 
 
 class TokenRefreshResponse(BaseModel):
     """Token refresh response."""
+
     access_token: str
     expires_at: datetime
 
 
 class TokenRotateResponse(BaseModel):
     """Token rotation response."""
+
     refresh_token: str
     expires_at: datetime
     message: str
@@ -193,11 +203,14 @@ def _generate_code_examples(contexts: list[str]) -> str:
     lines = ["from cryptoserve import crypto", ""]
 
     for ctx in contexts:
-        example = CONTEXT_EXAMPLES.get(ctx, {
-            "data": 'b"sensitive data"',
-            "comment": f"Encrypt data for {ctx}",
-            "var": "encrypted",
-        })
+        example = CONTEXT_EXAMPLES.get(
+            ctx,
+            {
+                "data": 'b"sensitive data"',
+                "comment": f"Encrypt data for {ctx}",
+                "var": "encrypted",
+            },
+        )
 
         lines.append(f"# {example['comment']}")
         lines.append(f"{example['var']} = crypto.encrypt(")
@@ -228,9 +241,7 @@ async def list_applications(
 ):
     """List all applications for the current user."""
     result = await db.execute(
-        select(Application)
-        .where(Application.user_id == user.id)
-        .order_by(Application.created_at.desc())
+        select(Application).where(Application.user_id == user.id).order_by(Application.created_at.desc())
     )
     applications = result.scalars().all()
     return [application_to_response(app) for app in applications]
@@ -308,11 +319,7 @@ async def get_application(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get a specific application."""
-    result = await db.execute(
-        select(Application)
-        .where(Application.id == app_id)
-        .where(Application.user_id == user.id)
-    )
+    result = await db.execute(select(Application).where(Application.id == app_id).where(Application.user_id == user.id))
     application = result.scalar_one_or_none()
 
     if not application:
@@ -332,11 +339,7 @@ async def update_application(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update an application."""
-    result = await db.execute(
-        select(Application)
-        .where(Application.id == app_id)
-        .where(Application.user_id == user.id)
-    )
+    result = await db.execute(select(Application).where(Application.id == app_id).where(Application.user_id == user.id))
     application = result.scalar_one_or_none()
 
     if not application:
@@ -384,11 +387,7 @@ async def get_token_info(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get token information for an application."""
-    result = await db.execute(
-        select(Application)
-        .where(Application.id == app_id)
-        .where(Application.user_id == user.id)
-    )
+    result = await db.execute(select(Application).where(Application.id == app_id).where(Application.user_id == user.id))
     application = result.scalar_one_or_none()
 
     if not application:
@@ -416,11 +415,7 @@ async def rotate_tokens(
     The old refresh token will be immediately invalidated.
     You'll need to update CRYPTOSERVE_TOKEN in your application.
     """
-    result = await db.execute(
-        select(Application)
-        .where(Application.id == app_id)
-        .where(Application.user_id == user.id)
-    )
+    result = await db.execute(select(Application).where(Application.id == app_id).where(Application.user_id == user.id))
     application = result.scalar_one_or_none()
 
     if not application:
@@ -455,11 +450,7 @@ async def revoke_tokens(
     This immediately invalidates all access and refresh tokens.
     The application will need new tokens to continue operating.
     """
-    result = await db.execute(
-        select(Application)
-        .where(Application.id == app_id)
-        .where(Application.user_id == user.id)
-    )
+    result = await db.execute(select(Application).where(Application.id == app_id).where(Application.user_id == user.id))
     application = result.scalar_one_or_none()
 
     if not application:
@@ -522,16 +513,14 @@ async def sdk_register(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Application '{data.app_name}' exists but is {existing_app.status}. "
-                       "Please revoke it from the dashboard and try again.",
+                "Please revoke it from the dashboard and try again.",
             )
 
         # Import token_manager for generating tokens
         from app.core.token_manager import token_manager
 
         # Decrypt private key and generate new access token
-        private_key_pem = token_manager.decrypt_private_key(
-            existing_app.private_key_encrypted
-        )
+        private_key_pem = token_manager.decrypt_private_key(existing_app.private_key_encrypted)
         access_token, _ = token_manager.create_access_token(
             app_id=existing_app.id,
             app_name=existing_app.name,

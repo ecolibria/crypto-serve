@@ -21,15 +21,13 @@ from app.models.tenant import Tenant, DEFAULT_TENANT_SLUG
 logger = logging.getLogger(__name__)
 
 # Context variable for storing tenant per request
-_current_tenant: ContextVar[Optional["TenantContext"]] = ContextVar(
-    "current_tenant",
-    default=None
-)
+_current_tenant: ContextVar[Optional["TenantContext"]] = ContextVar("current_tenant", default=None)
 
 
 @dataclass
 class TenantContext:
     """Tenant context for the current request."""
+
     id: str
     slug: str
     name: str
@@ -57,10 +55,7 @@ def get_current_tenant() -> TenantContext:
     """
     tenant = _current_tenant.get()
     if tenant is None:
-        raise HTTPException(
-            status_code=500,
-            detail="No tenant context available"
-        )
+        raise HTTPException(status_code=500, detail="No tenant context available")
     return tenant
 
 
@@ -117,12 +112,7 @@ class TenantResolutionStrategy:
         # 1. Check explicit tenant ID header
         tenant_id = request.headers.get(cls.TENANT_HEADER)
         if tenant_id:
-            result = await db.execute(
-                select(Tenant).where(
-                    Tenant.id == tenant_id,
-                    Tenant.is_active == True
-                )
-            )
+            result = await db.execute(select(Tenant).where(Tenant.id == tenant_id, Tenant.is_active))
             tenant = result.scalar_one_or_none()
             if tenant:
                 logger.debug(f"Resolved tenant from header: {tenant.slug}")
@@ -133,12 +123,7 @@ class TenantResolutionStrategy:
         # 2. Check explicit tenant slug header
         tenant_slug = request.headers.get(cls.TENANT_SLUG_HEADER)
         if tenant_slug:
-            result = await db.execute(
-                select(Tenant).where(
-                    Tenant.slug == tenant_slug,
-                    Tenant.is_active == True
-                )
-            )
+            result = await db.execute(select(Tenant).where(Tenant.slug == tenant_slug, Tenant.is_active))
             tenant = result.scalar_one_or_none()
             if tenant:
                 logger.debug(f"Resolved tenant from slug header: {tenant.slug}")
@@ -151,24 +136,14 @@ class TenantResolutionStrategy:
         if host:
             subdomain = cls._extract_subdomain(host)
             if subdomain and subdomain != "www":
-                result = await db.execute(
-                    select(Tenant).where(
-                        Tenant.slug == subdomain,
-                        Tenant.is_active == True
-                    )
-                )
+                result = await db.execute(select(Tenant).where(Tenant.slug == subdomain, Tenant.is_active))
                 tenant = result.scalar_one_or_none()
                 if tenant:
                     logger.debug(f"Resolved tenant from subdomain: {tenant.slug}")
                     return tenant
 
         # 4. Fall back to default tenant
-        result = await db.execute(
-            select(Tenant).where(
-                Tenant.slug == DEFAULT_TENANT_SLUG,
-                Tenant.is_active == True
-            )
-        )
+        result = await db.execute(select(Tenant).where(Tenant.slug == DEFAULT_TENANT_SLUG, Tenant.is_active))
         tenant = result.scalar_one_or_none()
         if tenant:
             logger.debug("Using default tenant")
@@ -216,9 +191,7 @@ async def get_or_create_default_tenant(db: AsyncSession) -> Tenant:
 
     This is called during startup to ensure a default tenant exists.
     """
-    result = await db.execute(
-        select(Tenant).where(Tenant.slug == DEFAULT_TENANT_SLUG)
-    )
+    result = await db.execute(select(Tenant).where(Tenant.slug == DEFAULT_TENANT_SLUG))
     tenant = result.scalar_one_or_none()
 
     if tenant:
@@ -226,6 +199,7 @@ async def get_or_create_default_tenant(db: AsyncSession) -> Tenant:
 
     # Create default tenant
     from app.config import get_settings
+
     settings = get_settings()
 
     tenant = Tenant(
@@ -262,8 +236,7 @@ async def resolve_tenant_dependency(
 
     if tenant is None:
         raise HTTPException(
-            status_code=400,
-            detail="Could not resolve tenant. Provide X-Tenant-ID header or use a valid subdomain."
+            status_code=400, detail="Could not resolve tenant. Provide X-Tenant-ID header or use a valid subdomain."
         )
 
     is_default = tenant.slug == DEFAULT_TENANT_SLUG

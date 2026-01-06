@@ -20,14 +20,10 @@ from app.core.identity_manager import identity_manager
 from app.core.hybrid_crypto import (
     MLDSA,
     SLHDSA,
-    SignatureAlgorithm,
     PQCError,
     is_pqc_available,
     get_mldsa,
     get_slhdsa,
-    get_available_sig_algorithms,
-    get_available_slhdsa_algorithms,
-    get_all_available_sig_algorithms,
 )
 
 router = APIRouter(prefix="/api/v1/pqc", tags=["pqc-signatures"])
@@ -48,6 +44,7 @@ _pqc_key_store: dict[str, dict] = {}
 
 class AlgorithmInfo(BaseModel):
     """Information about a PQC algorithm."""
+
     name: str
     nistLevel: int = Field(description="NIST security level (1, 3, or 5)")
     publicKeyBytes: int
@@ -60,6 +57,7 @@ class AlgorithmInfo(BaseModel):
 
 class ListAlgorithmsResponse(BaseModel):
     """Response with available algorithms."""
+
     available: bool
     mldsa: list[AlgorithmInfo]
     slhdsa: list[AlgorithmInfo]
@@ -67,6 +65,7 @@ class ListAlgorithmsResponse(BaseModel):
 
 class GenerateKeyRequest(BaseModel):
     """Request to generate a PQC signing key pair."""
+
     algorithm: str = Field(
         default="ML-DSA-65",
         description="Algorithm: ML-DSA-44/65/87 or SLH-DSA-SHA2-128f/128s/192f/192s/256f/256s",
@@ -80,6 +79,7 @@ class GenerateKeyRequest(BaseModel):
 
 class GenerateKeyResponse(BaseModel):
     """Response with generated key information."""
+
     keyId: str
     algorithm: str
     context: str
@@ -92,12 +92,14 @@ class GenerateKeyResponse(BaseModel):
 
 class SignRequest(BaseModel):
     """Request to sign a message with PQC."""
+
     message: str = Field(description="Base64-encoded message to sign")
     keyId: str = Field(description="ID of the PQC signing key")
 
 
 class SignResponse(BaseModel):
     """Response with signature."""
+
     signature: str = Field(description="Base64-encoded signature")
     algorithm: str
     keyId: str
@@ -106,6 +108,7 @@ class SignResponse(BaseModel):
 
 class VerifyRequest(BaseModel):
     """Request to verify a PQC signature."""
+
     message: str = Field(description="Base64-encoded original message")
     signature: str = Field(description="Base64-encoded signature")
     keyId: str = Field(description="ID of the signing key")
@@ -113,6 +116,7 @@ class VerifyRequest(BaseModel):
 
 class VerifyResponse(BaseModel):
     """Response with verification result."""
+
     valid: bool
     algorithm: str
     keyId: str
@@ -121,6 +125,7 @@ class VerifyResponse(BaseModel):
 
 class GetPublicKeyResponse(BaseModel):
     """Response with public key."""
+
     keyId: str
     algorithm: str
     publicKey: str = Field(description="Base64-encoded public key")
@@ -131,6 +136,7 @@ class GetPublicKeyResponse(BaseModel):
 
 class KeyInfo(BaseModel):
     """Information about a PQC key."""
+
     keyId: str
     algorithm: str
     context: str
@@ -142,17 +148,20 @@ class KeyInfo(BaseModel):
 
 class ListKeysResponse(BaseModel):
     """Response with list of keys."""
+
     keys: list[KeyInfo]
 
 
 class DeleteKeyResponse(BaseModel):
     """Response for key deletion."""
+
     deleted: bool
     keyId: str
 
 
 class ImportPublicKeyRequest(BaseModel):
     """Request to import a public key."""
+
     publicKey: str = Field(description="Base64-encoded public key")
     algorithm: str = Field(description="Algorithm name (e.g., ML-DSA-65, SLH-DSA-SHA2-128f)")
     context: str = Field(default="imported", description="Context identifier")
@@ -194,8 +203,7 @@ def _get_algorithm_class(algorithm: str) -> tuple[type, dict]:
         return SLHDSA, SLHDSA.PARAMS[algorithm]
     else:
         raise ValueError(
-            f"Unknown algorithm: {algorithm}. "
-            f"Valid: {list(MLDSA.PARAMS.keys()) + list(SLHDSA.PARAMS.keys())}"
+            f"Unknown algorithm: {algorithm}. " f"Valid: {list(MLDSA.PARAMS.keys()) + list(SLHDSA.PARAMS.keys())}"
         )
 
 
@@ -230,28 +238,32 @@ async def list_algorithms():
     if available:
         # ML-DSA algorithms
         for name, params in MLDSA.PARAMS.items():
-            mldsa_algos.append(AlgorithmInfo(
-                name=name,
-                nistLevel=params["level"],
-                publicKeyBytes=params["pk_len"],
-                secretKeyBytes=params["sk_len"],
-                signatureBytes=params["sig_len"],
-                standard="NIST FIPS 204",
-                securityBasis="lattice-based",
-            ))
+            mldsa_algos.append(
+                AlgorithmInfo(
+                    name=name,
+                    nistLevel=params["level"],
+                    publicKeyBytes=params["pk_len"],
+                    secretKeyBytes=params["sk_len"],
+                    signatureBytes=params["sig_len"],
+                    standard="NIST FIPS 204",
+                    securityBasis="lattice-based",
+                )
+            )
 
         # SLH-DSA algorithms
         for name, params in SLHDSA.PARAMS.items():
-            slhdsa_algos.append(AlgorithmInfo(
-                name=name,
-                nistLevel=params["level"],
-                publicKeyBytes=params["pk_len"],
-                secretKeyBytes=params["sk_len"],
-                signatureBytes=params["sig_len"],
-                standard="NIST FIPS 205",
-                variant=params["variant"],
-                securityBasis="hash-based (conservative)",
-            ))
+            slhdsa_algos.append(
+                AlgorithmInfo(
+                    name=name,
+                    nistLevel=params["level"],
+                    publicKeyBytes=params["pk_len"],
+                    secretKeyBytes=params["sk_len"],
+                    signatureBytes=params["sig_len"],
+                    standard="NIST FIPS 205",
+                    variant=params["variant"],
+                    securityBasis="hash-based (conservative)",
+                )
+            )
 
     return ListAlgorithmsResponse(
         available=available,
@@ -488,15 +500,17 @@ async def list_keys(
         if algorithm and info["algorithm"] != algorithm:
             continue
 
-        keys.append(KeyInfo(
-            keyId=key_id,
-            algorithm=info["algorithm"],
-            context=info["context"],
-            nistLevel=info["params"]["level"],
-            publicKeyBytes=info["params"]["pk_len"],
-            signatureBytes=info["params"]["sig_len"],
-            createdAt=info["created_at"],
-        ))
+        keys.append(
+            KeyInfo(
+                keyId=key_id,
+                algorithm=info["algorithm"],
+                context=info["context"],
+                nistLevel=info["params"]["level"],
+                publicKeyBytes=info["params"]["pk_len"],
+                signatureBytes=info["params"]["sig_len"],
+                createdAt=info["created_at"],
+            )
+        )
 
     return ListKeysResponse(keys=keys)
 

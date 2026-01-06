@@ -13,7 +13,7 @@ Metrics follow Prometheus naming conventions and best practices.
 import time
 from contextlib import contextmanager
 from functools import wraps
-from typing import Callable, Any
+from typing import Callable
 
 from prometheus_client import Counter, Histogram, Gauge, Info, REGISTRY
 
@@ -42,9 +42,7 @@ KEY_OPERATIONS_TOTAL = Counter(
 # ==================== Latency Histograms ====================
 
 # Buckets optimized for crypto operations (in seconds)
-CRYPTO_LATENCY_BUCKETS = (
-    0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0
-)
+CRYPTO_LATENCY_BUCKETS = (0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
 
 CRYPTO_OPERATION_LATENCY = Histogram(
     "crypto_operation_latency_seconds",
@@ -122,6 +120,7 @@ CRYPTO_ENGINE_INFO = Info(
 
 # ==================== Helper Classes ====================
 
+
 class MetricsRecorder:
     """Helper for recording crypto operation metrics."""
 
@@ -133,11 +132,13 @@ class MetricsRecorder:
         if self._initialized:
             return
 
-        CRYPTO_ENGINE_INFO.info({
-            "version": version,
-            "supported_algorithms": ",".join(algorithms or []),
-            "fips_mode": "false",
-        })
+        CRYPTO_ENGINE_INFO.info(
+            {
+                "version": version,
+                "supported_algorithms": ",".join(algorithms or []),
+                "fips_mode": "false",
+            }
+        )
         self._initialized = True
 
     @contextmanager
@@ -287,6 +288,7 @@ class MetricsRecorder:
 
 # ==================== Decorator ====================
 
+
 def with_metrics(operation: str, algorithm_arg: str | int | None = None):
     """Decorator to automatically track operation metrics.
 
@@ -299,6 +301,7 @@ def with_metrics(operation: str, algorithm_arg: str | int | None = None):
         def encrypt(self, data: bytes, algorithm: str = "aes-256-gcm"):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -314,11 +317,13 @@ def with_metrics(operation: str, algorithm_arg: str | int | None = None):
                 return func(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
 def with_async_metrics(operation: str, algorithm_arg: str | int | None = None):
     """Async version of with_metrics decorator."""
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -333,10 +338,12 @@ def with_async_metrics(operation: str, algorithm_arg: str | int | None = None):
                 return await func(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
 # ==================== FastAPI Integration ====================
+
 
 def get_metrics_endpoint():
     """Get FastAPI endpoint for Prometheus metrics scraping.

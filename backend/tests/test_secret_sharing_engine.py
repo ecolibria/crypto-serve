@@ -65,6 +65,7 @@ class TestBasicSplitCombine:
 
         # Try all combinations of 3 shares
         from itertools import combinations
+
         for combo in combinations(shares, 3):
             recovered = engine.combine(list(combo))
             assert recovered == secret

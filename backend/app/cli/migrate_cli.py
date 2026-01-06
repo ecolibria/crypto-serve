@@ -19,35 +19,27 @@ Exit Codes:
 
 import argparse
 import json
-import os
 import re
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
 import yaml
 
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from app.core.crypto_registry import (
-    crypto_registry,
-    Algorithm,
-    AlgorithmType,
-    SecurityStatus,
-    get_deprecated_algorithms,
-)
-
 
 # =============================================================================
 # Terminal Colors
 # =============================================================================
 
+
 class Colors:
     """ANSI color codes for terminal output."""
+
     RED = "\033[91m"
     GREEN = "\033[92m"
     YELLOW = "\033[93m"
@@ -61,7 +53,7 @@ class Colors:
     @classmethod
     def disable(cls):
         """Disable colors."""
-        for attr in ['RED', 'GREEN', 'YELLOW', 'BLUE', 'MAGENTA', 'CYAN', 'WHITE', 'BOLD', 'RESET']:
+        for attr in ["RED", "GREEN", "YELLOW", "BLUE", "MAGENTA", "CYAN", "WHITE", "BOLD", "RESET"]:
             setattr(cls, attr, "")
 
 
@@ -73,18 +65,21 @@ def colored(text: str, color: str) -> str:
 # Severity and Findings
 # =============================================================================
 
+
 class FindingSeverity(str, Enum):
     """Severity of a crypto finding."""
+
     CRITICAL = "critical"  # Broken/exploitable crypto (MD5, RC4, DES, ECB)
-    HIGH = "high"          # Deprecated crypto (3DES, SHA-1 for signatures)
-    MEDIUM = "medium"      # Legacy crypto (CBC without HMAC)
-    LOW = "low"            # Suboptimal but acceptable (AES-128)
-    INFO = "info"          # Informational (already using recommended)
+    HIGH = "high"  # Deprecated crypto (3DES, SHA-1 for signatures)
+    MEDIUM = "medium"  # Legacy crypto (CBC without HMAC)
+    LOW = "low"  # Suboptimal but acceptable (AES-128)
+    INFO = "info"  # Informational (already using recommended)
 
 
 @dataclass
 class CryptoFinding:
     """A cryptographic issue found in code."""
+
     file: str
     line: int
     column: int
@@ -112,6 +107,7 @@ class CryptoFinding:
 @dataclass
 class ScanResult:
     """Result of scanning a codebase."""
+
     directory: str
     files_scanned: int
     findings: list[CryptoFinding] = field(default_factory=list)
@@ -159,12 +155,12 @@ CRYPTO_PATTERNS = [
     {
         "name": "MD5",
         "patterns": [
-            r'\bmd5\b',
-            r'MD5\(',
-            r'hashlib\.md5',
-            r'Digest::MD5',
+            r"\bmd5\b",
+            r"MD5\(",
+            r"hashlib\.md5",
+            r"Digest::MD5",
             r'MessageDigest\.getInstance\(["\']MD5',
-            r'crypto/md5',
+            r"crypto/md5",
         ],
         "severity": FindingSeverity.CRITICAL,
         "message": "MD5 is cryptographically broken - collision attacks are trivial",
@@ -173,12 +169,12 @@ CRYPTO_PATTERNS = [
     {
         "name": "SHA-1",
         "patterns": [
-            r'\bsha1\b',
-            r'SHA1\(',
-            r'hashlib\.sha1',
-            r'Digest::SHA1',
+            r"\bsha1\b",
+            r"SHA1\(",
+            r"hashlib\.sha1",
+            r"Digest::SHA1",
             r'MessageDigest\.getInstance\(["\']SHA-?1',
-            r'crypto/sha1',
+            r"crypto/sha1",
         ],
         "severity": FindingSeverity.CRITICAL,
         "message": "SHA-1 is broken - collision attacks demonstrated (SHAttered, 2017)",
@@ -187,10 +183,10 @@ CRYPTO_PATTERNS = [
     {
         "name": "DES",
         "patterns": [
-            r'\bDES\b(?!3)',  # DES but not DES3/3DES
-            r'DES\.new\(',
-            r'DES/ECB',
-            r'DES/CBC',
+            r"\bDES\b(?!3)",  # DES but not DES3/3DES
+            r"DES\.new\(",
+            r"DES/ECB",
+            r"DES/CBC",
             r'Cipher\.getInstance\(["\']DES',
         ],
         "severity": FindingSeverity.CRITICAL,
@@ -200,10 +196,10 @@ CRYPTO_PATTERNS = [
     {
         "name": "RC4",
         "patterns": [
-            r'\bRC4\b',
-            r'\bARC4\b',
-            r'\barcfour\b',
-            r'ARC4\.new\(',
+            r"\bRC4\b",
+            r"\bARC4\b",
+            r"\barcfour\b",
+            r"ARC4\.new\(",
         ],
         "severity": FindingSeverity.CRITICAL,
         "message": "RC4 is broken - multiple practical attacks exist",
@@ -212,27 +208,26 @@ CRYPTO_PATTERNS = [
     {
         "name": "ECB Mode",
         "patterns": [
-            r'MODE_ECB',
-            r'/ECB/',
-            r'\.ECB\b',
-            r'AES/ECB',
-            r'cipher.*ecb',
+            r"MODE_ECB",
+            r"/ECB/",
+            r"\.ECB\b",
+            r"AES/ECB",
+            r"cipher.*ecb",
         ],
         "severity": FindingSeverity.CRITICAL,
         "message": "ECB mode preserves patterns - no semantic security",
         "replacement": "AES-256-GCM (authenticated encryption)",
     },
-
     # DEPRECATED - Should migrate soon
     {
         "name": "3DES",
         "patterns": [
-            r'\b3DES\b',
-            r'\bDES3\b',
-            r'\bTDEA\b',
-            r'triple.?des',
-            r'DES\.new.*MODE.*EDE',
-            r'TripleDES',
+            r"\b3DES\b",
+            r"\bDES3\b",
+            r"\bTDEA\b",
+            r"triple.?des",
+            r"DES\.new.*MODE.*EDE",
+            r"TripleDES",
         ],
         "severity": FindingSeverity.HIGH,
         "message": "3DES is deprecated by NIST (disallowed after 2023-12-31)",
@@ -241,22 +236,21 @@ CRYPTO_PATTERNS = [
     {
         "name": "Blowfish",
         "patterns": [
-            r'\bBlowfish\b',
-            r'Blowfish\.new\(',
+            r"\bBlowfish\b",
+            r"Blowfish\.new\(",
         ],
         "severity": FindingSeverity.HIGH,
         "message": "Blowfish has 64-bit block size - vulnerable to birthday attacks",
         "replacement": "AES-256-GCM",
     },
-
     # LEGACY - Consider migrating
     {
         "name": "CBC Mode (without HMAC)",
         "patterns": [
-            r'MODE_CBC',
-            r'/CBC/',
-            r'\.CBC\b',
-            r'AES/CBC',
+            r"MODE_CBC",
+            r"/CBC/",
+            r"\.CBC\b",
+            r"AES/CBC",
         ],
         "severity": FindingSeverity.MEDIUM,
         "message": "CBC mode without authentication is vulnerable to padding oracle attacks",
@@ -265,9 +259,9 @@ CRYPTO_PATTERNS = [
     {
         "name": "RSA-1024",
         "patterns": [
-            r'RSA.*1024',
-            r'rsa.*1024',
-            r'KeyPairGenerator.*1024',
+            r"RSA.*1024",
+            r"rsa.*1024",
+            r"KeyPairGenerator.*1024",
         ],
         "severity": FindingSeverity.HIGH,
         "message": "RSA-1024 provides only ~80-bit security - below NIST minimum",
@@ -276,34 +270,32 @@ CRYPTO_PATTERNS = [
     {
         "name": "PBKDF2 (low iterations)",
         "patterns": [
-            r'PBKDF2.*iterations\s*[=:]\s*\d{1,4}\b',
-            r'pbkdf2.*\d{1,4}\s*\)',
+            r"PBKDF2.*iterations\s*[=:]\s*\d{1,4}\b",
+            r"pbkdf2.*\d{1,4}\s*\)",
         ],
         "severity": FindingSeverity.MEDIUM,
         "message": "PBKDF2 with low iterations is vulnerable to brute force",
         "replacement": "Argon2id or PBKDF2 with >= 600,000 iterations",
     },
-
     # SUBOPTIMAL - Lower priority
     {
         "name": "AES-128",
         "patterns": [
-            r'AES-?128(?!-GCM)',
-            r'aes128(?!gcm)',
+            r"AES-?128(?!-GCM)",
+            r"aes128(?!gcm)",
         ],
         "severity": FindingSeverity.LOW,
         "message": "AES-128 is acceptable but AES-256 provides better security margin",
         "replacement": "AES-256-GCM",
     },
-
     # POST-QUANTUM - Positive finding
     {
         "name": "ML-KEM (Kyber)",
         "patterns": [
-            r'ML.KEM',
-            r'Kyber',
-            r'mlkem',
-            r'kyber',
+            r"ML.KEM",
+            r"Kyber",
+            r"mlkem",
+            r"kyber",
         ],
         "severity": FindingSeverity.INFO,
         "message": "Post-quantum algorithm detected - excellent!",
@@ -312,10 +304,10 @@ CRYPTO_PATTERNS = [
     {
         "name": "ML-DSA (Dilithium)",
         "patterns": [
-            r'ML.DSA',
-            r'Dilithium',
-            r'mldsa',
-            r'dilithium',
+            r"ML.DSA",
+            r"Dilithium",
+            r"mldsa",
+            r"dilithium",
         ],
         "severity": FindingSeverity.INFO,
         "message": "Post-quantum signature algorithm detected - excellent!",
@@ -325,9 +317,26 @@ CRYPTO_PATTERNS = [
 
 # File extensions to scan
 SCANNABLE_EXTENSIONS = {
-    '.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.go', '.rs',
-    '.c', '.cpp', '.h', '.hpp', '.cs', '.rb', '.php', '.swift',
-    '.kt', '.scala', '.m', '.mm',
+    ".py",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".java",
+    ".go",
+    ".rs",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".cs",
+    ".rb",
+    ".php",
+    ".swift",
+    ".kt",
+    ".scala",
+    ".m",
+    ".mm",
 }
 
 
@@ -336,8 +345,8 @@ def scan_file(file_path: Path) -> list[CryptoFinding]:
     findings = []
 
     try:
-        content = file_path.read_text(encoding='utf-8', errors='ignore')
-        lines = content.split('\n')
+        content = file_path.read_text(encoding="utf-8", errors="ignore")
+        lines = content.split("\n")
     except Exception:
         return findings
 
@@ -350,7 +359,7 @@ def scan_file(file_path: Path) -> list[CryptoFinding]:
                         # Get context (surrounding lines)
                         start = max(0, line_num - 2)
                         end = min(len(lines), line_num + 2)
-                        context = '\n'.join(f"{i}: {lines[i-1]}" for i in range(start + 1, end + 1))
+                        context = "\n".join(f"{i}: {lines[i-1]}" for i in range(start + 1, end + 1))
 
                         finding = CryptoFinding(
                             file=str(file_path),
@@ -372,22 +381,23 @@ def scan_file(file_path: Path) -> list[CryptoFinding]:
 def scan_directory(directory: Path, exclude_patterns: list[str] | None = None) -> ScanResult:
     """Scan a directory for cryptographic issues."""
     import time
+
     start_time = time.time()
 
     exclude_patterns = exclude_patterns or [
-        '**/node_modules/**',
-        '**/.git/**',
-        '**/venv/**',
-        '**/__pycache__/**',
-        '**/dist/**',
-        '**/build/**',
-        '**/*.min.js',
+        "**/node_modules/**",
+        "**/.git/**",
+        "**/venv/**",
+        "**/__pycache__/**",
+        "**/dist/**",
+        "**/build/**",
+        "**/*.min.js",
     ]
 
     findings = []
     files_scanned = 0
 
-    for file_path in directory.rglob('*'):
+    for file_path in directory.rglob("*"):
         if not file_path.is_file():
             continue
 
@@ -398,7 +408,7 @@ def scan_directory(directory: Path, exclude_patterns: list[str] | None = None) -
         rel_path = str(file_path.relative_to(directory))
         excluded = False
         for pattern in exclude_patterns:
-            if Path(rel_path).match(pattern.replace('**/', '')):
+            if Path(rel_path).match(pattern.replace("**/", "")):
                 excluded = True
                 break
         if excluded:
@@ -430,6 +440,7 @@ def scan_directory(directory: Path, exclude_patterns: list[str] | None = None) -
 # =============================================================================
 # Command: scan
 # =============================================================================
+
 
 def cmd_scan(args) -> int:
     """Scan codebase for cryptographic issues."""
@@ -484,8 +495,12 @@ def cmd_scan(args) -> int:
         print(colored(f"{'=' * 60}", severity_color))
 
         for finding in severity_findings[:10]:  # Limit output
-            rel_file = Path(finding.file).relative_to(directory) if directory in Path(finding.file).parents else finding.file
-            print(f"\n{colored(finding.algorithm, Colors.BOLD)} at {colored(str(rel_file), Colors.CYAN)}:{finding.line}")
+            rel_file = (
+                Path(finding.file).relative_to(directory) if directory in Path(finding.file).parents else finding.file
+            )
+            print(
+                f"\n{colored(finding.algorithm, Colors.BOLD)} at {colored(str(rel_file), Colors.CYAN)}:{finding.line}"
+            )
             print(f"  {finding.message}")
             if finding.replacement:
                 print(f"  {colored('Replace with:', Colors.GREEN)} {finding.replacement}")
@@ -507,6 +522,7 @@ def cmd_scan(args) -> int:
 # =============================================================================
 # Command: plan
 # =============================================================================
+
 
 def cmd_plan(args) -> int:
     """Generate a migration plan."""
@@ -566,7 +582,7 @@ def cmd_plan(args) -> int:
     # Output
     if args.output:
         output_path = Path(args.output)
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             yaml.dump(plan, f, default_flow_style=False, sort_keys=False)
         print(colored(f"Migration plan written to: {output_path}", Colors.GREEN))
     else:
@@ -630,6 +646,7 @@ def get_migration_guidance(algorithm: str, replacement: str | None) -> list[str]
 # =============================================================================
 # Command: report
 # =============================================================================
+
 
 def cmd_report(args) -> int:
     """Generate a detailed migration report."""
@@ -767,58 +784,67 @@ def generate_sarif_report(result: ScanResult) -> dict:
         rule_id = f"crypto-{finding.algorithm.lower().replace(' ', '-')}"
         if rule_id not in seen_rules:
             seen_rules.add(rule_id)
-            rules.append({
-                "id": rule_id,
-                "name": finding.algorithm,
-                "shortDescription": {"text": finding.message},
-                "defaultConfiguration": {
-                    "level": {
-                        FindingSeverity.CRITICAL: "error",
-                        FindingSeverity.HIGH: "error",
-                        FindingSeverity.MEDIUM: "warning",
-                        FindingSeverity.LOW: "note",
-                        FindingSeverity.INFO: "note",
-                    }[finding.severity]
-                },
-            })
+            rules.append(
+                {
+                    "id": rule_id,
+                    "name": finding.algorithm,
+                    "shortDescription": {"text": finding.message},
+                    "defaultConfiguration": {
+                        "level": {
+                            FindingSeverity.CRITICAL: "error",
+                            FindingSeverity.HIGH: "error",
+                            FindingSeverity.MEDIUM: "warning",
+                            FindingSeverity.LOW: "note",
+                            FindingSeverity.INFO: "note",
+                        }[finding.severity]
+                    },
+                }
+            )
 
     results = []
     for finding in result.findings:
         rule_id = f"crypto-{finding.algorithm.lower().replace(' ', '-')}"
-        results.append({
-            "ruleId": rule_id,
-            "message": {"text": finding.message},
-            "locations": [{
-                "physicalLocation": {
-                    "artifactLocation": {"uri": finding.file},
-                    "region": {
-                        "startLine": finding.line,
-                        "startColumn": finding.column,
+        results.append(
+            {
+                "ruleId": rule_id,
+                "message": {"text": finding.message},
+                "locations": [
+                    {
+                        "physicalLocation": {
+                            "artifactLocation": {"uri": finding.file},
+                            "region": {
+                                "startLine": finding.line,
+                                "startColumn": finding.column,
+                            },
+                        }
                     }
-                }
-            }],
-        })
+                ],
+            }
+        )
 
     return {
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "version": "2.1.0",
-        "runs": [{
-            "tool": {
-                "driver": {
-                    "name": "CryptoServe Migration Scanner",
-                    "version": "1.0.0",
-                    "informationUri": "https://github.com/your-org/cryptoserve",
-                    "rules": rules,
-                }
-            },
-            "results": results,
-        }]
+        "runs": [
+            {
+                "tool": {
+                    "driver": {
+                        "name": "CryptoServe Migration Scanner",
+                        "version": "1.0.0",
+                        "informationUri": "https://github.com/your-org/cryptoserve",
+                        "rules": rules,
+                    }
+                },
+                "results": results,
+            }
+        ],
     }
 
 
 # =============================================================================
 # Main Entry Point
 # =============================================================================
+
 
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser."""
@@ -842,14 +868,10 @@ Examples:
 
   # Generate SARIF for GitHub Code Scanning
   cryptoserve migrate report ./src --format sarif > results.sarif
-        """
+        """,
     )
 
-    parser.add_argument(
-        "--no-color",
-        action="store_true",
-        help="Disable colored output"
-    )
+    parser.add_argument("--no-color", action="store_true", help="Disable colored output")
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 

@@ -64,9 +64,9 @@ class OnboardingService:
 
         # Check if there's an admin
         admin_count = await db.scalar(
-            select(func.count()).select_from(User).where(
-                (User.role == Role.ADMIN.value) | (User.role == Role.OWNER.value)
-            )
+            select(func.count())
+            .select_from(User)
+            .where((User.role == Role.ADMIN.value) | (User.role == Role.OWNER.value))
         )
 
         return {
@@ -168,9 +168,7 @@ class OnboardingService:
             raise ValueError(f"Pending invitation already exists for {email}")
 
         # Check if user already exists
-        existing_user = await db.execute(
-            select(User).where(User.email == email)
-        )
+        existing_user = await db.execute(select(User).where(User.email == email))
         if existing_user.scalar_one_or_none():
             raise ValueError(f"User with email {email} already exists")
 
@@ -203,9 +201,7 @@ class OnboardingService:
         Returns:
             UserInvitation or None if not found
         """
-        result = await db.execute(
-            select(UserInvitation).where(UserInvitation.token == token)
-        )
+        result = await db.execute(select(UserInvitation).where(UserInvitation.token == token))
         return result.scalar_one_or_none()
 
     async def validate_invitation(
@@ -278,9 +274,7 @@ class OnboardingService:
         Returns:
             True if revoked, False if not found or already used
         """
-        result = await db.execute(
-            select(UserInvitation).where(UserInvitation.id == invitation_id)
-        )
+        result = await db.execute(select(UserInvitation).where(UserInvitation.id == invitation_id))
         invitation = result.scalar_one_or_none()
 
         if not invitation:
@@ -309,9 +303,7 @@ class OnboardingService:
         Returns:
             List of UserInvitation objects
         """
-        query = select(UserInvitation).where(
-            UserInvitation.tenant_id == tenant_id
-        )
+        query = select(UserInvitation).where(UserInvitation.tenant_id == tenant_id)
 
         if status_filter:
             query = query.where(UserInvitation.status == status_filter)
@@ -380,8 +372,7 @@ class OnboardingService:
         github_match = False
         if github_orgs and settings.allowed_github_orgs:
             github_match = any(
-                org.lower() in [ao.lower() for ao in settings.allowed_github_orgs]
-                for org in github_orgs
+                org.lower() in [ao.lower() for ao in settings.allowed_github_orgs] for org in github_orgs
             )
 
         if mode == "domain" and domain_match:
@@ -485,10 +476,7 @@ class OnboardingService:
         """
         settings = await self.get_org_settings(db)
 
-        settings.allowed_github_orgs = [
-            o for o in settings.allowed_github_orgs
-            if o.lower() != org.lower()
-        ]
+        settings.allowed_github_orgs = [o for o in settings.allowed_github_orgs if o.lower() != org.lower()]
         await db.commit()
         await db.refresh(settings)
         return settings

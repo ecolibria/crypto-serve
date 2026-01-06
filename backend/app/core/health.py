@@ -25,7 +25,6 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.database import get_db
 from app.core.key_manager import key_manager
 
 logger = logging.getLogger(__name__)
@@ -34,6 +33,7 @@ settings = get_settings()
 
 class HealthStatus(str, Enum):
     """Health check status levels."""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"  # Some non-critical checks failed
     UNHEALTHY = "unhealthy"  # Critical checks failed
@@ -42,6 +42,7 @@ class HealthStatus(str, Enum):
 @dataclass
 class CheckResult:
     """Result of a single health check."""
+
     name: str
     status: HealthStatus
     latency_ms: float
@@ -53,6 +54,7 @@ class CheckResult:
 @dataclass
 class HealthReport:
     """Complete health report."""
+
     status: HealthStatus
     timestamp: datetime
     version: str
@@ -270,24 +272,28 @@ class HealthChecker:
 
         # Handle exceptions
         if isinstance(db_check, Exception):
-            checks.append(CheckResult(
-                name="database",
-                status=HealthStatus.UNHEALTHY,
-                latency_ms=0,
-                message=str(db_check),
-                critical=True,
-            ))
+            checks.append(
+                CheckResult(
+                    name="database",
+                    status=HealthStatus.UNHEALTHY,
+                    latency_ms=0,
+                    message=str(db_check),
+                    critical=True,
+                )
+            )
         else:
             checks.append(db_check)
 
         if isinstance(kms_check, Exception):
-            checks.append(CheckResult(
-                name="kms",
-                status=HealthStatus.UNHEALTHY,
-                latency_ms=0,
-                message=str(kms_check),
-                critical=True,
-            ))
+            checks.append(
+                CheckResult(
+                    name="kms",
+                    status=HealthStatus.UNHEALTHY,
+                    latency_ms=0,
+                    message=str(kms_check),
+                    critical=True,
+                )
+            )
         else:
             checks.append(kms_check)
 
@@ -328,13 +334,15 @@ class HealthChecker:
         check_names = ["database", "kms", "crypto"]
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                checks.append(CheckResult(
-                    name=check_names[i],
-                    status=HealthStatus.UNHEALTHY,
-                    latency_ms=0,
-                    message=str(result),
-                    critical=True,
-                ))
+                checks.append(
+                    CheckResult(
+                        name=check_names[i],
+                        status=HealthStatus.UNHEALTHY,
+                        latency_ms=0,
+                        message=str(result),
+                        critical=True,
+                    )
+                )
             else:
                 checks.append(result)
 
@@ -344,9 +352,7 @@ class HealthChecker:
         total_latency = (time.monotonic() - start) * 1000
 
         # Determine overall status
-        critical_unhealthy = any(
-            c.status == HealthStatus.UNHEALTHY and c.critical for c in checks
-        )
+        critical_unhealthy = any(c.status == HealthStatus.UNHEALTHY and c.critical for c in checks)
         any_degraded = any(c.status == HealthStatus.DEGRADED for c in checks)
 
         if critical_unhealthy:

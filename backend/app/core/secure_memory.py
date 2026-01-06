@@ -167,6 +167,7 @@ def constant_time_compare(a: bytes | bytearray, b: bytes | bytearray) -> bool:
         True if equal, False otherwise
     """
     import hmac
+
     return hmac.compare_digest(a, b)
 
 

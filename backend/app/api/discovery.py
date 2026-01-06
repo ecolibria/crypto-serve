@@ -8,14 +8,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.models import Identity
 from app.core.binary_scanner import (
     BinaryScanner,
-    ScanResult,
-    CryptoFinding,
     ScannerError,
 )
 from app.api.crypto import get_sdk_identity
@@ -28,6 +24,7 @@ binary_scanner = BinaryScanner()
 
 class ScanRequest(BaseModel):
     """Binary scan request."""
+
     data: str = Field(..., description="Binary data to scan (base64 encoded)")
     filename: str | None = Field(default=None, description="Optional filename for context")
     include_entropy: bool = Field(default=True, description="Include entropy analysis")
@@ -36,6 +33,7 @@ class ScanRequest(BaseModel):
 
 class CryptoFindingResponse(BaseModel):
     """A cryptographic finding."""
+
     type: str = Field(..., description="Finding type (constant, entropy, pattern)")
     algorithm: str | None = Field(None, description="Detected algorithm if applicable")
     offset: int = Field(..., description="Byte offset in data")
@@ -49,6 +47,7 @@ class CryptoFindingResponse(BaseModel):
 
 class ScanResponse(BaseModel):
     """Binary scan response."""
+
     findings: list[CryptoFindingResponse]
     summary: dict
     scan_time_ms: float
@@ -56,6 +55,7 @@ class ScanResponse(BaseModel):
 
 class QuickScanResponse(BaseModel):
     """Quick scan summary response."""
+
     has_crypto: bool = Field(..., description="Whether cryptographic content was detected")
     algorithms_detected: list[str]
     risk_level: str = Field(..., description="Overall risk: none, low, medium, high")

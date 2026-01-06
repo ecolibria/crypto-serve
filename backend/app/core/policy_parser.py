@@ -52,7 +52,6 @@ policies:
 ```
 """
 
-import re
 from pathlib import Path
 from typing import Any
 
@@ -78,10 +77,7 @@ class PolicyRule(BaseModel):
 
     name: str = Field(description="Unique policy name")
     rule: str = Field(description="Rule expression")
-    severity: str = Field(
-        default="warn",
-        description="Severity: block, warn, or info"
-    )
+    severity: str = Field(default="warn", description="Severity: block, warn, or info")
     message: str = Field(description="Human-readable message when rule triggers")
     enabled: bool = Field(default=True, description="Whether this rule is active")
 

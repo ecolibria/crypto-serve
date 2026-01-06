@@ -27,7 +27,9 @@ router = APIRouter(prefix="/api/v1/dependencies", tags=["dependencies"])
 dependency_scanner = DependencyScanner()
 
 
-def get_dependency_recommendation(package_name: str, quantum_risk: str | None, is_deprecated: bool = False, replacement: str | None = None) -> str:
+def get_dependency_recommendation(
+    package_name: str, quantum_risk: str | None, is_deprecated: bool = False, replacement: str | None = None
+) -> str:
     """Generate a recommendation linking to crypto-serve contexts for dependency findings."""
     if is_deprecated:
         base = f"Package '{package_name}' is deprecated. "
@@ -61,10 +63,10 @@ def compute_dependency_fingerprint(target_name: str, library: str, title: str) -
 
 class DependencyScanRequest(BaseModel):
     """Dependency scan request."""
+
     content: str = Field(..., description="Package file content")
     filename: str | None = Field(
-        default=None,
-        description="Filename for auto-detection (package.json, requirements.txt, go.mod, Cargo.toml)"
+        default=None, description="Filename for auto-detection (package.json, requirements.txt, go.mod, Cargo.toml)"
     )
     persist: bool = Field(default=False, description="Persist results to security dashboard")
     target_name: str | None = Field(default=None, description="Target name for dashboard")
@@ -72,6 +74,7 @@ class DependencyScanRequest(BaseModel):
 
 class CryptoDependencyResponse(BaseModel):
     """A cryptographic dependency."""
+
     name: str
     version: str | None
     package_type: str
@@ -86,6 +89,7 @@ class CryptoDependencyResponse(BaseModel):
 
 class DependencyScanResponse(BaseModel):
     """Dependency scan response."""
+
     dependencies: list[CryptoDependencyResponse]
     package_type: str
     total_packages: int
@@ -97,6 +101,7 @@ class DependencyScanResponse(BaseModel):
 
 class QuickDependencyScanResponse(BaseModel):
     """Quick dependency scan response."""
+
     has_crypto: bool
     crypto_count: int
     quantum_vulnerable: bool
@@ -174,7 +179,7 @@ async def scan_dependencies(
                 "total_packages": result.total_packages,
                 "crypto_packages": result.crypto_packages,
                 "recommendations": result.recommendations,
-            }
+            },
         )
         db.add(scan_record)
         await db.flush()
@@ -192,17 +197,21 @@ async def scan_dependencies(
                 # Check if this finding existed before
                 is_new = fingerprint not in previous_findings
                 prev_finding = previous_findings.get(fingerprint)
-                first_seen_scan_id = scan_record.id if is_new else (
-                    prev_finding.first_seen_scan_id or prev_finding.scan_id if prev_finding else None
+                first_seen_scan_id = (
+                    scan_record.id
+                    if is_new
+                    else (prev_finding.first_seen_scan_id or prev_finding.scan_id if prev_finding else None)
                 )
-                first_detected_at = datetime.now(timezone.utc) if is_new else (prev_finding.first_detected_at if prev_finding else None)
+                first_detected_at = (
+                    datetime.now(timezone.utc) if is_new else (prev_finding.first_detected_at if prev_finding else None)
+                )
 
                 # Generate context-aware recommendation
                 context_recommendation = get_dependency_recommendation(
                     package_name=dep.name,
                     quantum_risk=dep.quantum_risk.value,
                     is_deprecated=True,
-                    replacement=dep.recommended_replacement
+                    replacement=dep.recommended_replacement,
                 )
 
                 finding_record = SecurityFinding(
@@ -230,16 +239,18 @@ async def scan_dependencies(
                 # Check if this finding existed before
                 is_new = fingerprint not in previous_findings
                 prev_finding = previous_findings.get(fingerprint)
-                first_seen_scan_id = scan_record.id if is_new else (
-                    prev_finding.first_seen_scan_id or prev_finding.scan_id if prev_finding else None
+                first_seen_scan_id = (
+                    scan_record.id
+                    if is_new
+                    else (prev_finding.first_seen_scan_id or prev_finding.scan_id if prev_finding else None)
                 )
-                first_detected_at = datetime.now(timezone.utc) if is_new else (prev_finding.first_detected_at if prev_finding else None)
+                first_detected_at = (
+                    datetime.now(timezone.utc) if is_new else (prev_finding.first_detected_at if prev_finding else None)
+                )
 
                 # Generate context-aware recommendation
                 context_recommendation = get_dependency_recommendation(
-                    package_name=dep.name,
-                    quantum_risk=dep.quantum_risk.value,
-                    is_deprecated=False
+                    package_name=dep.name, quantum_risk=dep.quantum_risk.value, is_deprecated=False
                 )
 
                 finding_record = SecurityFinding(

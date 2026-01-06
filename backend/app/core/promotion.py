@@ -23,6 +23,7 @@ from app.models.approval import ExpeditedApprovalRequest, ApprovalStatus
 
 class ContextTier(str, Enum):
     """Context sensitivity tiers with different requirements."""
+
     TIER_1 = "tier_1"  # Low: session-tokens, cache-data
     TIER_2 = "tier_2"  # Medium: user-pii, api-keys
     TIER_3 = "tier_3"  # High: pci, health-data, secrets
@@ -30,6 +31,7 @@ class ContextTier(str, Enum):
 
 class ExpediteePriority(str, Enum):
     """Priority levels for expedited approval requests."""
+
     CRITICAL = "critical"  # Production down, security incident
     HIGH = "high"  # Customer-impacting, need today
     NORMAL = "normal"  # Business need, flexible timing
@@ -82,6 +84,7 @@ TIER_REQUIREMENTS = {
 
 class ContextReadiness(BaseModel):
     """Readiness status for a single context."""
+
     context: str
     tier: str
     tier_display: str
@@ -110,6 +113,7 @@ class ContextReadiness(BaseModel):
 
 class PromotionReadiness(BaseModel):
     """Overall promotion readiness for an application."""
+
     app_id: str
     app_name: str
     current_environment: str
@@ -136,6 +140,7 @@ class PromotionReadiness(BaseModel):
 
 class ExpeditedRequest(BaseModel):
     """Request for expedited promotion approval."""
+
     request_id: str = Field(default_factory=lambda: f"EXP-{datetime.now().strftime('%Y')}-{uuid4().hex[:4].upper()}")
     app_id: str
     app_name: str
@@ -208,10 +213,7 @@ async def calculate_user_trust_score(
 
     # Get successful operations count (indicates active, careful user)
     ops_count_result = await db.execute(
-        select(func.count())
-        .select_from(AuditLog)
-        .where(AuditLog.tenant_id == tenant_id)
-        .where(AuditLog.success == True)
+        select(func.count()).select_from(AuditLog).where(AuditLog.tenant_id == tenant_id).where(AuditLog.success)
     )
     ops_count = ops_count_result.scalar() or 0
 
@@ -230,7 +232,7 @@ async def calculate_user_trust_score(
         select(func.count())
         .select_from(AuditLog)
         .where(AuditLog.tenant_id == tenant_id)
-        .where(AuditLog.policy_violation == True)
+        .where(AuditLog.policy_violation)
     )
     violations_count = violations_result.scalar() or 0
 
@@ -275,7 +277,7 @@ async def get_context_stats(
         .select_from(AuditLog)
         .where(AuditLog.identity_id == app_id)
         .where(AuditLog.context == context)
-        .where(AuditLog.success == True)
+        .where(AuditLog.success)
     )
     operation_count = count_result.scalar() or 0
 
@@ -487,17 +489,11 @@ async def create_expedited_request(
     for ctx in readiness.contexts:
         if not ctx.is_ready:
             if not ctx.operations_met:
-                thresholds_bypassed.append(
-                    f"{ctx.context}: {ctx.current_operations}/{ctx.required_operations} ops"
-                )
+                thresholds_bypassed.append(f"{ctx.context}: {ctx.current_operations}/{ctx.required_operations} ops")
             if not ctx.hours_met:
-                thresholds_bypassed.append(
-                    f"{ctx.context}: {ctx.current_hours:.0f}/{ctx.required_hours}h in dev"
-                )
+                thresholds_bypassed.append(f"{ctx.context}: {ctx.current_hours:.0f}/{ctx.required_hours}h in dev")
             if not ctx.days_met:
-                thresholds_bypassed.append(
-                    f"{ctx.context}: {ctx.current_unique_days}/{ctx.required_days} days"
-                )
+                thresholds_bypassed.append(f"{ctx.context}: {ctx.current_unique_days}/{ctx.required_days} days")
 
     # Calculate trust score from user history
     trust_score = await calculate_user_trust_score(db, requester_user_id, tenant_id)
@@ -524,9 +520,7 @@ async def create_expedited_request(
         ExpediteePriority.HIGH: 48,
         ExpediteePriority.NORMAL: 72,
     }
-    expires_at = datetime.now(timezone.utc) + timedelta(
-        hours=expiration_hours.get(priority, 72)
-    )
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=expiration_hours.get(priority, 72))
 
     # Persist to database
     db_request = ExpeditedApprovalRequest(
@@ -576,10 +570,7 @@ async def approve_request(
     follow_up_date: datetime | None = None,
 ) -> ExpeditedApprovalRequest | None:
     """Approve an expedited promotion request."""
-    result = await db.execute(
-        select(ExpeditedApprovalRequest)
-        .where(ExpeditedApprovalRequest.request_id == request_id)
-    )
+    result = await db.execute(select(ExpeditedApprovalRequest).where(ExpeditedApprovalRequest.request_id == request_id))
     db_request = result.scalar_one_or_none()
 
     if not db_request:
@@ -610,10 +601,7 @@ async def reject_request(
     notes: str | None = None,
 ) -> ExpeditedApprovalRequest | None:
     """Reject an expedited promotion request."""
-    result = await db.execute(
-        select(ExpeditedApprovalRequest)
-        .where(ExpeditedApprovalRequest.request_id == request_id)
-    )
+    result = await db.execute(select(ExpeditedApprovalRequest).where(ExpeditedApprovalRequest.request_id == request_id))
     db_request = result.scalar_one_or_none()
 
     if not db_request:

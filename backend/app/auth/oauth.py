@@ -19,7 +19,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.models import User, UserInvitation
 from app.auth.jwt import create_access_token
-from app.auth.providers import get_provider, get_enabled_providers
+from app.auth.providers import get_provider
 from app.auth.providers.registry import list_providers
 
 settings = get_settings()
@@ -37,11 +37,7 @@ def generate_oauth_state(provider: str) -> str:
     timestamp = str(int(time.time()))
     nonce = secrets.token_hex(16)
     data = f"{provider}:{timestamp}:{nonce}"
-    signature = hmac.new(
-        settings.oauth_state_secret.encode(),
-        data.encode(),
-        hashlib.sha256
-    ).hexdigest()[:16]
+    signature = hmac.new(settings.oauth_state_secret.encode(), data.encode(), hashlib.sha256).hexdigest()[:16]
     return f"{data}:{signature}"
 
 
@@ -63,11 +59,9 @@ def verify_oauth_state(state: str) -> tuple[bool, str | None]:
 
         # Verify signature
         data = f"{provider}:{timestamp}:{nonce}"
-        expected_signature = hmac.new(
-            settings.oauth_state_secret.encode(),
-            data.encode(),
-            hashlib.sha256
-        ).hexdigest()[:16]
+        expected_signature = hmac.new(settings.oauth_state_secret.encode(), data.encode(), hashlib.sha256).hexdigest()[
+            :16
+        ]
 
         if not hmac.compare_digest(signature, expected_signature):
             return False, None
@@ -119,12 +113,13 @@ async def oauth_login(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unknown or unconfigured provider: {provider}. "
-                   f"Available: {[p['name'] for p in list_providers()]}",
+            f"Available: {[p['name'] for p in list_providers()]}",
         )
 
     # Validate CLI callback URL if provided (must be localhost)
     if cli_callback:
         from urllib.parse import urlparse
+
         parsed = urlparse(cli_callback)
         if parsed.hostname not in ("localhost", "127.0.0.1"):
             raise HTTPException(
@@ -259,15 +254,12 @@ async def oauth_callback(
 
     # Create a unique provider-specific ID (e.g., "github:12345")
     # This allows users to have accounts from multiple providers
-    provider_user_id = f"{provider}:{user_info.provider_id}"
 
     # Find user by provider ID (check github_id for backwards compatibility with GitHub)
     user = None
     if provider == "github":
         # Check legacy github_id field for existing GitHub users
-        result = await db.execute(
-            select(User).where(User.github_id == int(user_info.provider_id))
-        )
+        result = await db.execute(select(User).where(User.github_id == int(user_info.provider_id)))
         user = result.scalar_one_or_none()
 
     # If not found and we have email, try to find by email (account linking)
@@ -298,10 +290,13 @@ async def oauth_callback(
             cli_callback = request.cookies.get("cli_callback")
             if cli_callback:
                 from urllib.parse import urlencode
-                callback_params = urlencode({
-                    "error": "not_authorized",
-                    "message": "You are not authorized to access this system. Contact an administrator for an invitation.",
-                })
+
+                callback_params = urlencode(
+                    {
+                        "error": "not_authorized",
+                        "message": "You are not authorized to access this system. Contact an administrator for an invitation.",
+                    }
+                )
                 response = RedirectResponse(
                     url=f"{cli_callback}?{callback_params}",
                     status_code=status.HTTP_302_FOUND,
@@ -338,6 +333,7 @@ async def oauth_callback(
         # If provisioned via invitation, accept it
         if provision_source == "invitation" and email:
             from app.models.invitation import InvitationStatus
+
             invitation_result = await db.execute(
                 select(UserInvitation).where(
                     UserInvitation.email == email.lower(),
@@ -356,6 +352,7 @@ async def oauth_callback(
     if user_info.groups:
         from app.core.team_service import team_service
         from app.models import TeamSource
+
         await team_service.sync_user_teams(
             db=db,
             user=user,
@@ -372,6 +369,7 @@ async def oauth_callback(
 
     if cli_callback:
         from urllib.parse import urlencode, urlparse
+
         parsed = urlparse(cli_callback)
 
         if parsed.hostname not in ("localhost", "127.0.0.1"):
@@ -380,10 +378,12 @@ async def oauth_callback(
                 detail="Invalid CLI callback",
             )
 
-        callback_params = urlencode({
-            "session": jwt_token,
-            "user": user.github_username,
-        })
+        callback_params = urlencode(
+            {
+                "session": jwt_token,
+                "user": user.github_username,
+            }
+        )
         callback_url = f"{cli_callback}?{callback_params}"
 
         response = RedirectResponse(
@@ -451,6 +451,7 @@ async def dev_login(
 
     if cli_callback:
         from urllib.parse import urlparse
+
         parsed = urlparse(cli_callback)
         if parsed.hostname not in ("localhost", "127.0.0.1"):
             raise HTTPException(
@@ -459,6 +460,7 @@ async def dev_login(
             )
 
     from app.core.tenant import get_or_create_default_tenant
+
     default_tenant = await get_or_create_default_tenant(db)
 
     dev_github_id = 1
@@ -486,6 +488,7 @@ async def dev_login(
 
     # Add dev user to dev team
     from app.core.team_service import team_service
+
     dev_team = await team_service.get_or_create_dev_team(db, default_tenant.id)
     if dev_team not in user.teams:
         user.teams.append(dev_team)
@@ -495,10 +498,13 @@ async def dev_login(
 
     if cli_callback:
         from urllib.parse import urlencode
-        callback_params = urlencode({
-            "session": jwt_token,
-            "user": user.github_username,
-        })
+
+        callback_params = urlencode(
+            {
+                "session": jwt_token,
+                "user": user.github_username,
+            }
+        )
         callback_url = f"{cli_callback}?{callback_params}"
 
         return RedirectResponse(

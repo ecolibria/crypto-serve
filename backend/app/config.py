@@ -1,6 +1,5 @@
 """Application configuration."""
 
-import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
@@ -74,7 +73,7 @@ class Settings(BaseSettings):
     # Service starts sealed and requires threshold custodians to unseal
     key_ceremony_enabled: bool = False
     key_ceremony_threshold: int = 3  # Minimum shares needed to unseal
-    key_ceremony_shares: int = 5     # Total shares to generate
+    key_ceremony_shares: int = 5  # Total shares to generate
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 

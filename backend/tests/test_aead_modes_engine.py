@@ -7,8 +7,6 @@ from app.core.aead_modes_engine import (
     aead_modes_engine,
     AEADModesEngine,
     AEADMode,
-    AEADResult,
-    DecryptResult,
     AEADModesError,
     AuthenticationError,
     InvalidKeyError,
@@ -71,9 +69,7 @@ class TestOCBMode:
         plaintext = b"Secret message"
         aad = b"header:value"
 
-        result = engine.encrypt(
-            plaintext, key_256, mode=AEADMode.OCB, associated_data=aad
-        )
+        result = engine.encrypt(plaintext, key_256, mode=AEADMode.OCB, associated_data=aad)
 
         decrypted = engine.decrypt(
             result.ciphertext,
@@ -90,9 +86,7 @@ class TestOCBMode:
         """Test that wrong AAD causes authentication failure."""
         plaintext = b"Secret message"
 
-        result = engine.encrypt(
-            plaintext, key_256, mode=AEADMode.OCB, associated_data=b"correct"
-        )
+        result = engine.encrypt(plaintext, key_256, mode=AEADMode.OCB, associated_data=b"correct")
 
         with pytest.raises(AuthenticationError):
             engine.decrypt(
@@ -128,9 +122,7 @@ class TestOCBMode:
 
         for nonce_size in range(1, 16):
             nonce = os.urandom(nonce_size)
-            result = engine.encrypt(
-                plaintext, key_256, mode=AEADMode.OCB, nonce=nonce
-            )
+            result = engine.encrypt(plaintext, key_256, mode=AEADMode.OCB, nonce=nonce)
             assert result.nonce == nonce
 
             decrypted = engine.decrypt(
@@ -148,9 +140,7 @@ class TestOCBMode:
 
         # 16 bytes is too long for OCB
         with pytest.raises(InvalidNonceError):
-            engine.encrypt(
-                plaintext, key_256, mode=AEADMode.OCB, nonce=os.urandom(16)
-            )
+            engine.encrypt(plaintext, key_256, mode=AEADMode.OCB, nonce=os.urandom(16))
 
         # Empty nonce
         with pytest.raises(InvalidNonceError):
@@ -273,9 +263,7 @@ class TestEAXMode:
         plaintext = b"Secret message"
         aad = b"context:12345"
 
-        result = engine.encrypt(
-            plaintext, key_256, mode=AEADMode.EAX, associated_data=aad
-        )
+        result = engine.encrypt(plaintext, key_256, mode=AEADMode.EAX, associated_data=aad)
 
         decrypted = engine.decrypt(
             result.ciphertext,
@@ -293,9 +281,7 @@ class TestEAXMode:
         """Test that wrong AAD causes authentication failure."""
         plaintext = b"Secret message"
 
-        result = engine.encrypt(
-            plaintext, key_256, mode=AEADMode.EAX, associated_data=b"correct"
-        )
+        result = engine.encrypt(plaintext, key_256, mode=AEADMode.EAX, associated_data=b"correct")
 
         with pytest.raises(AuthenticationError):
             engine.decrypt(
@@ -331,9 +317,7 @@ class TestEAXMode:
 
         for nonce_size in [8, 12, 16, 24, 32]:
             nonce = os.urandom(nonce_size)
-            result = engine.encrypt(
-                plaintext, key_256, mode=AEADMode.EAX, nonce=nonce
-            )
+            result = engine.encrypt(plaintext, key_256, mode=AEADMode.EAX, nonce=nonce)
             assert result.nonce == nonce
 
             decrypted = engine.decrypt(
@@ -441,9 +425,7 @@ class TestSelfDescribingFormat:
         """Test OCB with self-describing header."""
         plaintext = b"Secret message with header"
 
-        encrypted = engine.encrypt_with_header(
-            plaintext, key_256, mode=AEADMode.OCB
-        )
+        encrypted = engine.encrypt_with_header(plaintext, key_256, mode=AEADMode.OCB)
 
         # Verify header structure
         assert encrypted[0] == 0x01  # Version
@@ -458,9 +440,7 @@ class TestSelfDescribingFormat:
         """Test EAX with self-describing header."""
         plaintext = b"Secret message with header"
 
-        encrypted = engine.encrypt_with_header(
-            plaintext, key_256, mode=AEADMode.EAX
-        )
+        encrypted = engine.encrypt_with_header(plaintext, key_256, mode=AEADMode.EAX)
 
         # Verify header structure
         assert encrypted[0] == 0x01  # Version
@@ -476,26 +456,18 @@ class TestSelfDescribingFormat:
         plaintext = b"Secret"
         aad = b"context"
 
-        encrypted = engine.encrypt_with_header(
-            plaintext, key_256, mode=AEADMode.OCB, associated_data=aad
-        )
+        encrypted = engine.encrypt_with_header(plaintext, key_256, mode=AEADMode.OCB, associated_data=aad)
 
-        decrypted = engine.decrypt_with_header(
-            encrypted, key_256, associated_data=aad
-        )
+        decrypted = engine.decrypt_with_header(encrypted, key_256, associated_data=aad)
 
         assert decrypted.plaintext == plaintext
 
     def test_header_wrong_aad_fails(self, engine, key_256):
         """Test that wrong AAD fails with header format."""
-        encrypted = engine.encrypt_with_header(
-            b"Secret", key_256, associated_data=b"correct"
-        )
+        encrypted = engine.encrypt_with_header(b"Secret", key_256, associated_data=b"correct")
 
         with pytest.raises(AuthenticationError):
-            engine.decrypt_with_header(
-                encrypted, key_256, associated_data=b"wrong"
-            )
+            engine.decrypt_with_header(encrypted, key_256, associated_data=b"wrong")
 
     def test_truncated_data_fails(self, engine, key_256):
         """Test that truncated data raises error."""

@@ -16,7 +16,6 @@ Security model:
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +25,7 @@ from app.core.crypto_engine import crypto_engine, CryptoError
 
 class ReencryptionMode(str, Enum):
     """Re-encryption modes."""
+
     CONTEXT_MIGRATION = "context_migration"  # Move data to new context
     KEY_ROTATION = "key_rotation"  # Re-encrypt with new key version
     ALGORITHM_UPGRADE = "algorithm_upgrade"  # Upgrade cipher/mode
@@ -35,6 +35,7 @@ class ReencryptionMode(str, Enum):
 @dataclass
 class ReencryptionRequest:
     """Request to re-encrypt data."""
+
     ciphertext: bytes
     source_context: str
     target_context: str | None = None  # If None, use source context
@@ -44,6 +45,7 @@ class ReencryptionRequest:
 @dataclass
 class ReencryptionResult:
     """Result of re-encryption."""
+
     ciphertext: bytes
     source_context: str
     target_context: str
@@ -57,6 +59,7 @@ class ReencryptionResult:
 @dataclass
 class BulkReencryptionResult:
     """Result of bulk re-encryption."""
+
     total: int
     successful: int
     failed: int
@@ -66,6 +69,7 @@ class BulkReencryptionResult:
 
 class ReencryptionError(Exception):
     """Re-encryption failed."""
+
     pass
 
 
@@ -256,7 +260,8 @@ class ReencryptionEngine:
                 return {}
 
             import json
-            header_json = ciphertext[2:2 + header_len]
+
+            header_json = ciphertext[2 : 2 + header_len]
             header = json.loads(header_json)
 
             return {

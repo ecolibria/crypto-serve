@@ -8,9 +8,6 @@ from app.core.blind_engine import (
     BlindScheme,
     BlindError,
     BlindingError,
-    UnblindingError,
-    RSABlindKeyPair,
-    SchnorrBlindKeyPair,
 )
 
 
@@ -108,9 +105,7 @@ class TestBlindRSA:
 
         assert valid is True
 
-    def test_different_messages_produce_different_blindings(
-        self, engine, rsa_key_pair
-    ):
+    def test_different_messages_produce_different_blindings(self, engine, rsa_key_pair):
         """Test that different messages produce different blinded values."""
         msg1 = b"Message 1"
         msg2 = b"Message 2"
@@ -120,9 +115,7 @@ class TestBlindRSA:
 
         assert blind1.blinded_message != blind2.blinded_message
 
-    def test_same_message_produces_different_blindings(
-        self, engine, rsa_key_pair
-    ):
+    def test_same_message_produces_different_blindings(self, engine, rsa_key_pair):
         """Test that same message with different factors produces different blindings."""
         message = b"Same message"
 
@@ -133,9 +126,7 @@ class TestBlindRSA:
         assert blind1.blinding_factor != blind2.blinding_factor
         assert blind1.blinded_message != blind2.blinded_message
 
-    def test_wrong_blinding_factor_fails_verification(
-        self, engine, rsa_key_pair
-    ):
+    def test_wrong_blinding_factor_fails_verification(self, engine, rsa_key_pair):
         """Test that wrong blinding factor produces invalid signature."""
         message = b"Test message"
 
@@ -156,9 +147,7 @@ class TestBlindRSA:
         )
 
         # Verification should fail
-        valid = engine.verify_rsa(
-            message, signature.signature, rsa_key_pair.public_key_pem
-        )
+        valid = engine.verify_rsa(message, signature.signature, rsa_key_pair.public_key_pem)
         assert valid is False
 
     def test_wrong_message_fails_verification(self, engine, rsa_key_pair):
@@ -167,9 +156,7 @@ class TestBlindRSA:
         wrong = b"Wrong message"
 
         blinding = engine.blind_rsa(original, rsa_key_pair.public_key_pem)
-        blind_sig = engine.sign_blinded_rsa(
-            blinding.blinded_message, rsa_key_pair.private_key_pem
-        )
+        blind_sig = engine.sign_blinded_rsa(blinding.blinded_message, rsa_key_pair.private_key_pem)
         signature = engine.unblind_rsa(
             blind_sig.blind_signature,
             blinding.blinding_factor,
@@ -178,9 +165,7 @@ class TestBlindRSA:
         )
 
         # Verify with wrong message
-        valid = engine.verify_rsa(
-            wrong, signature.signature, rsa_key_pair.public_key_pem
-        )
+        valid = engine.verify_rsa(wrong, signature.signature, rsa_key_pair.public_key_pem)
         assert valid is False
 
     def test_wrong_public_key_fails_verification(self, engine):
@@ -190,9 +175,7 @@ class TestBlindRSA:
         message = b"Test message"
 
         blinding = engine.blind_rsa(message, key1.public_key_pem)
-        blind_sig = engine.sign_blinded_rsa(
-            blinding.blinded_message, key1.private_key_pem
-        )
+        blind_sig = engine.sign_blinded_rsa(blinding.blinded_message, key1.private_key_pem)
         signature = engine.unblind_rsa(
             blind_sig.blind_signature,
             blinding.blinding_factor,
@@ -201,9 +184,7 @@ class TestBlindRSA:
         )
 
         # Verify with wrong key
-        valid = engine.verify_rsa(
-            message, signature.signature, key2.public_key_pem
-        )
+        valid = engine.verify_rsa(message, signature.signature, key2.public_key_pem)
         assert valid is False
 
     def test_empty_message_fails(self, engine, rsa_key_pair):
@@ -216,9 +197,7 @@ class TestBlindRSA:
         message = b"x" * 10000
 
         blinding = engine.blind_rsa(message, rsa_key_pair.public_key_pem)
-        blind_sig = engine.sign_blinded_rsa(
-            blinding.blinded_message, rsa_key_pair.private_key_pem
-        )
+        blind_sig = engine.sign_blinded_rsa(blinding.blinded_message, rsa_key_pair.private_key_pem)
         signature = engine.unblind_rsa(
             blind_sig.blind_signature,
             blinding.blinding_factor,
@@ -226,9 +205,7 @@ class TestBlindRSA:
             rsa_key_pair.public_key_pem,
         )
 
-        assert engine.verify_rsa(
-            message, signature.signature, rsa_key_pair.public_key_pem
-        )
+        assert engine.verify_rsa(message, signature.signature, rsa_key_pair.public_key_pem)
 
 
 class TestPartiallyBlindRSA:
@@ -281,9 +258,7 @@ class TestPartiallyBlindRSA:
         metadata1 = b"election-2024"
         metadata2 = b"election-2025"
 
-        blinding = engine.blind_rsa_partial(
-            message, metadata1, rsa_key_pair.public_key_pem
-        )
+        blinding = engine.blind_rsa_partial(message, metadata1, rsa_key_pair.public_key_pem)
         blind_sig = engine.sign_blinded_rsa_partial(
             blinding.blinded_message,
             metadata1,
@@ -314,19 +289,11 @@ class TestPartiallyBlindRSA:
         metadata2 = b"context-2"
 
         # Create two signatures with different metadata
-        blind1 = engine.blind_rsa_partial(
-            message, metadata1, rsa_key_pair.public_key_pem
-        )
-        blind2 = engine.blind_rsa_partial(
-            message, metadata2, rsa_key_pair.public_key_pem
-        )
+        blind1 = engine.blind_rsa_partial(message, metadata1, rsa_key_pair.public_key_pem)
+        blind2 = engine.blind_rsa_partial(message, metadata2, rsa_key_pair.public_key_pem)
 
-        sig1 = engine.sign_blinded_rsa_partial(
-            blind1.blinded_message, metadata1, rsa_key_pair.private_key_pem
-        )
-        sig2 = engine.sign_blinded_rsa_partial(
-            blind2.blinded_message, metadata2, rsa_key_pair.private_key_pem
-        )
+        sig1 = engine.sign_blinded_rsa_partial(blind1.blinded_message, metadata1, rsa_key_pair.private_key_pem)
+        sig2 = engine.sign_blinded_rsa_partial(blind2.blinded_message, metadata2, rsa_key_pair.private_key_pem)
 
         unblind1 = engine.unblind_rsa_partial(
             sig1.blind_signature,
@@ -344,17 +311,11 @@ class TestPartiallyBlindRSA:
         )
 
         # Both verify with correct metadata
-        assert engine.verify_rsa_partial(
-            message, metadata1, unblind1.signature, rsa_key_pair.public_key_pem
-        )
-        assert engine.verify_rsa_partial(
-            message, metadata2, unblind2.signature, rsa_key_pair.public_key_pem
-        )
+        assert engine.verify_rsa_partial(message, metadata1, unblind1.signature, rsa_key_pair.public_key_pem)
+        assert engine.verify_rsa_partial(message, metadata2, unblind2.signature, rsa_key_pair.public_key_pem)
 
         # Neither verifies with wrong metadata
-        assert not engine.verify_rsa_partial(
-            message, metadata2, unblind1.signature, rsa_key_pair.public_key_pem
-        )
+        assert not engine.verify_rsa_partial(message, metadata2, unblind1.signature, rsa_key_pair.public_key_pem)
 
 
 class TestSchnorrKeyGeneration:
@@ -412,25 +373,17 @@ class TestBlindSchnorr:
 
         assert valid is True
 
-    def test_wrong_message_fails_schnorr_verification(
-        self, engine, schnorr_key_pair
-    ):
+    def test_wrong_message_fails_schnorr_verification(self, engine, schnorr_key_pair):
         """Test that wrong message fails Schnorr verification."""
         original = b"Original"
         wrong = b"Wrong"
 
         commitment = engine.schnorr_signer_commit(schnorr_key_pair)
-        blinding, challenge = engine.blind_schnorr(
-            original, commitment.R, schnorr_key_pair.public_key
-        )
-        s = engine.sign_schnorr_challenge(
-            commitment, challenge, schnorr_key_pair
-        )
+        blinding, challenge = engine.blind_schnorr(original, commitment.R, schnorr_key_pair.public_key)
+        s = engine.sign_schnorr_challenge(commitment, challenge, schnorr_key_pair)
         signature = engine.unblind_schnorr(s, blinding)
 
-        valid = engine.verify_schnorr(
-            wrong, signature.signature, schnorr_key_pair.public_key
-        )
+        valid = engine.verify_schnorr(wrong, signature.signature, schnorr_key_pair.public_key)
         assert valid is False
 
     def test_wrong_key_fails_schnorr_verification(self, engine):
@@ -440,15 +393,11 @@ class TestBlindSchnorr:
         message = b"Test"
 
         commitment = engine.schnorr_signer_commit(key1)
-        blinding, challenge = engine.blind_schnorr(
-            message, commitment.R, key1.public_key
-        )
+        blinding, challenge = engine.blind_schnorr(message, commitment.R, key1.public_key)
         s = engine.sign_schnorr_challenge(commitment, challenge, key1)
         signature = engine.unblind_schnorr(s, blinding)
 
-        valid = engine.verify_schnorr(
-            message, signature.signature, key2.public_key
-        )
+        valid = engine.verify_schnorr(message, signature.signature, key2.public_key)
         assert valid is False
 
     def test_empty_message_fails_schnorr(self, engine, schnorr_key_pair):
@@ -488,12 +437,8 @@ class TestUnlinkability:
         blind1 = engine.blind_rsa(message, rsa_key_pair.public_key_pem)
         blind2 = engine.blind_rsa(message, rsa_key_pair.public_key_pem)
 
-        sig1 = engine.sign_blinded_rsa(
-            blind1.blinded_message, rsa_key_pair.private_key_pem
-        )
-        sig2 = engine.sign_blinded_rsa(
-            blind2.blinded_message, rsa_key_pair.private_key_pem
-        )
+        sig1 = engine.sign_blinded_rsa(blind1.blinded_message, rsa_key_pair.private_key_pem)
+        sig2 = engine.sign_blinded_rsa(blind2.blinded_message, rsa_key_pair.private_key_pem)
 
         # Blind signatures ARE different (signer sees different values)
         assert sig1.blind_signature != sig2.blind_signature
@@ -515,12 +460,8 @@ class TestUnlinkability:
         assert unblind1.signature == unblind2.signature
 
         # Both should verify
-        assert engine.verify_rsa(
-            message, unblind1.signature, rsa_key_pair.public_key_pem
-        )
-        assert engine.verify_rsa(
-            message, unblind2.signature, rsa_key_pair.public_key_pem
-        )
+        assert engine.verify_rsa(message, unblind1.signature, rsa_key_pair.public_key_pem)
+        assert engine.verify_rsa(message, unblind2.signature, rsa_key_pair.public_key_pem)
 
 
 class TestSingletonInstance:
@@ -545,9 +486,7 @@ class TestEdgeCases:
         message = bytes(range(256))
 
         blinding = engine.blind_rsa(message, rsa_key_pair.public_key_pem)
-        blind_sig = engine.sign_blinded_rsa(
-            blinding.blinded_message, rsa_key_pair.private_key_pem
-        )
+        blind_sig = engine.sign_blinded_rsa(blinding.blinded_message, rsa_key_pair.private_key_pem)
         signature = engine.unblind_rsa(
             blind_sig.blind_signature,
             blinding.blinding_factor,
@@ -555,18 +494,14 @@ class TestEdgeCases:
             rsa_key_pair.public_key_pem,
         )
 
-        assert engine.verify_rsa(
-            message, signature.signature, rsa_key_pair.public_key_pem
-        )
+        assert engine.verify_rsa(message, signature.signature, rsa_key_pair.public_key_pem)
 
     def test_invalid_signature_fails_verification(self, engine, rsa_key_pair):
         """Test that invalid signature fails verification."""
         message = b"Test"
         invalid_sig = b"\x00" * 256
 
-        valid = engine.verify_rsa(
-            message, invalid_sig, rsa_key_pair.public_key_pem
-        )
+        valid = engine.verify_rsa(message, invalid_sig, rsa_key_pair.public_key_pem)
         assert valid is False
 
     def test_invalid_schnorr_signature_fails(self, engine, schnorr_key_pair):
@@ -574,7 +509,5 @@ class TestEdgeCases:
         message = b"Test"
         invalid_sig = b"\x00" * 96
 
-        valid = engine.verify_schnorr(
-            message, invalid_sig, schnorr_key_pair.public_key
-        )
+        valid = engine.verify_schnorr(message, invalid_sig, schnorr_key_pair.public_key)
         assert valid is False

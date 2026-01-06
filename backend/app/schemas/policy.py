@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class PolicySeverity(str, Enum):
     """Policy enforcement severity levels."""
+
     BLOCK = "block"
     WARN = "warn"
     INFO = "info"
@@ -16,6 +17,7 @@ class PolicySeverity(str, Enum):
 
 class PolicyCreate(BaseModel):
     """Schema for creating a policy."""
+
     name: str = Field(
         min_length=1,
         max_length=64,
@@ -60,6 +62,7 @@ class PolicyCreate(BaseModel):
 
 class PolicyUpdate(BaseModel):
     """Schema for updating a policy (partial update)."""
+
     description: str | None = None
     rule: str | None = None
     severity: PolicySeverity | None = None
@@ -106,6 +109,7 @@ class PolicyListResponse(BaseModel):
 
 class EvaluationRequest(BaseModel):
     """Request schema for policy evaluation (testing)."""
+
     algorithm: str = Field(
         description="Algorithm name to evaluate",
     )
@@ -149,6 +153,7 @@ class EvaluationRequest(BaseModel):
 
 class PolicyEvaluationResult(BaseModel):
     """Result of evaluating a single policy."""
+
     policy_name: str
     passed: bool
     severity: str
@@ -158,6 +163,7 @@ class PolicyEvaluationResult(BaseModel):
 
 class EvaluationResponse(BaseModel):
     """Response schema for policy evaluation."""
+
     algorithm: str
     context: str
     allowed: bool
@@ -187,6 +193,7 @@ class ViolationLogResponse(BaseModel):
 
 class ViolationSummary(BaseModel):
     """Summary of policy violations."""
+
     total_violations: int
     blocked_count: int
     warning_count: int

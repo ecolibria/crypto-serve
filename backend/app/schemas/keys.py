@@ -20,6 +20,7 @@ def to_camel(string: str) -> str:
 
 class KeyStatus(str, Enum):
     """Status of a cryptographic key."""
+
     ACTIVE = "ACTIVE"
     RETIRING = "RETIRING"
     RETIRED = "RETIRED"
@@ -27,6 +28,7 @@ class KeyStatus(str, Enum):
 
 class KeyType(str, Enum):
     """Type of cryptographic key in a bundle."""
+
     ENCRYPTION = "ENCRYPTION"
     MAC = "MAC"
     SIGNING = "SIGNING"
@@ -34,6 +36,7 @@ class KeyType(str, Enum):
 
 class KeyInfo(BaseModel):
     """Information about an individual key in a bundle."""
+
     model_config = ConfigDict(
         from_attributes=True,
         alias_generator=to_camel,
@@ -55,6 +58,7 @@ class KeyBundle(BaseModel):
 
     Contains encryption, MAC, and optionally signing keys.
     """
+
     model_config = ConfigDict(
         from_attributes=True,
         alias_generator=to_camel,
@@ -68,14 +72,12 @@ class KeyBundle(BaseModel):
     created_at: datetime = Field(description="Bundle creation time")
     encryption_key: KeyInfo = Field(description="Encryption key info")
     mac_key: KeyInfo = Field(description="MAC key info")
-    signing_key: KeyInfo | None = Field(
-        default=None,
-        description="Signing key info (optional)"
-    )
+    signing_key: KeyInfo | None = Field(default=None, description="Signing key info (optional)")
 
 
 class KeyHistoryEntry(BaseModel):
     """A historical key rotation event."""
+
     model_config = ConfigDict(
         from_attributes=True,
         alias_generator=to_camel,
@@ -88,36 +90,27 @@ class KeyHistoryEntry(BaseModel):
     version: int = Field(description="New key version after rotation")
     algorithm: str = Field(description="Algorithm used")
     created_at: datetime = Field(description="When this version was created")
-    retired_at: datetime | None = Field(
-        default=None,
-        description="When this version was retired"
-    )
+    retired_at: datetime | None = Field(default=None, description="When this version was retired")
     status: KeyStatus = Field(description="Current status")
-    rotation_reason: str | None = Field(
-        default=None,
-        description="Reason for rotation"
-    )
-    rotated_by: str | None = Field(
-        default=None,
-        description="User who initiated rotation"
-    )
+    rotation_reason: str | None = Field(default=None, description="Reason for rotation")
+    rotated_by: str | None = Field(default=None, description="User who initiated rotation")
 
 
 class RotateKeyRequest(BaseModel):
     """Request to rotate a key in a context."""
+
     key_type: KeyType = Field(description="Which key to rotate")
     reason: str = Field(
-        default="scheduled",
-        description="Reason for rotation (scheduled, security, compliance, manual)"
+        default="scheduled", description="Reason for rotation (scheduled, security, compliance, manual)"
     )
     re_encrypt_data: bool = Field(
-        default=False,
-        description="Whether to re-encrypt existing data (encryption key only)"
+        default=False, description="Whether to re-encrypt existing data (encryption key only)"
     )
 
 
 class RotateKeyResponse(BaseModel):
     """Response after key rotation."""
+
     success: bool
     message: str
     old_version: int
@@ -127,20 +120,18 @@ class RotateKeyResponse(BaseModel):
 
 class UpdateKeyScheduleRequest(BaseModel):
     """Request to update key rotation schedule."""
+
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
     )
 
-    rotation_schedule_days: int = Field(
-        ge=1,
-        le=3650,
-        description="Days between key rotations (1-3650)"
-    )
+    rotation_schedule_days: int = Field(ge=1, le=3650, description="Days between key rotations (1-3650)")
 
 
 class UpdateKeyScheduleResponse(BaseModel):
     """Response after updating key schedule."""
+
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,

@@ -12,11 +12,8 @@ from app.core.hash_engine import (
     MACEngine,
     HashAlgorithm,
     MACAlgorithm,
-    HashResult,
-    MACResult,
     HashError,
     MACError,
-    UnsupportedAlgorithmError,
     HashStreamer,
     MACStreamer,
     BLAKE3_AVAILABLE,
@@ -488,6 +485,7 @@ class TestEdgeCases:
         result = fresh_hash_engine.hash(data, HashAlgorithm.SHA256)
 
         import base64
+
         decoded = base64.b64decode(result.base64)
         assert decoded == result.digest
 
@@ -552,9 +550,7 @@ class TestKMAC:
         data = b"Hello, World!"
         key = os.urandom(16)
 
-        result = fresh_mac_engine.mac(
-            data, key, MACAlgorithm.KMAC128, output_length=32
-        )
+        result = fresh_mac_engine.mac(data, key, MACAlgorithm.KMAC128, output_length=32)
 
         assert len(result.tag) == 32
 
@@ -564,9 +560,7 @@ class TestKMAC:
         data = b"Hello, World!"
         key = os.urandom(32)
 
-        result = fresh_mac_engine.mac(
-            data, key, MACAlgorithm.KMAC256, output_length=64
-        )
+        result = fresh_mac_engine.mac(data, key, MACAlgorithm.KMAC256, output_length=64)
 
         assert len(result.tag) == 64
 
@@ -577,12 +571,8 @@ class TestKMAC:
         key = os.urandom(16)
 
         # Different customization strings should produce different MACs
-        result1 = fresh_mac_engine.mac(
-            data, key, MACAlgorithm.KMAC128, customization=b"custom1"
-        )
-        result2 = fresh_mac_engine.mac(
-            data, key, MACAlgorithm.KMAC128, customization=b"custom2"
-        )
+        result1 = fresh_mac_engine.mac(data, key, MACAlgorithm.KMAC128, customization=b"custom1")
+        result2 = fresh_mac_engine.mac(data, key, MACAlgorithm.KMAC128, customization=b"custom2")
 
         assert result1.tag != result2.tag
 
@@ -592,12 +582,8 @@ class TestKMAC:
         data = b"Hello, World!"
         key = os.urandom(32)
 
-        result1 = fresh_mac_engine.mac(
-            data, key, MACAlgorithm.KMAC256, customization=b"context-A"
-        )
-        result2 = fresh_mac_engine.mac(
-            data, key, MACAlgorithm.KMAC256, customization=b"context-B"
-        )
+        result1 = fresh_mac_engine.mac(data, key, MACAlgorithm.KMAC256, customization=b"context-A")
+        result2 = fresh_mac_engine.mac(data, key, MACAlgorithm.KMAC256, customization=b"context-B")
 
         assert result1.tag != result2.tag
 
@@ -640,19 +626,13 @@ class TestKMAC:
         key = os.urandom(32)
         custom = b"my-context"
 
-        result = fresh_mac_engine.mac(
-            data, key, MACAlgorithm.KMAC256, customization=custom
-        )
+        result = fresh_mac_engine.mac(data, key, MACAlgorithm.KMAC256, customization=custom)
 
         # Valid with same customization
-        assert fresh_mac_engine.verify(
-            data, key, result.tag, MACAlgorithm.KMAC256, customization=custom
-        )
+        assert fresh_mac_engine.verify(data, key, result.tag, MACAlgorithm.KMAC256, customization=custom)
 
         # Invalid with different customization
-        assert not fresh_mac_engine.verify(
-            data, key, result.tag, MACAlgorithm.KMAC256, customization=b"wrong-context"
-        )
+        assert not fresh_mac_engine.verify(data, key, result.tag, MACAlgorithm.KMAC256, customization=b"wrong-context")
 
     @pytest.mark.skipif(not KMAC_AVAILABLE, reason="pycryptodome not installed")
     def test_kmac_deterministic(self, fresh_mac_engine):
@@ -732,9 +712,7 @@ class TestTupleHash:
     def test_tuplehash128_custom_output_length(self, fresh_hash_engine):
         """Test TupleHash128 with custom output length."""
         items = [b"test"]
-        result = fresh_hash_engine.tuple_hash(
-            items, HashAlgorithm.TUPLEHASH128, output_length=32
-        )
+        result = fresh_hash_engine.tuple_hash(items, HashAlgorithm.TUPLEHASH128, output_length=32)
 
         assert len(result.digest) == 32
 
@@ -742,9 +720,7 @@ class TestTupleHash:
     def test_tuplehash256_custom_output_length(self, fresh_hash_engine):
         """Test TupleHash256 with custom output length."""
         items = [b"test"]
-        result = fresh_hash_engine.tuple_hash(
-            items, HashAlgorithm.TUPLEHASH256, output_length=64
-        )
+        result = fresh_hash_engine.tuple_hash(items, HashAlgorithm.TUPLEHASH256, output_length=64)
 
         assert len(result.digest) == 64
 
@@ -764,12 +740,8 @@ class TestTupleHash:
         """Test TupleHash with customization string."""
         items = [b"test"]
 
-        result1 = fresh_hash_engine.tuple_hash(
-            items, HashAlgorithm.TUPLEHASH128, customization=b"context-A"
-        )
-        result2 = fresh_hash_engine.tuple_hash(
-            items, HashAlgorithm.TUPLEHASH128, customization=b"context-B"
-        )
+        result1 = fresh_hash_engine.tuple_hash(items, HashAlgorithm.TUPLEHASH128, customization=b"context-A")
+        result2 = fresh_hash_engine.tuple_hash(items, HashAlgorithm.TUPLEHASH128, customization=b"context-B")
 
         assert result1.digest != result2.digest
 

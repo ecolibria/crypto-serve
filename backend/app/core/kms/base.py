@@ -13,11 +13,12 @@ from typing import Any
 
 class KMSBackend(str, Enum):
     """Supported KMS backends."""
-    LOCAL = "local"           # Development only - uses local key derivation
-    AWS_KMS = "aws_kms"       # AWS Key Management Service
-    GCP_KMS = "gcp_kms"       # Google Cloud Key Management
-    AZURE_KV = "azure_kv"     # Azure Key Vault
-    HASHICORP = "hashicorp"   # HashiCorp Vault Transit
+
+    LOCAL = "local"  # Development only - uses local key derivation
+    AWS_KMS = "aws_kms"  # AWS Key Management Service
+    GCP_KMS = "gcp_kms"  # Google Cloud Key Management
+    AZURE_KV = "azure_kv"  # Azure Key Vault
+    HASHICORP = "hashicorp"  # HashiCorp Vault Transit
 
 
 @dataclass
@@ -32,6 +33,7 @@ class KMSConfig:
         credentials: Provider-specific credentials dict
         options: Additional provider-specific options
     """
+
     backend: KMSBackend = KMSBackend.LOCAL
     master_key_id: str = ""
     region: str = ""
@@ -50,6 +52,7 @@ class KMSConfig:
 @dataclass
 class KeyMetadata:
     """Metadata about a key in the KMS."""
+
     key_id: str
     version: int
     context: str
@@ -73,6 +76,7 @@ class KeyMetadata:
 @dataclass
 class EncryptResult:
     """Result of a KMS encrypt operation."""
+
     ciphertext: bytes
     key_id: str
     key_version: int
@@ -83,6 +87,7 @@ class EncryptResult:
 @dataclass
 class DecryptResult:
     """Result of a KMS decrypt operation."""
+
     plaintext: bytes
     key_id: str
     key_version: int
@@ -257,6 +262,7 @@ class KMSProvider(ABC):
             - details: dict
         """
         import time
+
         start = time.monotonic()
 
         try:
@@ -292,24 +298,29 @@ class KMSProvider(ABC):
 
 class KMSError(Exception):
     """Base exception for KMS operations."""
+
     pass
 
 
 class KeyNotFoundError(KMSError):
     """Key not found in KMS."""
+
     pass
 
 
 class DecryptionError(KMSError):
     """Decryption failed (wrong key, tampered, etc.)."""
+
     pass
 
 
 class RotationError(KMSError):
     """Key rotation failed."""
+
     pass
 
 
 class AuthenticationError(KMSError):
     """KMS authentication failed."""
+
     pass

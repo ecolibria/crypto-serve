@@ -10,7 +10,7 @@ This module provides production-grade token management:
 import hashlib
 import secrets
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import jwt
 from cryptography.hazmat.primitives import serialization
@@ -68,7 +68,7 @@ class TokenManager:
         fernet = Fernet(fernet_key)
         encrypted = fernet.encrypt(private_key_pem)
 
-        return encrypted.decode('utf-8')
+        return encrypted.decode("utf-8")
 
     def decrypt_private_key(self, encrypted_key: str) -> bytes:
         """Decrypt private key from storage."""
@@ -79,7 +79,7 @@ class TokenManager:
         fernet_key = base64.urlsafe_b64encode(key_bytes)
 
         fernet = Fernet(fernet_key)
-        decrypted = fernet.decrypt(encrypted_key.encode('utf-8'))
+        decrypted = fernet.decrypt(encrypted_key.encode("utf-8"))
 
         return decrypted
 
@@ -178,10 +178,7 @@ class TokenManager:
             Tuple of (token_string, token_hash, expiry_datetime)
         """
         now = int(time.time())
-        expires_at = datetime.fromtimestamp(
-            now + (REFRESH_TOKEN_LIFETIME_DAYS * 24 * 3600),
-            tz=timezone.utc
-        )
+        expires_at = datetime.fromtimestamp(now + (REFRESH_TOKEN_LIFETIME_DAYS * 24 * 3600), tz=timezone.utc)
 
         # Generate unique token ID for revocation
         jti = secrets.token_urlsafe(32)

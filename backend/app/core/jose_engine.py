@@ -28,7 +28,6 @@ import json
 import os
 import struct
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -48,6 +47,7 @@ from cryptography.exceptions import InvalidTag, InvalidSignature
 # JWS Algorithms
 class JWSAlgorithm(str, Enum):
     """Supported JWS signature algorithms."""
+
     EDDSA = "EdDSA"  # Ed25519
     ES256 = "ES256"  # ECDSA P-256 with SHA-256
     ES384 = "ES384"  # ECDSA P-384 with SHA-384
@@ -59,6 +59,7 @@ class JWSAlgorithm(str, Enum):
 # JWE Algorithms
 class JWEAlgorithm(str, Enum):
     """Supported JWE key management algorithms."""
+
     DIR = "dir"  # Direct encryption
     A128KW = "A128KW"  # AES-128 Key Wrap
     A256KW = "A256KW"  # AES-256 Key Wrap
@@ -69,6 +70,7 @@ class JWEAlgorithm(str, Enum):
 
 class JWEEncryption(str, Enum):
     """Supported JWE content encryption algorithms."""
+
     A128GCM = "A128GCM"  # AES-128-GCM
     A256GCM = "A256GCM"  # AES-256-GCM
     A128CBC_HS256 = "A128CBC-HS256"  # AES-128-CBC + HMAC-SHA-256
@@ -79,21 +81,25 @@ class JWEEncryption(str, Enum):
 # Exceptions
 class JOSEError(Exception):
     """Base JOSE exception."""
+
     pass
 
 
 class InvalidJWSError(JOSEError):
     """JWS is invalid or verification failed."""
+
     pass
 
 
 class InvalidJWEError(JOSEError):
     """JWE is invalid or decryption failed."""
+
     pass
 
 
 class UnsupportedAlgorithmError(JOSEError):
     """Algorithm not supported."""
+
     pass
 
 
@@ -101,6 +107,7 @@ class UnsupportedAlgorithmError(JOSEError):
 @dataclass
 class JWSResult:
     """Result of JWS creation."""
+
     compact: str  # Compact serialization (header.payload.signature)
     header: dict
     payload: bytes
@@ -110,6 +117,7 @@ class JWSResult:
 @dataclass
 class JWEResult:
     """Result of JWE creation."""
+
     compact: str  # Compact serialization
     header: dict
     encrypted_key: bytes
@@ -121,6 +129,7 @@ class JWEResult:
 @dataclass
 class JWK:
     """JSON Web Key."""
+
     kty: str  # Key type
     use: str | None = None  # Use: sig or enc
     key_ops: list[str] | None = None
@@ -432,9 +441,7 @@ class JOSEEngine:
             # ECDH Ephemeral Static
             if not isinstance(key, ec.EllipticCurvePublicKey):
                 raise JOSEError("ECDH requires EC public key")
-            cek, encrypted_key, epk_header = self._ecdh_derive_key(
-                key, algorithm, encryption, cek_size
-            )
+            cek, encrypted_key, epk_header = self._ecdh_derive_key(key, algorithm, encryption, cek_size)
             header["epk"] = epk_header
             header_json = json.dumps(header, separators=(",", ":")).encode()
             header_b64 = _b64url_encode(header_json)
@@ -450,13 +457,15 @@ class JOSEEngine:
         ciphertext, tag = self._jwe_encrypt_content(plaintext, cek, iv, aad_input, encryption)
 
         # Build compact serialization
-        compact = ".".join([
-            header_b64,
-            _b64url_encode(encrypted_key),
-            _b64url_encode(iv),
-            _b64url_encode(ciphertext),
-            _b64url_encode(tag),
-        ])
+        compact = ".".join(
+            [
+                header_b64,
+                _b64url_encode(encrypted_key),
+                _b64url_encode(iv),
+                _b64url_encode(ciphertext),
+                _b64url_encode(tag),
+            ]
+        )
 
         return JWEResult(
             compact=compact,
@@ -604,7 +613,7 @@ class JOSEEngine:
             mac = h.finalize()
 
             # Tag is first half of MAC
-            tag = mac[:len(mac) // 2]
+            tag = mac[: len(mac) // 2]
             return ciphertext, tag
 
         else:
@@ -643,10 +652,11 @@ class JOSEEngine:
             h.update(mac_input)
             computed_mac = h.finalize()
 
-            expected_tag = computed_mac[:len(computed_mac) // 2]
-            if not crypto_hmac.HMAC.verify is None:
+            expected_tag = computed_mac[: len(computed_mac) // 2]
+            if crypto_hmac.HMAC.verify is not None:
                 # Use constant-time comparison
                 import hmac as std_hmac
+
                 if not std_hmac.compare_digest(tag, expected_tag):
                     raise InvalidTag()
 
@@ -709,10 +719,11 @@ class JOSEEngine:
         # Concat KDF (RFC 7518 Section 4.6.2)
         # AlgorithmID || PartyUInfo || PartyVInfo || SuppPubInfo
         other_info = (
-            struct.pack(">I", len(alg_id)) + alg_id +
-            struct.pack(">I", 0) +  # PartyUInfo empty
-            struct.pack(">I", 0) +  # PartyVInfo empty
-            struct.pack(">I", key_data_len * 8)  # keydatalen in bits
+            struct.pack(">I", len(alg_id))
+            + alg_id
+            + struct.pack(">I", 0)  # PartyUInfo empty
+            + struct.pack(">I", 0)  # PartyVInfo empty
+            + struct.pack(">I", key_data_len * 8)  # keydatalen in bits
         )
 
         ckdf = ConcatKDFHash(
@@ -757,13 +768,10 @@ class JOSEEngine:
 
         if crv == "P-256":
             curve = ec.SECP256R1()
-            key_size = 32
         elif crv == "P-384":
             curve = ec.SECP384R1()
-            key_size = 48
         elif crv == "P-521":
             curve = ec.SECP521R1()
-            key_size = 66
         else:
             raise JOSEError(f"Unsupported curve: {crv}")
 
@@ -785,10 +793,11 @@ class JOSEEngine:
             key_data_len = 16 if "128" in algorithm.value else 32
 
         other_info = (
-            struct.pack(">I", len(alg_id)) + alg_id +
-            struct.pack(">I", 0) +
-            struct.pack(">I", 0) +
-            struct.pack(">I", key_data_len * 8)
+            struct.pack(">I", len(alg_id))
+            + alg_id
+            + struct.pack(">I", 0)
+            + struct.pack(">I", 0)
+            + struct.pack(">I", key_data_len * 8)
         )
 
         ckdf = ConcatKDFHash(
@@ -969,13 +978,9 @@ class JOSEEngine:
         elif jwk.kty == "OKP":
             if jwk.crv == "Ed25519":
                 if jwk.d:
-                    return ed25519.Ed25519PrivateKey.from_private_bytes(
-                        _b64url_decode(jwk.d)
-                    )
+                    return ed25519.Ed25519PrivateKey.from_private_bytes(_b64url_decode(jwk.d))
                 else:
-                    return ed25519.Ed25519PublicKey.from_public_bytes(
-                        _b64url_decode(jwk.x)
-                    )
+                    return ed25519.Ed25519PublicKey.from_public_bytes(_b64url_decode(jwk.x))
             else:
                 raise JOSEError(f"Unsupported curve: {jwk.crv}")
 

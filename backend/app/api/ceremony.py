@@ -8,9 +8,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.auth.jwt import get_current_user
 from app.models import User
 from app.core.key_ceremony import (
@@ -43,53 +41,36 @@ async def require_admin(
 # Request/Response Models
 # =============================================================================
 
+
 class InitializeRequest(BaseModel):
     """Request to initialize the master key."""
-    threshold: int = Field(
-        ...,
-        ge=2,
-        le=10,
-        description="Minimum shares needed to unseal (2-10)"
-    )
-    total_shares: int = Field(
-        ...,
-        ge=2,
-        le=20,
-        description="Total shares to generate (2-20)"
-    )
-    custodian_emails: list[str] | None = Field(
-        default=None,
-        description="Optional list of custodian emails"
-    )
+
+    threshold: int = Field(..., ge=2, le=10, description="Minimum shares needed to unseal (2-10)")
+    total_shares: int = Field(..., ge=2, le=20, description="Total shares to generate (2-20)")
+    custodian_emails: list[str] | None = Field(default=None, description="Optional list of custodian emails")
 
 
 class InitializeResponse(BaseModel):
     """Response from initialization."""
+
     success: bool
     message: str
-    recovery_shares: list[str] = Field(
-        ...,
-        description="Hex-encoded recovery shares - distribute to custodians"
-    )
-    root_token: str = Field(
-        ...,
-        description="Root token for initial setup - store securely"
-    )
+    recovery_shares: list[str] = Field(..., description="Hex-encoded recovery shares - distribute to custodians")
+    root_token: str = Field(..., description="Root token for initial setup - store securely")
     threshold: int
     total_shares: int
-    share_fingerprints: list[str] = Field(
-        ...,
-        description="SHA-256 fingerprints for share verification"
-    )
+    share_fingerprints: list[str] = Field(..., description="SHA-256 fingerprints for share verification")
 
 
 class UnsealRequest(BaseModel):
     """Request to provide an unseal share."""
+
     share: str = Field(..., description="Hex-encoded recovery share")
 
 
 class UnsealResponse(BaseModel):
     """Response from unseal operation."""
+
     success: bool
     message: str
     shares_provided: int
@@ -100,6 +81,7 @@ class UnsealResponse(BaseModel):
 
 class StatusResponse(BaseModel):
     """Key ceremony status."""
+
     state: str
     is_initialized: bool
     is_sealed: bool
@@ -111,11 +93,13 @@ class StatusResponse(BaseModel):
 
 class VerifyShareRequest(BaseModel):
     """Request to verify a share."""
+
     share: str = Field(..., description="Hex-encoded share to verify")
 
 
 class VerifyShareResponse(BaseModel):
     """Share verification result."""
+
     valid: bool
     share_index: int | None = None
     fingerprint: str | None = None
@@ -127,6 +111,7 @@ class VerifyShareResponse(BaseModel):
 # =============================================================================
 # Endpoints
 # =============================================================================
+
 
 @router.get("/status", response_model=StatusResponse)
 async def get_ceremony_status(
@@ -210,9 +195,7 @@ async def seal_service(
     - Before system shutdown
     """
     try:
-        key_ceremony_service.seal(
-            actor=admin.email or admin.github_username
-        )
+        key_ceremony_service.seal(actor=admin.email or admin.github_username)
         return {
             "success": True,
             "message": "Service sealed. Unseal required to resume operations.",
@@ -289,9 +272,7 @@ async def reset_unseal_progress(
     Clears any pending shares. Use this if incorrect shares
     were provided and you need to start over.
     """
-    key_ceremony_service.reset_unseal_progress(
-        actor=admin.email or admin.github_username
-    )
+    key_ceremony_service.reset_unseal_progress(actor=admin.email or admin.github_username)
     return {
         "success": True,
         "message": "Unseal progress reset. Start over with correct shares.",

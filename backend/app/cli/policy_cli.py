@@ -23,7 +23,6 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -41,17 +40,18 @@ from app.core.policy_engine import (
     PolicyEngine,
     PolicySeverity,
     EvaluationContext,
-    build_evaluation_context,
 )
-from app.schemas.context import ContextConfig, Sensitivity
+from app.schemas.context import ContextConfig
 
 
 # =============================================================================
 # Terminal Colors (for non-CI output)
 # =============================================================================
 
+
 class Colors:
     """ANSI color codes for terminal output."""
+
     RED = "\033[91m"
     GREEN = "\033[92m"
     YELLOW = "\033[93m"
@@ -101,9 +101,11 @@ def severity_color(severity: str) -> str:
 # Output Formatters
 # =============================================================================
 
+
 @dataclass
 class ValidationResult:
     """Result of a validation operation."""
+
     success: bool
     message: str
     details: list[dict] = None
@@ -118,6 +120,7 @@ class ValidationResult:
 
 class OutputFormat(str, Enum):
     """Output format options."""
+
     TEXT = "text"
     JSON = "json"
     GITHUB = "github"  # GitHub Actions annotations
@@ -153,6 +156,7 @@ def output_result(result: ValidationResult, format: OutputFormat) -> None:
 # =============================================================================
 # Command: validate
 # =============================================================================
+
 
 def cmd_validate(args) -> int:
     """Validate policy YAML files."""
@@ -192,11 +196,13 @@ def cmd_validate(args) -> int:
         rule = policy_data.get("rule", "")
         deprecated_check = check_deprecated_in_rule(rule)
         if deprecated_check:
-            warnings.append({
-                "severity": "warn",
-                "message": deprecated_check,
-                "policy": policy_data.get("name", f"policy_{i}"),
-            })
+            warnings.append(
+                {
+                    "severity": "warn",
+                    "message": deprecated_check,
+                    "policy": policy_data.get("name", f"policy_{i}"),
+                }
+            )
 
     if errors:
         result = ValidationResult(
@@ -227,31 +233,37 @@ def validate_policy_structure(policy: dict, index: int) -> list[dict]:
     required = ["name", "rule", "message"]
     for field in required:
         if field not in policy:
-            errors.append({
-                "severity": "block",
-                "message": f"Policy '{name}': missing required field '{field}'",
-                "policy": name,
-            })
+            errors.append(
+                {
+                    "severity": "block",
+                    "message": f"Policy '{name}': missing required field '{field}'",
+                    "policy": name,
+                }
+            )
 
     # Validate severity if present
     if "severity" in policy:
         valid_severities = ["block", "warn", "info"]
         if policy["severity"] not in valid_severities:
-            errors.append({
-                "severity": "block",
-                "message": f"Policy '{name}': invalid severity '{policy['severity']}' (must be one of {valid_severities})",
-                "policy": name,
-            })
+            errors.append(
+                {
+                    "severity": "block",
+                    "message": f"Policy '{name}': invalid severity '{policy['severity']}' (must be one of {valid_severities})",
+                    "policy": name,
+                }
+            )
 
     # Validate rule syntax (basic check)
     rule = policy.get("rule", "")
     rule_error = validate_rule_syntax(rule)
     if rule_error:
-        errors.append({
-            "severity": "block",
-            "message": f"Policy '{name}': {rule_error}",
-            "policy": name,
-        })
+        errors.append(
+            {
+                "severity": "block",
+                "message": f"Policy '{name}': {rule_error}",
+                "policy": name,
+            }
+        )
 
     return errors
 
@@ -290,6 +302,7 @@ def check_deprecated_in_rule(rule: str) -> str | None:
 # Command: check
 # =============================================================================
 
+
 def cmd_check(args) -> int:
     """Check if an algorithm/context combination passes policies."""
     algorithm = args.algorithm
@@ -302,10 +315,12 @@ def cmd_check(args) -> int:
         result = ValidationResult(
             success=False,
             message=f"Unknown algorithm: {algorithm}",
-            details=[{
-                "severity": "block",
-                "message": f"Algorithm '{algorithm}' not found in registry. Use 'list algorithms' to see available options.",
-            }],
+            details=[
+                {
+                    "severity": "block",
+                    "message": f"Algorithm '{algorithm}' not found in registry. Use 'list algorithms' to see available options.",
+                }
+            ],
         )
         output_result(result, args.format)
         return 1
@@ -365,11 +380,13 @@ def cmd_check(args) -> int:
 
     details = []
     for v in violations:
-        details.append({
-            "severity": v.severity.value,
-            "message": f"[{v.policy_name}] {v.message}",
-            "policy": v.policy_name,
-        })
+        details.append(
+            {
+                "severity": v.severity.value,
+                "message": f"[{v.policy_name}] {v.message}",
+                "policy": v.policy_name,
+            }
+        )
 
     if blocking:
         result = ValidationResult(
@@ -404,22 +421,25 @@ def load_policies_from_file(file_path: str) -> list[Policy]:
 
     policy_list = data if isinstance(data, list) else [data]
     for p in policy_list:
-        policies.append(Policy(
-            name=p["name"],
-            description=p.get("description", ""),
-            rule=p["rule"],
-            severity=PolicySeverity(p.get("severity", "warn")),
-            message=p["message"],
-            enabled=p.get("enabled", True),
-            contexts=p.get("contexts", []),
-            operations=p.get("operations", []),
-        ))
+        policies.append(
+            Policy(
+                name=p["name"],
+                description=p.get("description", ""),
+                rule=p["rule"],
+                severity=PolicySeverity(p.get("severity", "warn")),
+                message=p["message"],
+                enabled=p.get("enabled", True),
+                contexts=p.get("contexts", []),
+                operations=p.get("operations", []),
+            )
+        )
     return policies
 
 
 # =============================================================================
 # Command: list
 # =============================================================================
+
 
 def cmd_list(args) -> int:
     """List algorithms or policies."""
@@ -477,7 +497,9 @@ def list_algorithms(args) -> int:
             qr = colored("◆", Colors.MAGENTA) if algo.quantum_resistant else " "
             standards = ", ".join(algo.standards[:2]) if algo.standards else "-"
 
-            print(f"{qr} {algo.name:<28} {algo.algorithm_type.value:<20} {algo.security_bits:>5}  {status:<20} {standards}")
+            print(
+                f"{qr} {algo.name:<28} {algo.algorithm_type.value:<20} {algo.security_bits:>5}  {status:<20} {standards}"
+            )
 
         print(f"\n{colored('◆', Colors.MAGENTA)} = Quantum-resistant")
 
@@ -489,12 +511,15 @@ def list_deprecated(args) -> int:
     deprecated = get_deprecated_algorithms()
 
     if args.format == OutputFormat.JSON:
-        data = [{
-            "name": a.name,
-            "status": a.status.value,
-            "replacement": a.replacement,
-            "vulnerabilities": a.vulnerabilities,
-        } for a in deprecated]
+        data = [
+            {
+                "name": a.name,
+                "status": a.status.value,
+                "replacement": a.replacement,
+                "vulnerabilities": a.vulnerabilities,
+            }
+            for a in deprecated
+        ]
         print(json.dumps(data, indent=2))
     else:
         print(f"\n{colored('⚠ Deprecated/Broken Algorithms', Colors.RED + Colors.BOLD)} ({len(deprecated)} total)\n")
@@ -521,7 +546,9 @@ def list_quantum(args) -> int:
         data = [a.to_dict() for a in algorithms]
         print(json.dumps(data, indent=2))
     else:
-        print(f"\n{colored('Post-Quantum Cryptography', Colors.MAGENTA + Colors.BOLD)} ({len(algorithms)} algorithms)\n")
+        print(
+            f"\n{colored('Post-Quantum Cryptography', Colors.MAGENTA + Colors.BOLD)} ({len(algorithms)} algorithms)\n"
+        )
         print("NIST PQC Standards (Finalized August 2024):\n")
 
         # Group by family
@@ -550,13 +577,16 @@ def list_policies(args) -> int:
     engine.load_default_policies()
 
     if args.format == OutputFormat.JSON:
-        data = [{
-            "name": p.name,
-            "description": p.description,
-            "severity": p.severity.value,
-            "rule": p.rule,
-            "message": p.message,
-        } for p in engine.policies]
+        data = [
+            {
+                "name": p.name,
+                "description": p.description,
+                "severity": p.severity.value,
+                "rule": p.rule,
+                "message": p.message,
+            }
+            for p in engine.policies
+        ]
         print(json.dumps(data, indent=2))
     else:
         print(f"\n{colored('Default Policies', Colors.BOLD)} ({len(engine.policies)} total)\n")
@@ -577,6 +607,7 @@ def list_policies(args) -> int:
 # =============================================================================
 # Command: simulate
 # =============================================================================
+
 
 def cmd_simulate(args) -> int:
     """Simulate policy evaluation for a context configuration."""
@@ -617,6 +648,7 @@ def cmd_simulate(args) -> int:
 
     # Resolve algorithm
     from app.core.algorithm_resolver import AlgorithmResolver
+
     resolver = AlgorithmResolver(config)
     derived = resolver.resolve()
 
@@ -653,6 +685,7 @@ def cmd_simulate(args) -> int:
 # Main Entry Point
 # =============================================================================
 
+
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser."""
     parser = argparse.ArgumentParser(
@@ -678,22 +711,19 @@ Examples:
 
   # CI/CD integration with JSON output
   cryptoserve-policy check -a AES-128-GCM -c user-pii --format json
-        """
+        """,
     )
 
     # Global options
     parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         type=OutputFormat,
         choices=list(OutputFormat),
         default=OutputFormat.TEXT,
-        help="Output format (default: text)"
+        help="Output format (default: text)",
     )
-    parser.add_argument(
-        "--no-color",
-        action="store_true",
-        help="Disable colored output"
-    )
+    parser.add_argument("--no-color", action="store_true", help="Disable colored output")
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -715,11 +745,7 @@ Examples:
 
     # list command
     list_parser = subparsers.add_parser("list", help="List algorithms or policies")
-    list_parser.add_argument(
-        "what",
-        choices=["algorithms", "deprecated", "policies", "quantum"],
-        help="What to list"
-    )
+    list_parser.add_argument("what", choices=["algorithms", "deprecated", "policies", "quantum"], help="What to list")
     list_parser.add_argument("--type", help="Filter by algorithm type")
     list_parser.add_argument("--quantum-resistant", "-q", action="store_true")
     list_parser.add_argument("--recommended", "-r", action="store_true")

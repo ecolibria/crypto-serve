@@ -30,7 +30,9 @@ class IdentityManager:
         # Use time.time() for accurate timestamps (not affected by timezone)
         now = int(time.time())
         # Calculate expiry in seconds from now
-        expiry_delta = (identity.expires_at.replace(tzinfo=None) - identity.created_at.replace(tzinfo=None)).total_seconds()
+        expiry_delta = (
+            identity.expires_at.replace(tzinfo=None) - identity.created_at.replace(tzinfo=None)
+        ).total_seconds()
         exp = now + int(expiry_delta)
 
         payload = {
@@ -121,9 +123,7 @@ class IdentityManager:
         if not identity_id:
             return None
 
-        result = await db.execute(
-            select(Identity).where(Identity.id == identity_id)
-        )
+        result = await db.execute(select(Identity).where(Identity.id == identity_id))
         identity = result.scalar_one_or_none()
 
         if not identity:
@@ -141,11 +141,7 @@ class IdentityManager:
         user: User,
     ) -> bool:
         """Revoke an identity owned by the user."""
-        result = await db.execute(
-            select(Identity)
-            .where(Identity.id == identity_id)
-            .where(Identity.user_id == user.id)
-        )
+        result = await db.execute(select(Identity).where(Identity.id == identity_id).where(Identity.user_id == user.id))
         identity = result.scalar_one_or_none()
 
         if not identity:

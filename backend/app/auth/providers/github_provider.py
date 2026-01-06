@@ -6,7 +6,7 @@ Implements OAuth 2.0 flow for GitHub authentication.
 from typing import Any
 import httpx
 
-from app.auth.providers.base import OAuthProvider, OAuthConfig, OAuthUserInfo
+from app.auth.providers.base import OAuthProvider, OAuthUserInfo
 
 
 class GitHubProvider(OAuthProvider):
@@ -101,12 +101,8 @@ class GitHubProvider(OAuthProvider):
 
             if emails_response.status_code == 200:
                 emails = emails_response.json()
-                verified_emails = [
-                    e["email"] for e in emails if e.get("verified", False)
-                ]
-                primary_email_obj = next(
-                    (e for e in emails if e.get("primary")), None
-                )
+                verified_emails = [e["email"] for e in emails if e.get("verified", False)]
+                primary_email_obj = next((e for e in emails if e.get("primary")), None)
                 if primary_email_obj:
                     primary_email = primary_email_obj.get("email")
                     email_verified = primary_email_obj.get("verified", False)

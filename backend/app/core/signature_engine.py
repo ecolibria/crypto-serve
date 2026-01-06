@@ -28,7 +28,6 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519, ec
@@ -40,15 +39,11 @@ from cryptography.hazmat.primitives.asymmetric.utils import (
     encode_dss_signature,
 )
 from cryptography.exceptions import InvalidSignature
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models import Identity
-from app.core.secure_memory import SecureBytes
 
 
 class SignatureAlgorithm(str, Enum):
     """Supported signature algorithms."""
+
     ED25519 = "Ed25519"
     ED448 = "Ed448"
     ECDSA_P256 = "ECDSA-P256"
@@ -60,6 +55,7 @@ class SignatureAlgorithm(str, Enum):
 
 class SignatureFormat(str, Enum):
     """Output format for signatures."""
+
     RAW = "raw"  # Raw bytes
     BASE64 = "base64"  # Base64 encoded
     DER = "der"  # DER encoded (for ECDSA)
@@ -69,6 +65,7 @@ class SignatureFormat(str, Enum):
 @dataclass
 class SigningKeyPair:
     """A signing key pair with metadata."""
+
     key_id: str
     algorithm: SignatureAlgorithm
     private_key_pem: bytes  # Encrypted PEM
@@ -81,6 +78,7 @@ class SigningKeyPair:
 @dataclass
 class SignatureResult:
     """Result of a signing operation."""
+
     signature: bytes
     algorithm: SignatureAlgorithm
     key_id: str
@@ -90,6 +88,7 @@ class SignatureResult:
 @dataclass
 class VerificationResult:
     """Result of a verification operation."""
+
     valid: bool
     algorithm: SignatureAlgorithm
     key_id: str
@@ -98,21 +97,25 @@ class VerificationResult:
 
 class SignatureError(Exception):
     """Base signature exception."""
+
     pass
 
 
 class KeyNotFoundError(SignatureError):
     """Signing key not found."""
+
     pass
 
 
 class InvalidSignatureError(SignatureError):
     """Signature verification failed."""
+
     pass
 
 
 class UnsupportedAlgorithmError(SignatureError):
     """Algorithm not supported."""
+
     pass
 
 
@@ -164,10 +167,7 @@ class SignatureEngine:
         # In-memory key cache with encrypted private keys
         self._keys: dict[str, SigningKeyPair] = {}
 
-        logger.info(
-            "SignatureEngine initialized with encrypted key storage. "
-            "For production, use HSM integration."
-        )
+        logger.info("SignatureEngine initialized with encrypted key storage. " "For production, use HSM integration.")
 
     def _encrypt_private_key(self, private_key_pem: bytes) -> bytes:
         """Encrypt private key for storage using session key.
@@ -264,12 +264,8 @@ class SignatureEngine:
             public_jwk = {
                 "kty": "EC",
                 "crv": "P-256" if algorithm == SignatureAlgorithm.ECDSA_P256 else "P-384",
-                "x": base64.urlsafe_b64encode(
-                    public_numbers.x.to_bytes(key_size, "big")
-                ).rstrip(b"=").decode(),
-                "y": base64.urlsafe_b64encode(
-                    public_numbers.y.to_bytes(key_size, "big")
-                ).rstrip(b"=").decode(),
+                "x": base64.urlsafe_b64encode(public_numbers.x.to_bytes(key_size, "big")).rstrip(b"=").decode(),
+                "y": base64.urlsafe_b64encode(public_numbers.y.to_bytes(key_size, "big")).rstrip(b"=").decode(),
                 "kid": key_id,
                 "use": "sig",
                 "alg": "ES256" if algorithm == SignatureAlgorithm.ECDSA_P256 else "ES384",
@@ -326,9 +322,7 @@ class SignatureEngine:
             signature = private_key.sign(message)
 
         elif key_pair.algorithm in [SignatureAlgorithm.ECDSA_P256, SignatureAlgorithm.ECDSA_P384]:
-            private_key = serialization.load_pem_private_key(
-                decrypted_pem, password=None  # Use decrypted PEM
-            )
+            private_key = serialization.load_pem_private_key(decrypted_pem, password=None)  # Use decrypted PEM
             # Use SHA-256 for P-256, SHA-384 for P-384
             hash_alg = hashes.SHA256() if key_pair.algorithm == SignatureAlgorithm.ECDSA_P256 else hashes.SHA384()
             signature_der = private_key.sign(message, ec.ECDSA(hash_alg))
@@ -466,13 +460,15 @@ class SignatureEngine:
         for key_id, key_pair in self._keys.items():
             if context and key_pair.context != context:
                 continue
-            keys.append({
-                "key_id": key_id,
-                "algorithm": key_pair.algorithm.value,
-                "context": key_pair.context,
-                "created_at": key_pair.created_at.isoformat(),
-                "public_key_jwk": key_pair.public_key_jwk,
-            })
+            keys.append(
+                {
+                    "key_id": key_id,
+                    "algorithm": key_pair.algorithm.value,
+                    "context": key_pair.context,
+                    "created_at": key_pair.created_at.isoformat(),
+                    "public_key_jwk": key_pair.public_key_jwk,
+                }
+            )
         return keys
 
     def delete_key(self, key_id: str) -> bool:
@@ -489,6 +485,7 @@ class SignatureEngine:
             key_pair = self._keys[key_id]
             if isinstance(key_pair.private_key_pem, bytearray):
                 from app.core.secure_memory import secure_zero
+
                 secure_zero(key_pair.private_key_pem)
             del self._keys[key_id]
             return True
@@ -514,9 +511,7 @@ class SignatureEngine:
             )
         else:
             # For EC, return the private number as bytes
-            return private_key.private_numbers().private_value.to_bytes(
-                (private_key.key_size + 7) // 8, "big"
-            )
+            return private_key.private_numbers().private_value.to_bytes((private_key.key_size + 7) // 8, "big")
 
     def import_public_key(
         self,

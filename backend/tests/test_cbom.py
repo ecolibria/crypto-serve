@@ -1,7 +1,7 @@
 """Tests for CBOM (Cryptographic Bill of Materials) service."""
 
 import pytest
-from app.core.cbom import cbom_service, CBOM, CryptoComponent, QuantumReadiness
+from app.core.cbom import cbom_service
 from app.core.crypto_inventory import (
     CryptoInventory,
     DetectedLibrary,

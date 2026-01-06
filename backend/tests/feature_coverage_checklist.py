@@ -39,7 +39,6 @@ import base64
 import json
 import os
 import sys
-import time
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
@@ -144,12 +143,7 @@ class FeatureCoverageTest:
 
     def post(self, path: str, data: dict, headers: dict = None) -> requests.Response:
         """Make POST request."""
-        return requests.post(
-            f"{API_URL}{path}",
-            json=data,
-            headers=headers or self.headers,
-            timeout=30
-        )
+        return requests.post(f"{API_URL}{path}", json=data, headers=headers or self.headers, timeout=30)
 
     def delete(self, path: str, headers: dict = None) -> requests.Response:
         """Make DELETE request."""
@@ -220,9 +214,11 @@ class FeatureCoverageTest:
         ]
 
         for ctx, expected in contexts:
+
             def test_ctx(c=ctx):
                 r = self.post("/api/v1/crypto/encrypt", {"plaintext": plaintext, "context": c})
                 return r.status_code == 200
+
             self.test(f"Context '{ctx}' -> {expected}", test_ctx)
 
         # Test invalid context
@@ -241,9 +237,11 @@ class FeatureCoverageTest:
         algorithms = ["sha256", "sha384", "sha512", "sha3-256", "sha3-384", "sha3-512", "blake2b", "blake2s", "blake3"]
 
         for algo in algorithms:
+
             def test_hash(a=algo):
                 r = self.post("/api/v1/crypto/hash", {"data": data, "algorithm": a})
                 return r.status_code == 200 and "digest" in r.json()
+
             self.test(f"{algo.upper()} hash", test_hash)
 
         # Hash verification
@@ -252,10 +250,10 @@ class FeatureCoverageTest:
             if r.status_code != 200:
                 return False
             digest = r.json().get("digest")
-            r = self.post("/api/v1/crypto/hash/verify", {
-                "data": data, "expected_digest": digest, "algorithm": "sha256"
-            })
-            return r.status_code == 200 and r.json().get("valid") == True
+            r = self.post(
+                "/api/v1/crypto/hash/verify", {"data": data, "expected_digest": digest, "algorithm": "sha256"}
+            )
+            return r.status_code == 200 and r.json().get("valid")
 
         self.test("SHA256 hash verification", hash_verify)
 
@@ -268,6 +266,7 @@ class FeatureCoverageTest:
         algorithms = ["hmac-sha256", "hmac-sha384", "hmac-sha512"]
 
         for algo in algorithms:
+
             def test_mac(a=algo):
                 # Generate key
                 r = self.post("/api/v1/crypto/mac/generate-key", {"algorithm": a})
@@ -282,10 +281,10 @@ class FeatureCoverageTest:
                 tag = r.json().get("tag")
 
                 # Verify
-                r = self.post("/api/v1/crypto/mac/verify", {
-                    "data": data, "key": key, "expected_tag": tag, "algorithm": a
-                })
-                return r.status_code == 200 and r.json().get("valid") == True
+                r = self.post(
+                    "/api/v1/crypto/mac/verify", {"data": data, "key": key, "expected_tag": tag, "algorithm": a}
+                )
+                return r.status_code == 200 and r.json().get("valid")
 
             self.test(f"{algo.upper()} create and verify", test_mac)
 
@@ -298,6 +297,7 @@ class FeatureCoverageTest:
         algorithms = ["Ed25519", "ECDSA-P256", "ECDSA-P384"]
 
         for algo in algorithms:
+
             def test_sig(a=algo):
                 # Generate key
                 r = self.post("/api/v1/signatures/keys/generate", {"algorithm": a, "context": "test"})
@@ -312,10 +312,10 @@ class FeatureCoverageTest:
                 signature = r.json().get("signature")
 
                 # Verify
-                r = self.post("/api/v1/signatures/verify", {
-                    "message": message, "signature": signature, "key_id": key_id
-                })
-                return r.status_code == 200 and r.json().get("valid") == True
+                r = self.post(
+                    "/api/v1/signatures/verify", {"message": message, "signature": signature, "key_id": key_id}
+                )
+                return r.status_code == 200 and r.json().get("valid")
 
             self.test(f"{algo} sign and verify", test_sig)
 
@@ -342,6 +342,7 @@ class FeatureCoverageTest:
         algorithms = ["argon2id", "bcrypt", "scrypt", "pbkdf2-sha256"]
 
         for algo in algorithms:
+
             def test_pw(a=algo):
                 r = self.post("/api/v1/crypto/password/hash", {"password": password, "algorithm": a})
                 if r.status_code != 200:
@@ -349,7 +350,7 @@ class FeatureCoverageTest:
                 hash_val = r.json().get("hash")
 
                 r = self.post("/api/v1/crypto/password/verify", {"password": password, "hash": hash_val})
-                return r.status_code == 200 and r.json().get("valid") == True
+                return r.status_code == 200 and r.json().get("valid")
 
             self.test(f"{algo} hash and verify", test_pw)
 
@@ -358,7 +359,7 @@ class FeatureCoverageTest:
             r = self.post("/api/v1/crypto/password/hash", {"password": password, "algorithm": "argon2id"})
             hash_val = r.json().get("hash")
             r = self.post("/api/v1/crypto/password/verify", {"password": "WrongPassword!", "hash": hash_val})
-            return r.status_code == 200 and r.json().get("valid") == False
+            return r.status_code == 200 and not r.json().get("valid")
 
         self.test("Wrong password rejected", wrong_password)
 
@@ -386,9 +387,7 @@ class FeatureCoverageTest:
 
         # Basic split/combine
         def split_combine():
-            r = self.post("/api/v1/secrets/shamir/split", {
-                "secret": secret, "threshold": 3, "total_shares": 5
-            })
+            r = self.post("/api/v1/secrets/shamir/split", {"secret": secret, "threshold": 3, "total_shares": 5})
             if r.status_code != 200:
                 return False
             shares = r.json().get("shares", [])
@@ -403,9 +402,7 @@ class FeatureCoverageTest:
 
         # Different thresholds
         def threshold_2_of_3():
-            r = self.post("/api/v1/secrets/shamir/split", {
-                "secret": secret, "threshold": 2, "total_shares": 3
-            })
+            r = self.post("/api/v1/secrets/shamir/split", {"secret": secret, "threshold": 2, "total_shares": 3})
             shares = r.json().get("shares", [])
             r = self.post("/api/v1/secrets/shamir/combine", {"shares": shares[:2]})
             return r.status_code == 200 and r.json().get("secret") == secret
@@ -414,9 +411,7 @@ class FeatureCoverageTest:
 
         # Insufficient shares should fail
         def insufficient_shares():
-            r = self.post("/api/v1/secrets/shamir/split", {
-                "secret": secret, "threshold": 3, "total_shares": 5
-            })
+            r = self.post("/api/v1/secrets/shamir/split", {"secret": secret, "threshold": 3, "total_shares": 5})
             shares = r.json().get("shares", [])
             r = self.post("/api/v1/secrets/shamir/combine", {"shares": shares[:2]})
             return r.status_code == 400
@@ -428,9 +423,9 @@ class FeatureCoverageTest:
         self.category("9. Threshold Cryptography")
 
         def threshold_keygen():
-            r = self.post("/api/v1/secrets/threshold/keygen", {
-                "threshold": 2, "total_parties": 3, "curve": "secp256k1"
-            })
+            r = self.post(
+                "/api/v1/secrets/threshold/keygen", {"threshold": 2, "total_parties": 3, "curve": "secp256k1"}
+            )
             if r.status_code != 200:
                 return False
             data = r.json()
@@ -440,9 +435,9 @@ class FeatureCoverageTest:
 
         def threshold_sign():
             # Generate keys
-            r = self.post("/api/v1/secrets/threshold/keygen", {
-                "threshold": 2, "total_parties": 3, "curve": "secp256k1"
-            })
+            r = self.post(
+                "/api/v1/secrets/threshold/keygen", {"threshold": 2, "total_parties": 3, "curve": "secp256k1"}
+            )
             if r.status_code != 200:
                 return False
             data = r.json()
@@ -451,11 +446,10 @@ class FeatureCoverageTest:
 
             # Sign with threshold parties
             message = base64.b64encode(b"Sign this message").decode()
-            r = self.post("/api/v1/secrets/threshold/sign", {
-                "message": message,
-                "party_shares": shares[:2],
-                "group_public_key": group_pk
-            })
+            r = self.post(
+                "/api/v1/secrets/threshold/sign",
+                {"message": message, "party_shares": shares[:2], "group_public_key": group_pk},
+            )
             return r.status_code == 200 and "signature" in r.json()
 
         self.test("Threshold signing (2 parties)", threshold_sign)
@@ -467,9 +461,7 @@ class FeatureCoverageTest:
         secret = base64.b64encode(b"Temporary secret").decode()
 
         def create_lease():
-            r = self.post("/api/v1/secrets/lease/create", {
-                "secret": secret, "ttl_seconds": 3600, "renewable": True
-            })
+            r = self.post("/api/v1/secrets/lease/create", {"secret": secret, "ttl_seconds": 3600, "renewable": True})
             return r.status_code == 200 and "lease_id" in r.json()
 
         self.test("Create lease", create_lease)
@@ -483,13 +475,9 @@ class FeatureCoverageTest:
         self.test("Retrieve lease by ID", get_lease)
 
         def renew_lease():
-            r = self.post("/api/v1/secrets/lease/create", {
-                "secret": secret, "ttl_seconds": 60, "renewable": True
-            })
+            r = self.post("/api/v1/secrets/lease/create", {"secret": secret, "ttl_seconds": 60, "renewable": True})
             lease_id = r.json().get("lease_id")
-            r = self.post("/api/v1/secrets/lease/renew", {
-                "lease_id": lease_id, "increment_seconds": 3600
-            })
+            r = self.post("/api/v1/secrets/lease/renew", {"lease_id": lease_id, "increment_seconds": 3600})
             return r.status_code == 200
 
         self.test("Renew lease", renew_lease)
@@ -532,21 +520,19 @@ class FeatureCoverageTest:
             bob = r.json()
 
             # Alice derives shared secret
-            r = self.post("/api/v1/crypto/key-exchange/derive", {
-                "private_key": alice["private_key"],
-                "peer_public_key": bob["public_key"],
-                "algorithm": "x25519"
-            })
+            r = self.post(
+                "/api/v1/crypto/key-exchange/derive",
+                {"private_key": alice["private_key"], "peer_public_key": bob["public_key"], "algorithm": "x25519"},
+            )
             if r.status_code != 200:
                 return False
             alice_shared = r.json().get("shared_secret")
 
             # Bob derives shared secret
-            r = self.post("/api/v1/crypto/key-exchange/derive", {
-                "private_key": bob["private_key"],
-                "peer_public_key": alice["public_key"],
-                "algorithm": "x25519"
-            })
+            r = self.post(
+                "/api/v1/crypto/key-exchange/derive",
+                {"private_key": bob["private_key"], "peer_public_key": alice["public_key"], "algorithm": "x25519"},
+            )
             if r.status_code != 200:
                 return False
             bob_shared = r.json().get("shared_secret")
@@ -576,18 +562,16 @@ class FeatureCoverageTest:
             keys = r.json()
 
             plaintext = base64.b64encode(b"RSA test data").decode()
-            r = self.post("/api/v1/crypto/rsa/encrypt", {
-                "plaintext": plaintext,
-                "public_key_pem": keys["public_key_pem"]
-            })
+            r = self.post(
+                "/api/v1/crypto/rsa/encrypt", {"plaintext": plaintext, "public_key_pem": keys["public_key_pem"]}
+            )
             if r.status_code != 200:
                 return False
             ciphertext = r.json().get("ciphertext")
 
-            r = self.post("/api/v1/crypto/rsa/decrypt", {
-                "ciphertext": ciphertext,
-                "private_key_pem": keys["private_key_pem"]
-            })
+            r = self.post(
+                "/api/v1/crypto/rsa/decrypt", {"ciphertext": ciphertext, "private_key_pem": keys["private_key_pem"]}
+            )
             return r.status_code == 200 and r.json().get("plaintext") == plaintext
 
         self.test("RSA encrypt/decrypt roundtrip", rsa_encrypt_decrypt)
@@ -598,8 +582,7 @@ class FeatureCoverageTest:
 
         def batch_encrypt():
             items = [
-                {"id": f"item-{i}", "plaintext": base64.b64encode(f"Data {i}".encode()).decode()}
-                for i in range(5)
+                {"id": f"item-{i}", "plaintext": base64.b64encode(f"Data {i}".encode()).decode()} for i in range(5)
             ]
             r = self.post("/api/v1/crypto/batch/encrypt", {"context": "general", "items": items})
             if r.status_code != 200:
@@ -611,16 +594,12 @@ class FeatureCoverageTest:
 
         def batch_decrypt():
             items = [
-                {"id": f"item-{i}", "plaintext": base64.b64encode(f"Data {i}".encode()).decode()}
-                for i in range(3)
+                {"id": f"item-{i}", "plaintext": base64.b64encode(f"Data {i}".encode()).decode()} for i in range(3)
             ]
             r = self.post("/api/v1/crypto/batch/encrypt", {"context": "general", "items": items})
             encrypted = r.json().get("results", [])
 
-            decrypt_items = [
-                {"id": item["id"], "ciphertext": item["ciphertext"]}
-                for item in encrypted
-            ]
+            decrypt_items = [{"id": item["id"], "ciphertext": item["ciphertext"]} for item in encrypted]
             r = self.post("/api/v1/crypto/batch/decrypt", {"context": "general", "items": decrypt_items})
             return r.status_code == 200 and len(r.json().get("results", [])) == 3
 
@@ -641,19 +620,13 @@ class FeatureCoverageTest:
             public_key = r.json().get("public_key")
 
             # Encrypt with recipient's public key
-            r = self.post("/api/v1/crypto/hybrid/encrypt", {
-                "plaintext": plaintext,
-                "recipient_public_key": public_key
-            })
+            r = self.post("/api/v1/crypto/hybrid/encrypt", {"plaintext": plaintext, "recipient_public_key": public_key})
             if r.status_code != 200:
                 return False
             ciphertext = r.json().get("ciphertext")
 
             # Decrypt with recipient's private key
-            r = self.post("/api/v1/crypto/hybrid/decrypt", {
-                "ciphertext": ciphertext,
-                "private_key": private_key
-            })
+            r = self.post("/api/v1/crypto/hybrid/decrypt", {"ciphertext": ciphertext, "private_key": private_key})
             return r.status_code == 200 and r.json().get("plaintext") == plaintext
 
         self.test("Hybrid encryption (X25519 + AES)", hybrid_encrypt_decrypt)
@@ -675,10 +648,7 @@ class FeatureCoverageTest:
         self.test("List PQC algorithms", list_pqc_algorithms)
 
         def pqc_key_generation():
-            r = self.post("/api/v1/pqc/keys/generate", {
-                "algorithm": "ML-DSA-65",
-                "context": "test"
-            })
+            r = self.post("/api/v1/pqc/keys/generate", {"algorithm": "ML-DSA-65", "context": "test"})
             return r.status_code == 200 and "keyId" in r.json()
 
         self.test("Generate ML-DSA-65 key", pqc_key_generation)
@@ -704,21 +674,18 @@ class FeatureCoverageTest:
 
             # Sign - payload must be base64 encoded, key must be JSON string
             payload = base64.b64encode(b'{"sub":"user123"}').decode()
-            r = self.post("/api/v1/jose/sign", {
-                "payload": payload,
-                "key": json.dumps(private_jwk),
-                "algorithm": "ES256"
-            })
+            r = self.post(
+                "/api/v1/jose/sign", {"payload": payload, "key": json.dumps(private_jwk), "algorithm": "ES256"}
+            )
             if r.status_code != 200:
                 return False
             jws = r.json().get("jws")
 
             # Verify
-            r = self.post("/api/v1/jose/verify", {
-                "jws": jws,
-                "key": json.dumps(jwk_response.get("public_jwk", private_jwk))
-            })
-            return r.status_code == 200 and r.json().get("valid") == True
+            r = self.post(
+                "/api/v1/jose/verify", {"jws": jws, "key": json.dumps(jwk_response.get("public_jwk", private_jwk))}
+            )
+            return r.status_code == 200 and r.json().get("valid")
 
         self.test("JWS sign and verify", jws_sign_verify)
 
@@ -732,21 +699,16 @@ class FeatureCoverageTest:
 
             # Encrypt
             plaintext = base64.b64encode(b'{"secret":"data"}').decode()
-            r = self.post("/api/v1/jose/encrypt", {
-                "plaintext": plaintext,
-                "key": json.dumps(private_jwk),
-                "algorithm": "dir",
-                "encryption": "A256GCM"
-            })
+            r = self.post(
+                "/api/v1/jose/encrypt",
+                {"plaintext": plaintext, "key": json.dumps(private_jwk), "algorithm": "dir", "encryption": "A256GCM"},
+            )
             if r.status_code != 200:
                 return False
             jwe = r.json().get("jwe")
 
             # Decrypt
-            r = self.post("/api/v1/jose/decrypt", {
-                "jwe": jwe,
-                "key": json.dumps(private_jwk)
-            })
+            r = self.post("/api/v1/jose/decrypt", {"jwe": jwe, "key": json.dumps(private_jwk)})
             return r.status_code == 200
 
         self.test("JWE encrypt and decrypt", jwe_encrypt_decrypt)
@@ -766,34 +728,34 @@ class FeatureCoverageTest:
         self.category("16. Certificate Operations")
 
         def generate_self_signed():
-            r = self.post("/api/v1/certificates/self-signed/generate", {
-                "subject": {"common_name": "test.example.com"},
-                "validity_days": 365,
-                "key_type": "ec",
-                "key_size": 256
-            })
+            r = self.post(
+                "/api/v1/certificates/self-signed/generate",
+                {
+                    "subject": {"common_name": "test.example.com"},
+                    "validity_days": 365,
+                    "key_type": "ec",
+                    "key_size": 256,
+                },
+            )
             return r.status_code == 200 and "certificate_pem" in r.json()
 
         self.test("Generate self-signed certificate", generate_self_signed)
 
         def generate_csr():
-            r = self.post("/api/v1/certificates/csr/generate", {
-                "subject": {
-                    "common_name": "test.example.com",
-                    "organization": "Test Org",
-                    "country": "US"
-                }
-            })
+            r = self.post(
+                "/api/v1/certificates/csr/generate",
+                {"subject": {"common_name": "test.example.com", "organization": "Test Org", "country": "US"}},
+            )
             return r.status_code == 200 and "csr_pem" in r.json()
 
         self.test("Generate CSR", generate_csr)
 
         def parse_certificate():
             # First generate a cert
-            r = self.post("/api/v1/certificates/self-signed/generate", {
-                "subject": {"common_name": "test.example.com"},
-                "validity_days": 30
-            })
+            r = self.post(
+                "/api/v1/certificates/self-signed/generate",
+                {"subject": {"common_name": "test.example.com"}, "validity_days": 30},
+            )
             cert_pem = r.json().get("certificate_pem")
 
             r = self.post("/api/v1/certificates/parse", {"certificate": cert_pem})
@@ -802,10 +764,10 @@ class FeatureCoverageTest:
         self.test("Parse certificate", parse_certificate)
 
         def verify_certificate():
-            r = self.post("/api/v1/certificates/self-signed/generate", {
-                "subject": {"common_name": "test.example.com"},
-                "validity_days": 30
-            })
+            r = self.post(
+                "/api/v1/certificates/self-signed/generate",
+                {"subject": {"common_name": "test.example.com"}, "validity_days": 30},
+            )
             cert_pem = r.json().get("certificate_pem")
 
             r = self.post("/api/v1/certificates/verify", {"certificate": cert_pem})
@@ -846,13 +808,13 @@ class FeatureCoverageTest:
         self.category("18. Code Analysis")
 
         def scan_code():
-            code = '''
+            code = """
 import hashlib
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 key = hashlib.md5(b"password").digest()  # Weak!
 cipher = Cipher(algorithms.AES(key), modes.ECB(key[:16]))  # ECB mode!
-'''
+"""
             r = self.post("/api/v1/code/scan", {"code": code, "language": "python"})
             return r.status_code == 200
 
@@ -915,11 +877,11 @@ cipher = Cipher(algorithms.AES(key), modes.ECB(key[:16]))  # ECB mode!
         self.test("List compliant algorithms", compliance_algorithms)
 
         def generate_cbom():
-            code = '''
+            code = """
 import hashlib
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 key = hashlib.sha256(b"secret").digest()
-'''
+"""
             # Use code analysis CBOM endpoint (not inventory upload)
             r = self.post("/api/v1/code/cbom", {"code": code, "language": "python"})
             return r.status_code in [200, 201]
@@ -1007,7 +969,7 @@ key = hashlib.sha256(b"secret").digest()
                 f"{API_URL}/api/v1/crypto/encrypt",
                 json={"plaintext": base64.b64encode(b"test").decode(), "context": "general"},
                 headers={"Content-Type": "application/json"},
-                timeout=10
+                timeout=10,
             )
             return r.status_code in [401, 403]
 
@@ -1054,11 +1016,10 @@ key = hashlib.sha256(b"secret").digest()
         self.test("Get policy defaults", policy_defaults)
 
         def evaluate_policy():
-            r = self.post("/api/policies/evaluate", {
-                "algorithm": "AES-256-GCM",
-                "context_name": "user-pii",
-                "operation": "encrypt"
-            })
+            r = self.post(
+                "/api/policies/evaluate",
+                {"algorithm": "AES-256-GCM", "context_name": "user-pii", "operation": "encrypt"},
+            )
             return r.status_code == 200
 
         self.test("Evaluate policy", evaluate_policy)

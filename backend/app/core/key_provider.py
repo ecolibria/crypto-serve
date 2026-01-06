@@ -18,7 +18,8 @@ from datetime import datetime, timezone
 
 class KeyProviderType(str, Enum):
     """Types of key providers."""
-    LOCAL = "local"           # HKDF-based derivation (default)
+
+    LOCAL = "local"  # HKDF-based derivation (default)
     AWS_CLOUDHSM = "aws_cloudhsm"
     AZURE_HSM = "azure_hsm"
     GOOGLE_HSM = "google_hsm"
@@ -29,6 +30,7 @@ class KeyProviderType(str, Enum):
 @dataclass
 class KeyMetadata:
     """Metadata about a key."""
+
     key_id: str
     version: int
     algorithm: str
@@ -42,6 +44,7 @@ class KeyMetadata:
 @dataclass
 class WrappedKey:
     """A key that is encrypted/wrapped for transport or storage."""
+
     wrapped_key_data: bytes
     wrapping_algorithm: str
     wrapping_key_id: str
@@ -127,9 +130,7 @@ class KeyProvider(ABC):
         Returns:
             Wrapped key data
         """
-        raise NotImplementedError(
-            f"{self.provider_type.value} does not support key wrapping."
-        )
+        raise NotImplementedError(f"{self.provider_type.value} does not support key wrapping.")
 
     async def unwrap_key(
         self,
@@ -146,9 +147,7 @@ class KeyProvider(ABC):
         Returns:
             Unwrapped key material
         """
-        raise NotImplementedError(
-            f"{self.provider_type.value} does not support key unwrapping."
-        )
+        raise NotImplementedError(f"{self.provider_type.value} does not support key unwrapping.")
 
     async def rotate_key(
         self,
@@ -378,8 +377,7 @@ def create_key_provider(
         KeyProviderType.VAULT,
     ]:
         raise ValueError(
-            f"For {provider_type.value}, use the kms/ module instead: "
-            "from app.core.kms import create_kms_provider"
+            f"For {provider_type.value}, use the kms/ module instead: " "from app.core.kms import create_kms_provider"
         )
 
     else:
@@ -399,6 +397,7 @@ def get_key_provider() -> KeyProvider:
     global _key_provider
     if _key_provider is None:
         from app.config import get_settings
+
         settings = get_settings()
 
         _key_provider = create_key_provider(

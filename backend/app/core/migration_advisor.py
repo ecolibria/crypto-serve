@@ -10,10 +10,9 @@ Features:
 - Quantum readiness assessment
 """
 
-from dataclasses import dataclass, field
 from typing import Any
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto_registry import (
@@ -26,6 +25,7 @@ from app.models import Context
 
 class RiskLevel(str):
     """Risk level categories."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -34,6 +34,7 @@ class RiskLevel(str):
 
 class Urgency(str):
     """Migration urgency levels."""
+
     IMMEDIATE = "immediate"
     SOON = "soon"
     PLANNED = "planned"
@@ -41,6 +42,7 @@ class Urgency(str):
 
 class Compatibility(str):
     """Migration compatibility types."""
+
     DIRECT = "direct"  # Simple algorithm swap
     KEY_ROTATION = "requires-key-rotation"  # Needs new keys
     REENCRYPTION = "requires-reencryption"  # Needs data re-encryption
@@ -49,6 +51,7 @@ class Compatibility(str):
 # Response models
 class RiskScore(BaseModel):
     """Risk assessment for an algorithm-context pair."""
+
     score: int  # 0-100
     level: str  # critical, high, medium, low
     factors: list[str]  # What contributes to the score
@@ -69,6 +72,7 @@ class RiskScore(BaseModel):
 
 class MigrationStep(BaseModel):
     """A single step in a migration plan."""
+
     order: int
     action: str
     description: str
@@ -77,6 +81,7 @@ class MigrationStep(BaseModel):
 
 class Recommendation(BaseModel):
     """Migration recommendation for a context."""
+
     priority: int
     contextName: str
     contextDisplayName: str
@@ -93,12 +98,14 @@ class Recommendation(BaseModel):
 
 class RiskCategory(BaseModel):
     """Contexts grouped by risk level."""
+
     count: int
     contexts: list[str]
 
 
 class QuantumReadiness(BaseModel):
     """Quantum readiness summary."""
+
     percentage: float
     contextsUsingPQC: int
     contextsNeedingPQC: int
@@ -107,6 +114,7 @@ class QuantumReadiness(BaseModel):
 
 class MigrationAssessment(BaseModel):
     """Complete migration assessment for a tenant."""
+
     overallRiskScore: int
     overallLevel: str
     summary: str
@@ -119,6 +127,7 @@ class MigrationAssessment(BaseModel):
 
 class MigrationPlan(BaseModel):
     """Detailed migration plan for a context."""
+
     contextName: str
     currentAlgorithm: str
     targetAlgorithm: str
@@ -130,6 +139,7 @@ class MigrationPlan(BaseModel):
 
 class MigrationPreview(BaseModel):
     """Preview of migration impact before execution."""
+
     contextName: str
     currentAlgorithm: str
     newAlgorithm: str
@@ -176,9 +186,7 @@ class MigrationAdvisor:
     async def analyze_tenant(self, tenant_id: str) -> MigrationAssessment:
         """Perform full tenant analysis with prioritized recommendations."""
         # Get all contexts for tenant
-        result = await self.db.execute(
-            select(Context).where(Context.tenant_id == tenant_id)
-        )
+        result = await self.db.execute(select(Context).where(Context.tenant_id == tenant_id))
         contexts = result.scalars().all()
 
         if not contexts:
@@ -318,9 +326,7 @@ class MigrationAdvisor:
 
         return RiskScore.from_score(score, factors)
 
-    async def recommend_replacement(
-        self, algorithm: str, context: Context
-    ) -> Recommendation:
+    async def recommend_replacement(self, algorithm: str, context: Context) -> Recommendation:
         """Generate smart replacement recommendation."""
         algo = crypto_registry.get(algorithm)
         risk = await self.get_risk_score(algorithm, context)
@@ -373,9 +379,7 @@ class MigrationAdvisor:
             steps=steps,
         )
 
-    async def generate_migration_plan(
-        self, context: Context, target_algorithm: str
-    ) -> MigrationPlan:
+    async def generate_migration_plan(self, context: Context, target_algorithm: str) -> MigrationPlan:
         """Generate detailed migration plan with rollback steps."""
         current = context.algorithm or "AES-256-GCM"
         compatibility = self._determine_compatibility(current, target_algorithm)
@@ -385,57 +389,69 @@ class MigrationAdvisor:
         rollback = []
 
         # Step 1: Backup
-        steps.append(MigrationStep(
-            order=1,
-            action="backup",
-            description="Create backup of current context configuration",
-            automated=True,
-        ))
+        steps.append(
+            MigrationStep(
+                order=1,
+                action="backup",
+                description="Create backup of current context configuration",
+                automated=True,
+            )
+        )
         rollback.append("Restore context configuration from backup")
 
         # Step 2: Validate new algorithm
-        steps.append(MigrationStep(
-            order=2,
-            action="validate",
-            description=f"Validate {target_algorithm} is available and configured",
-            automated=True,
-        ))
+        steps.append(
+            MigrationStep(
+                order=2,
+                action="validate",
+                description=f"Validate {target_algorithm} is available and configured",
+                automated=True,
+            )
+        )
 
         # Step 3: Update configuration
-        steps.append(MigrationStep(
-            order=3,
-            action="update_config",
-            description=f"Update context algorithm from {current} to {target_algorithm}",
-            automated=True,
-        ))
+        steps.append(
+            MigrationStep(
+                order=3,
+                action="update_config",
+                description=f"Update context algorithm from {current} to {target_algorithm}",
+                automated=True,
+            )
+        )
         rollback.append(f"Revert context algorithm to {current}")
 
         # Step 4: Key rotation (if needed)
         if compatibility in [Compatibility.KEY_ROTATION, Compatibility.REENCRYPTION]:
-            steps.append(MigrationStep(
-                order=4,
-                action="rotate_keys",
-                description="Generate new encryption keys with new algorithm",
-                automated=True,
-            ))
+            steps.append(
+                MigrationStep(
+                    order=4,
+                    action="rotate_keys",
+                    description="Generate new encryption keys with new algorithm",
+                    automated=True,
+                )
+            )
             rollback.append("Keep old keys active for decryption")
             warnings.append("Key rotation will generate new keys. Old keys remain for decryption.")
 
         # Step 5: Verification
-        steps.append(MigrationStep(
-            order=len(steps) + 1,
-            action="verify",
-            description="Verify encryption/decryption works with new algorithm",
-            automated=True,
-        ))
+        steps.append(
+            MigrationStep(
+                order=len(steps) + 1,
+                action="verify",
+                description="Verify encryption/decryption works with new algorithm",
+                automated=True,
+            )
+        )
 
         # Step 6: Notify clients (manual)
-        steps.append(MigrationStep(
-            order=len(steps) + 1,
-            action="notify",
-            description="Notify dependent applications of algorithm change",
-            automated=False,
-        ))
+        steps.append(
+            MigrationStep(
+                order=len(steps) + 1,
+                action="notify",
+                description="Notify dependent applications of algorithm change",
+                automated=False,
+            )
+        )
 
         # Duration estimate
         duration = "~5 minutes"
@@ -453,9 +469,7 @@ class MigrationAdvisor:
             rollbackSteps=rollback,
         )
 
-    async def preview_migration(
-        self, context: Context, new_algorithm: str
-    ) -> MigrationPreview:
+    async def preview_migration(self, context: Context, new_algorithm: str) -> MigrationPreview:
         """Preview migration impact without executing."""
         current = context.algorithm or "AES-256-GCM"
         compatibility = self._determine_compatibility(current, new_algorithm)
@@ -545,10 +559,7 @@ class MigrationAdvisor:
         # Vulnerability details
         if algo.vulnerabilities:
             vuln = algo.vulnerabilities[0]
-            explanation = self.VULNERABILITY_EXPLANATIONS.get(
-                vuln.split()[0],  # Get first word
-                vuln
-            )
+            explanation = self.VULNERABILITY_EXPLANATIONS.get(vuln.split()[0], vuln)  # Get first word
             parts.append(explanation)
 
         # Sensitivity context
@@ -575,9 +586,7 @@ class MigrationAdvisor:
         # Switching families needs new keys
         return Compatibility.KEY_ROTATION
 
-    def _generate_steps(
-        self, context: Context, current: str, target: str, compatibility: str
-    ) -> list[str]:
+    def _generate_steps(self, context: Context, current: str, target: str, compatibility: str) -> list[str]:
         """Generate migration steps for recommendation."""
         steps = [
             f"Update context '{context.name}' algorithm to {target}",
@@ -586,16 +595,16 @@ class MigrationAdvisor:
         if compatibility in [Compatibility.KEY_ROTATION, Compatibility.REENCRYPTION]:
             steps.append("Schedule key rotation for new algorithm")
 
-        steps.extend([
-            "Verify encryption/decryption operations",
-            "Update client applications if needed",
-        ])
+        steps.extend(
+            [
+                "Verify encryption/decryption operations",
+                "Update client applications if needed",
+            ]
+        )
 
         return steps
 
-    def _generate_summary(
-        self, migration_count: int, categories: dict[str, list[str]]
-    ) -> str:
+    def _generate_summary(self, migration_count: int, categories: dict[str, list[str]]) -> str:
         """Generate assessment summary."""
         if migration_count == 0:
             return "All contexts are using recommended algorithms. No migrations needed."

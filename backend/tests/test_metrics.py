@@ -7,13 +7,6 @@ from app.core.metrics import (
     metrics,
     MetricsRecorder,
     with_metrics,
-    CRYPTO_OPERATIONS_TOTAL,
-    CRYPTO_ERRORS_TOTAL,
-    CRYPTO_OPERATION_LATENCY,
-    PASSWORD_HASH_LATENCY,
-    DATA_SIZE_BYTES,
-    KEY_OPERATIONS_TOTAL,
-    ACTIVE_KEYS,
 )
 
 
@@ -174,6 +167,7 @@ class TestWithMetricsDecorator:
 
     def test_decorator_with_algorithm_kwarg(self):
         """Test decorator extracting algorithm from kwargs."""
+
         @with_metrics("test_op", algorithm_arg="algorithm")
         def test_func(data: bytes, algorithm: str = "default"):
             return len(data)
@@ -183,6 +177,7 @@ class TestWithMetricsDecorator:
 
     def test_decorator_with_algorithm_position(self):
         """Test decorator extracting algorithm from position."""
+
         @with_metrics("test_op", algorithm_arg=1)
         def test_func(data: bytes, algorithm: str):
             return len(data)
@@ -192,6 +187,7 @@ class TestWithMetricsDecorator:
 
     def test_decorator_without_algorithm(self):
         """Test decorator without algorithm tracking."""
+
         @with_metrics("test_op")
         def test_func(data: bytes):
             return len(data)
@@ -201,6 +197,7 @@ class TestWithMetricsDecorator:
 
     def test_decorator_with_exception(self):
         """Test decorator handling exceptions."""
+
         @with_metrics("failing_op")
         def test_func():
             raise RuntimeError("Test error")

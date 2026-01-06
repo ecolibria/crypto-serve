@@ -14,56 +14,29 @@ class MigrationHistory(Base):
 
     __tablename__ = "migration_history"
 
-    id: Mapped[str] = mapped_column(
-        GUID(),
-        primary_key=True,
-        default=lambda: str(uuid4())
-    )
+    id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=lambda: str(uuid4()))
 
     # Tenant isolation
-    tenant_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("tenants.id"),
-        nullable=False,
-        index=True
-    )
+    tenant_id: Mapped[str] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=False, index=True)
 
     # Who performed the migration
-    user_id: Mapped[str] = mapped_column(
-        GUID(),
-        ForeignKey("users.id"),
-        nullable=False,
-        index=True
-    )
+    user_id: Mapped[str] = mapped_column(GUID(), ForeignKey("users.id"), nullable=False, index=True)
 
     # When
     migrated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        index=True
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
 
     # What was migrated
     action: Mapped[str] = mapped_column(
-        String(64),
-        nullable=False
+        String(64), nullable=False
     )  # "algorithm_migration" or "bulk_algorithm_migration"
 
-    context_name: Mapped[str | None] = mapped_column(
-        String(256),
-        nullable=True,
-        index=True
-    )  # Null for bulk migrations
+    context_name: Mapped[str | None] = mapped_column(String(256), nullable=True, index=True)  # Null for bulk migrations
 
-    previous_algorithm: Mapped[str] = mapped_column(
-        String(64),
-        nullable=False
-    )
+    previous_algorithm: Mapped[str] = mapped_column(String(64), nullable=False)
 
-    new_algorithm: Mapped[str] = mapped_column(
-        String(64),
-        nullable=False
-    )
+    new_algorithm: Mapped[str] = mapped_column(String(64), nullable=False)
 
     # Result
     success: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
