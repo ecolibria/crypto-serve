@@ -1,12 +1,15 @@
 """Crypto operations API routes."""
 
 import base64
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.database import get_db
 from app.models import Identity
@@ -155,8 +158,7 @@ async def get_sdk_identity(
 
                         return ApplicationIdentity(app)
                 except Exception as e:
-                    import logging
-                    logging.getLogger(__name__).debug("Application token verification failed: %s", e)
+                    logger.debug("Application token verification failed: %s", e)
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -629,6 +631,10 @@ async def batch_encrypt(
             successful += 1
 
         except Exception as e:
+            logger.warning(
+                "Batch encrypt failed for item %s in context %s: %s",
+                item.id, data.context, e,
+            )
             results.append(
                 BatchEncryptResultItem(
                     id=item.id,
@@ -707,6 +713,10 @@ async def batch_decrypt(
             successful += 1
 
         except Exception as e:
+            logger.warning(
+                "Batch decrypt failed for item %s in context %s: %s",
+                item.id, data.context, e,
+            )
             results.append(
                 BatchDecryptResultItem(
                     id=item.id,

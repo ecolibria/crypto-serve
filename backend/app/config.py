@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     cryptoserve_master_key: str = "dev-master-key-change-in-production"
     jwt_secret_key: str = "dev-jwt-secret-change-in-production"
     jwt_algorithm: str = "HS256"
-    jwt_expiration_days: int = 7
+    jwt_expiration_days: int = 1
 
     # HKDF salt for key derivation (should be unique per deployment)
     hkdf_salt: str = "cryptoserve-v1-change-in-production"

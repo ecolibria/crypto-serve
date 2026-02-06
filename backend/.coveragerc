@@ -1,0 +1,24 @@
+[run]
+source = app
+omit =
+    */tests/*
+    */migrations/*
+    */__pycache__/*
+
+[report]
+show_missing = True
+precision = 2
+
+# Coverage targets (enforced in CI):
+#   80%+ for app/core/ (cryptographic operations, key management)
+#   80%+ for app/models/ (data integrity)
+#   60%+ for app/api/ (route handlers)
+#   60%+ for app/auth/ (authentication flows)
+
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING
+    if __name__
+
+[html]
+directory = htmlcov

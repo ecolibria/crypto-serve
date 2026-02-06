@@ -120,7 +120,7 @@ For production environments, we recommend:
 A Helm chart is available:
 
 ```bash
-helm repo add cryptoserve https://keytum.github.io/crypto-serve/helm
+helm repo add cryptoserve https://ecolibria.github.io/crypto-serve/helm
 helm install cryptoserve cryptoserve/cryptoserve \
   --set github.clientId=$GITHUB_CLIENT_ID \
   --set github.clientSecret=$GITHUB_CLIENT_SECRET \

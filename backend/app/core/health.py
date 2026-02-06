@@ -210,7 +210,7 @@ class HealthChecker:
             status=HealthStatus.HEALTHY,
             latency_ms=latency,
             message="Configuration validated",
-            details={"environment": "production" if not settings.debug else "development"},
+            details={"environment": settings.environment},
             critical=True,
         )
 

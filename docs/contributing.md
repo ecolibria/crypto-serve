@@ -276,7 +276,7 @@ Releases are managed by maintainers:
 
 ## Getting Help
 
-- **Documentation**: [cryptoserve.dev](https://keytum.github.io/crypto-serve/)
+- **Documentation**: [cryptoserve.dev](https://ecolibria.github.io/crypto-serve/)
 - **Discussions**: [GitHub Discussions](https://github.com/ecolibria/crypto-serve/discussions)
 - **Discord**: [Join our community](https://discord.gg/cryptoserve)
 

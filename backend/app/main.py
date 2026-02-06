@@ -715,6 +715,36 @@ async def root():
     }
 
 
+def _redact_health_details(report: dict) -> dict:
+    """Redact sensitive details from health reports for production.
+
+    Removes internal error messages, configuration issues, library versions,
+    and other details that could aid an attacker in reconnaissance.
+    """
+    redacted = {
+        "status": report.get("status"),
+        "timestamp": report.get("timestamp"),
+    }
+
+    # Include check names and pass/fail status, but strip details
+    if "checks" in report:
+        redacted["checks"] = {}
+        for name, check in report["checks"].items():
+            redacted["checks"][name] = {
+                "status": check.get("status"),
+            }
+
+    # Include FIPS mode but strip internal details
+    if "fips" in report:
+        fips = report["fips"]
+        redacted["fips"] = {
+            "mode": fips.get("mode"),
+            "compliant": fips.get("compliant"),
+        }
+
+    return redacted
+
+
 @app.get("/health")
 async def health():
     """Basic health check - backwards compatible."""
@@ -776,6 +806,9 @@ async def health_deep(db: AsyncSession = Depends(get_db)):
     - Cryptographic operations
     - Configuration validation
     - FIPS compliance status
+
+    In production, detailed check information (error messages, configuration
+    issues, internal versions) is redacted to prevent information leakage.
     """
     from app.core.health import health_checker, HealthStatus
     from app.core.fips import get_fips_status
@@ -795,6 +828,10 @@ async def health_deep(db: AsyncSession = Depends(get_db)):
 
         status_code = 200 if report.status != HealthStatus.UNHEALTHY else 503
 
+        # In production, redact detailed internal information
+        if settings.is_production:
+            report_dict = _redact_health_details(report_dict)
+
         return JSONResponse(
             content=report_dict,
             status_code=status_code,
@@ -803,13 +840,16 @@ async def health_deep(db: AsyncSession = Depends(get_db)):
     except Exception as e:
         # Graceful degradation - return error info instead of 500
         logger.error(f"Health check failed unexpectedly: {e}")
+        error_content = {
+            "status": "unhealthy",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "checks": {},
+        }
+        # Only include error details in non-production
+        if not settings.is_production:
+            error_content["error"] = str(e)
         return JSONResponse(
-            content={
-                "status": "unhealthy",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "error": str(e),
-                "checks": {},
-            },
+            content=error_content,
             status_code=503,
         )
 
@@ -819,11 +859,21 @@ async def health_fips():
     """FIPS 140-2/140-3 compliance status.
 
     Returns current FIPS mode and compliance information.
+    In production, internal details (OpenSSL version, provider status)
+    are redacted to prevent information leakage.
     """
     from app.core.fips import get_fips_status, get_fips_approved_algorithms
 
     status = get_fips_status()
+    status_dict = status.to_dict()
+
+    if settings.is_production:
+        # Redact internal details in production
+        status_dict.pop("openssl_version", None)
+        status_dict.pop("fips_provider_loaded", None)
+        status_dict.pop("openssl_fips_available", None)
+
     return {
-        "status": status.to_dict(),
+        "status": status_dict,
         "approved_algorithms": get_fips_approved_algorithms(),
     }

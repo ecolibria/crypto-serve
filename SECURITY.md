@@ -54,8 +54,10 @@ When using CryptoServe:
 ## Security Documentation
 
 For detailed security information, see:
-- [Security Whitepaper](docs/security/threat-model.md)
-- [Threat Model](https://ecolibria.github.io/crypto-serve/security/)
+- [Threat Model](docs/security/threat-model.md)
+- [Technical Reference](docs/security/technical-reference.md)
+- [Compliance Guide](docs/security/compliance.md)
+- [Full Security Docs](https://ecolibria.github.io/crypto-serve/security/)
 
 ## Acknowledgments
 
