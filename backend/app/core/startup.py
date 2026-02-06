@@ -256,6 +256,14 @@ class StartupValidator:
                 critical=False,
             )
 
+        if "change-in-production" in salt.lower():
+            return self._check(
+                "hkdf_salt",
+                False,
+                "Using default HKDF salt - set a secure CRYPTOSERVE_HKDF_SALT for production",
+                critical=True,
+            )
+
         if len(salt) < 16:
             return self._check(
                 "hkdf_salt",
@@ -415,6 +423,57 @@ class StartupValidator:
                 critical=False,
             )
 
+    def validate_dev_mode(self, settings) -> ValidationResult:
+        """Validate DEV_MODE is not enabled in production."""
+        env = os.environ.get("ENVIRONMENT", "development").lower()
+        if env == "production" and settings.dev_mode:
+            return self._check(
+                "dev_mode",
+                False,
+                "DEV_MODE=true is not allowed in production",
+                critical=True,
+            )
+        return self._check(
+            "dev_mode",
+            True,
+            f"Dev mode: {'enabled' if settings.dev_mode else 'disabled'}",
+            critical=False,
+        )
+
+    def validate_oauth_state_secret(self, settings) -> ValidationResult:
+        """Validate OAuth state secret is not using default."""
+        secret = settings.oauth_state_secret
+        if not secret or "change-in-production" in secret.lower():
+            return self._check(
+                "oauth_state_secret",
+                False,
+                "Using default OAuth state secret - set a secure OAUTH_STATE_SECRET for production",
+                critical=True,
+            )
+        return self._check(
+            "oauth_state_secret",
+            True,
+            "OAuth state secret is properly configured",
+            critical=True,
+        )
+
+    def validate_cookie_secure(self, settings) -> ValidationResult:
+        """Validate cookie secure flag in production."""
+        env = os.environ.get("ENVIRONMENT", "development").lower()
+        if env == "production" and not settings.cookie_secure:
+            return self._check(
+                "cookie_secure",
+                False,
+                "COOKIE_SECURE must be true in production (requires HTTPS)",
+                critical=True,
+            )
+        return self._check(
+            "cookie_secure",
+            True,
+            f"Cookie secure: {'enabled' if settings.cookie_secure else 'disabled (dev)'}",
+            critical=False,
+        )
+
     def run_all(self) -> list[ValidationResult]:
         """Run all validation checks."""
         settings = get_settings()
@@ -434,6 +493,11 @@ class StartupValidator:
 
         # Compliance
         self.validate_fips_mode(settings)
+
+        # Production safety
+        self.validate_dev_mode(settings)
+        self.validate_oauth_state_secret(settings)
+        self.validate_cookie_secure(settings)
 
         return self.results
 
@@ -490,11 +554,16 @@ def validate_startup(level: ValidationLevel | None = None) -> bool:
         RuntimeError: If STRICT mode and validation failed
     """
     if level is None:
-        env_level = os.environ.get("STARTUP_VALIDATION_LEVEL", "warn").lower()
+        env_level = os.environ.get("STARTUP_VALIDATION_LEVEL", "strict").lower()
         try:
             level = ValidationLevel(env_level)
         except ValueError:
-            level = ValidationLevel.WARN
+            level = ValidationLevel.STRICT
+
+    # Force strict validation in production regardless of setting
+    env = os.environ.get("ENVIRONMENT", "development").lower()
+    if env == "production" and level != ValidationLevel.SKIP:
+        level = ValidationLevel.STRICT
 
     if level == ValidationLevel.SKIP:
         logger.info("Startup validation skipped (STARTUP_VALIDATION_LEVEL=skip)")

@@ -3,5 +3,9 @@
   "crypto": "Crypto Operations",
   "contexts": "Contexts",
   "identities": "Identities",
-  "policies": "Policies"
+  "keys": "Keys",
+  "policies": "Policies",
+  "algorithm-policy": "Algorithm Policies",
+  "admin": "Admin",
+  "usage": "Usage & Analytics"
 }

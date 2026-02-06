@@ -1,7 +1,7 @@
 {
   "index": "Overview",
   "architecture": "Architecture",
-  "context-model": "5-Layer Context Model",
+  "context-model": "Context Model",
   "key-management": "Key Management",
   "post-quantum": "Post-Quantum Cryptography",
   "policy-engine": "Policy Engine"

@@ -83,7 +83,8 @@ class HealthReport:
 class HealthChecker:
     """Comprehensive health check system."""
 
-    VERSION = "0.1.0"
+    from app import __version__
+    VERSION = __version__
 
     async def check_database(self, db: AsyncSession) -> CheckResult:
         """Check database connectivity and query performance."""

@@ -1,6 +1,9 @@
 {
   "index": "Overview",
-  "encryption": "Encryption Patterns",
+  "encryption": "Encryption Guide",
   "key-rotation": "Key Rotation",
-  "production": "Production Deployment"
+  "production": "Production Deployment",
+  "migration": "Migration",
+  "pqc-migration": "PQC Migration",
+  "compliance": "Compliance Guide"
 }

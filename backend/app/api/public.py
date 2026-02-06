@@ -7,6 +7,8 @@ enabling better DX for SDK users and CLI tools.
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
+from app import __version__
+
 router = APIRouter(prefix="/api/public", tags=["public"])
 
 
@@ -254,5 +256,5 @@ async def public_health():
     return {
         "status": "healthy",
         "service": "CryptoServe",
-        "version": "1.0.0",
+        "version": __version__,
     }

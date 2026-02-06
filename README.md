@@ -62,7 +62,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Server: `http://localhost:8000` | Dashboard: `http://localhost:3000`
+Server: `http://localhost:8003` | Dashboard: `http://localhost:3003`
 
 ### 2. Install SDK and Login
 
@@ -134,7 +134,7 @@ Your app auto-registers on first use - no manual setup needed.
 
 **Option 2: Dashboard Download**
 
-1. Go to **Applications** in the dashboard (`http://localhost:3000/applications`)
+1. Go to **Applications** in the dashboard (`http://localhost:3003/applications`)
 2. Create or select an application
 3. Click **Download SDK**
 4. Install the downloaded wheel:
@@ -763,7 +763,7 @@ Full API documentation: [API Reference](https://cryptoserve.dev/docs/api-referen
 
 ## Dashboard
 
-Access the web dashboard at `http://localhost:3000`:
+Access the web dashboard at `http://localhost:3003`:
 
 - **Overview**: KPIs, operation counts, success rates
 - **Applications**: View and manage registered apps
@@ -779,7 +779,7 @@ Access the web dashboard at `http://localhost:3000`:
 ```bash
 cd backend
 
-# Run all tests (1,235 tests)
+# Run all tests
 pytest -v
 
 # Run with coverage

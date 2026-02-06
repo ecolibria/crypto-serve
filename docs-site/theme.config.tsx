@@ -55,7 +55,7 @@ const config: DocsThemeConfig = {
   footer: {
     text: (
       <span>
-        {new Date().getFullYear()} © Keytum. Built with Nextra.
+        {new Date().getFullYear()} © CryptoServe Contributors. Built with Nextra.
       </span>
     ),
   },

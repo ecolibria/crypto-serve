@@ -1,6 +1,6 @@
 {
   "index": "Overview",
-  "whitepaper": "Security Whitepaper",
   "threat-model": "Threat Model",
-  "compliance": "Compliance"
+  "compliance": "Compliance",
+  "technical-reference": "Technical Reference"
 }

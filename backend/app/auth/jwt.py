@@ -111,8 +111,6 @@ async def get_dashboard_or_sdk_user(
     1. The web dashboard (JWT cookie auth)
     2. SDK clients (Bearer token with identity API key)
     """
-    from app.models import Identity
-
     token = None
 
     # Try Authorization header first (SDK client)
@@ -122,9 +120,10 @@ async def get_dashboard_or_sdk_user(
         # Check if this is an SDK identity token (not a JWT)
         # SDK tokens are UUIDs without dots (JWT has 3 dot-separated parts)
         if token and "." not in token:
-            # This looks like an SDK identity token, try to find the identity
-            result = await db.execute(select(Identity).where(Identity.api_key == token))
-            identity = result.scalar_one_or_none()
+            # This looks like an SDK identity token
+            from app.core.identity_manager import identity_manager
+
+            identity = await identity_manager.get_identity_by_token(db, token)
             if identity:
                 # Get the user who owns this identity
                 user_result = await db.execute(select(User).where(User.id == identity.user_id))

@@ -102,7 +102,7 @@ class TestCryptoServeEncryption:
             plaintext = b"hello world"
             ciphertext = crypto.encrypt(plaintext, context="default")
             assert ciphertext == b"encrypted-data"
-            mock_client.encrypt.assert_called_once_with(plaintext, "default", None)
+            mock_client.encrypt.assert_called_once_with(plaintext, "default", None, None)
 
             # Decrypt
             decrypted = crypto.decrypt(ciphertext, context="default")
@@ -127,7 +127,7 @@ class TestCryptoServeEncryption:
 
             ciphertext = crypto.encrypt(plaintext, context="user-pii", associated_data=aad)
             assert ciphertext == b"encrypted-with-aad"
-            mock_client.encrypt.assert_called_with(plaintext, "user-pii", aad)
+            mock_client.encrypt.assert_called_with(plaintext, "user-pii", aad, None)
 
     def test_encrypt_string(self, patch_credentials):
         """Test string encryption helper."""

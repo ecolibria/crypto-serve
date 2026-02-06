@@ -30,7 +30,7 @@ services:
     build: ./backend
     environment:
       # Database
-      DATABASE_URL: postgresql+asyncpg://cryptoserve:localdev@postgres:5432/cryptoserve
+      DATABASE_URL: postgresql+asyncpg://cryptoserve:${POSTGRES_PASSWORD:-localdev}@postgres:5432/cryptoserve
       DB_POOL_SIZE: 5
       DB_MAX_OVERFLOW: 10
       DB_POOL_RECYCLE: 1800
@@ -84,7 +84,7 @@ services:
     environment:
       POSTGRES_DB: cryptoserve
       POSTGRES_USER: cryptoserve
-      POSTGRES_PASSWORD: localdev
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
       # Performance tuning for multiple connections
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     command:

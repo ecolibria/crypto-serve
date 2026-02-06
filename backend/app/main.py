@@ -11,19 +11,16 @@ from sqlalchemy import select
 # Initialize structured logging early
 from app.core.logging import setup_logging, RequestLoggingMiddleware, get_logger
 
-setup_logging(json_output=False, level="INFO")  # Set json_output=True in production
+import os as _os
+_is_production = _os.environ.get("ENVIRONMENT", "development").lower() == "production"
+setup_logging(json_output=_is_production, level="INFO")
 
-# Rate limiting (optional - graceful fallback if not installed)
-try:
-    from slowapi import Limiter, _rate_limit_exceeded_handler
-    from slowapi.util import get_remote_address
-    from slowapi.errors import RateLimitExceeded
+# Rate limiting (required)
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
-    RATE_LIMITING_ENABLED = True
-except ImportError:
-    RATE_LIMITING_ENABLED = False
-    Limiter = None
-
+from app import __version__
 from app.config import get_settings
 from app.database import init_db, close_db, get_session_maker, get_db
 from app.auth.oauth import router as oauth_router
@@ -88,11 +85,8 @@ from app.core.algorithm_resolver import resolve_algorithm
 
 settings = get_settings()
 
-# Rate limiter (only if slowapi is available)
-if RATE_LIMITING_ENABLED:
-    limiter = Limiter(key_func=get_remote_address)
-else:
-    limiter = None
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -569,7 +563,7 @@ async def lifespan(app: FastAPI):
     instance_id = os.getenv("HOSTNAME", os.getenv("INSTANCE_ID", "unknown"))
     logger.info(
         "CryptoServe started",
-        version="0.1.0",
+        version=__version__,
         instance_id=instance_id,
         pid=os.getpid(),
     )
@@ -614,13 +608,13 @@ CryptoServe provides a comprehensive cryptographic operations server with:
 - CLI tools for backup, migration, and policy management
 
 ---
-**API Version**: 0.1.0 | **OpenAPI**: 3.1.0
+**API Version**: 1.0.0 | **OpenAPI**: 3.1.0
     """,
-    version="0.1.0",
+    version=__version__,
     lifespan=lifespan,
     contact={
         "name": "CryptoServe Support",
-        "url": "https://github.com/your-org/cryptoserve",
+        "url": "https://github.com/ecolibria/crypto-serve",
     },
     license_info={
         "name": "Apache 2.0",
@@ -645,10 +639,9 @@ CryptoServe provides a comprehensive cryptographic operations server with:
     ],
 )
 
-# Add rate limiter to app state (if available)
-if RATE_LIMITING_ENABLED and limiter:
-    app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# Add rate limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
@@ -715,7 +708,7 @@ async def root():
     """Root endpoint."""
     return {
         "name": "CryptoServe",
-        "version": "0.1.0",
+        "version": __version__,
         "docs": "/docs",
     }
 

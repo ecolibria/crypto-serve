@@ -154,8 +154,9 @@ async def get_sdk_identity(
                                 return self._app.is_active
 
                         return ApplicationIdentity(app)
-                except Exception:
-                    pass
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).debug("Application token verification failed: %s", e)
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

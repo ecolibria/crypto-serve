@@ -1,3 +1,4 @@
+# Development only — DO NOT use in production. See docker-compose.production.yml
 services:
   postgres:
     image: postgres:16-alpine
@@ -28,6 +29,7 @@ services:
       FRONTEND_URL: http://localhost:3003
       BACKEND_URL: http://localhost:8003
       DEV_MODE: "true"
+      STARTUP_VALIDATION_LEVEL: skip
     depends_on:
       postgres:
         condition: service_healthy
