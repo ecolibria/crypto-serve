@@ -18,7 +18,6 @@ from app.core.application_manager import application_manager
 from app.auth.jwt import (
     get_current_user,
     verify_token as jwt_verify_token,
-    revoke_token,
     revoke_token_db,
 )
 from app.models import User
