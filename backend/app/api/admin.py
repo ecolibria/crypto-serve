@@ -2405,7 +2405,7 @@ async def playground_operation(
     """
     import time
     import base64
-    from app.core.crypto_service import crypto_service
+    from app.core.crypto_engine import crypto_engine
 
     start_time = time.time()
 
@@ -2423,16 +2423,42 @@ async def playground_operation(
             error=f"Context '{request.context}' not found",
         )
 
+    # Create a duck-typed identity for playground operations
+    from datetime import datetime, timezone, timedelta
+
+    class PlaygroundIdentity:
+        """Lightweight identity wrapper for playground operations."""
+        def __init__(self, user, context_name):
+            self.id = user.id
+            self.tenant_id = user.tenant_id
+            self.user_id = user.id
+            self.name = f"playground-{user.github_username}"
+            self.team = "admin"
+            self.environment = "development"
+            self.allowed_contexts = [context_name]
+            self.status = "active"
+            self.created_at = datetime.now(timezone.utc)
+            self.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+            self.last_used_at = None
+
+        @property
+        def is_active(self):
+            return True
+
+    playground_identity = PlaygroundIdentity(user, request.context)
+
     try:
         if request.operation == "encrypt":
             # Encrypt the plaintext
             plaintext = request.data.encode("utf-8")
-            ciphertext = await crypto_service.encrypt(
+            enc_result = await crypto_engine.encrypt(
                 db=db,
                 plaintext=plaintext,
                 context_name=request.context,
+                identity=playground_identity,
+                enforce_policies=False,
             )
-            result = base64.b64encode(ciphertext).decode("ascii")
+            result = base64.b64encode(enc_result.ciphertext).decode("ascii")
 
         elif request.operation == "decrypt":
             # Decrypt the ciphertext
@@ -2446,12 +2472,13 @@ async def playground_operation(
                     error="Invalid base64 ciphertext",
                 )
 
-            plaintext = await crypto_service.decrypt(
+            plaintext_bytes = await crypto_engine.decrypt(
                 db=db,
-                ciphertext=ciphertext,
+                packed_ciphertext=ciphertext,
                 context_name=request.context,
+                identity=playground_identity,
             )
-            result = plaintext.decode("utf-8")
+            result = plaintext_bytes.decode("utf-8")
         else:
             return PlaygroundResponse(
                 success=False,

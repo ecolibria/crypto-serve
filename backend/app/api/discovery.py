@@ -215,4 +215,8 @@ async def list_detectable_algorithms(
     Returns the complete list of cryptographic algorithms
     and patterns the scanner can identify.
     """
-    return binary_scanner.get_detectable_algorithms()
+    patterns = binary_scanner.get_patterns()
+    algorithms = set()
+    for p in patterns:
+        algorithms.add(p.algorithm)
+    return {"algorithms": sorted(algorithms), "total_patterns": len(patterns)}

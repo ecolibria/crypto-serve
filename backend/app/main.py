@@ -15,6 +15,8 @@ import os as _os
 _is_production = _os.environ.get("ENVIRONMENT", "development").lower() == "production"
 setup_logging(json_output=_is_production, level="INFO")
 
+logger = get_logger("cryptoserve")
+
 # Rate limiting (required)
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address

@@ -168,7 +168,7 @@ async def get_current_tenant_stats(
     )
 
     # Context counts
-    total_contexts = await db.scalar(select(func.count(Context.id)).where(Context.tenant_id == admin.tenant_id))
+    total_contexts = await db.scalar(select(func.count(Context.name)).where(Context.tenant_id == admin.tenant_id))
 
     # Operation counts
     total_operations = await db.scalar(select(func.count(AuditLog.id)).where(AuditLog.tenant_id == admin.tenant_id))

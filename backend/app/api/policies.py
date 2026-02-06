@@ -308,6 +308,7 @@ async def create_policy(
     # Create policy
     policy = Policy(
         name=data.name,
+        tenant_id=admin.tenant_id,
         description=data.description,
         rule=data.rule,
         severity=data.severity.value,
@@ -316,7 +317,7 @@ async def create_policy(
         contexts=data.contexts,
         operations=data.operations,
         policy_metadata=data.policy_metadata,
-        created_by=admin.github_username,
+        created_by=getattr(admin, "github_username", None) or admin.name,
         created_at=datetime.now(timezone.utc),
     )
     db.add(policy)
