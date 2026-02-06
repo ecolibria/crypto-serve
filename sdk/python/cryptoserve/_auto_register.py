@@ -12,7 +12,7 @@ Performance Features:
 """
 
 import requests
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 
 from cryptoserve._credentials import (
     load_app_credentials,
@@ -230,12 +230,27 @@ class CryptoServe:
             raise CryptoServeError("SDK not initialized. Call _ensure_registered() first.")
         return self._client
 
+    @staticmethod
+    def _coerce_usage(usage: Union[str, "Usage", None]) -> Optional[Usage]:
+        """Convert string usage hints to Usage enum for convenience."""
+        if usage is None:
+            return None
+        if isinstance(usage, Usage):
+            return usage
+        if isinstance(usage, str):
+            try:
+                return Usage(usage)
+            except ValueError:
+                valid = ", ".join(u.value for u in Usage)
+                raise ValueError(f"Invalid usage '{usage}'. Valid options: {valid}")
+        return usage
+
     def encrypt(
         self,
         plaintext: bytes,
         context: str,
         associated_data: Optional[bytes] = None,
-        usage: Optional[Usage] = None,
+        usage: Union[str, Usage, None] = None,
     ) -> bytes:
         """
         Encrypt data using a specific context.
@@ -280,6 +295,7 @@ class CryptoServe:
             )
             ```
         """
+        usage = self._coerce_usage(usage)
         # Try local encryption with cached key (only for default usage)
         # Server-side encryption required for usage-aware algorithm selection
         if usage is None and self._enable_cache and self._cache is not None and self._local_crypto:
@@ -494,7 +510,7 @@ class CryptoServe:
         text: str,
         context: str,
         associated_data: Optional[bytes] = None,
-        usage: Optional[Usage] = None,
+        usage: Union[str, Usage, None] = None,
     ) -> str:
         """
         Encrypt a string and return base64-encoded ciphertext.
@@ -538,7 +554,7 @@ class CryptoServe:
         obj: Any,
         context: str,
         associated_data: Optional[bytes] = None,
-        usage: Optional[Usage] = None,
+        usage: Union[str, Usage, None] = None,
     ) -> str:
         """
         Encrypt a JSON-serializable object.
