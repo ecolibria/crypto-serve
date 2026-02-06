@@ -19,6 +19,7 @@ from app.auth.jwt import (
     get_current_user,
     verify_token as jwt_verify_token,
     revoke_token,
+    revoke_token_db,
 )
 from app.models import User
 from app.core.slowapi_limiter import limiter
@@ -206,6 +207,14 @@ async def revoke_token_endpoint(
             detail="Invalid or expired token",
         )
 
+    # Verify the token belongs to the authenticated user
+    token_user_id = payload.get("sub")
+    if token_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot revoke tokens belonging to other users",
+        )
+
     jti = payload.get("jti")
     if not jti:
         raise HTTPException(
@@ -213,5 +222,9 @@ async def revoke_token_endpoint(
             detail="Token does not contain a jti claim",
         )
 
-    revoke_token(jti)
+    # Persist revocation to database (survives restarts)
+    from datetime import datetime, timezone
+    exp = payload.get("exp")
+    expires_at = datetime.fromtimestamp(exp, tz=timezone.utc) if exp else datetime.now(timezone.utc)
+    await revoke_token_db(db, jti, expires_at)
     return TokenRevokeResponse(revoked=True)

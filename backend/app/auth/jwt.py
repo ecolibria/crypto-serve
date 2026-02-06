@@ -1,5 +1,6 @@
 """JWT token handling for user sessions."""
 
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -7,28 +8,72 @@ from typing import Annotated
 import jwt
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database import get_db
 from app.models import User
+from app.models.revoked_token import RevokedToken
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 security = HTTPBearer(auto_error=False)
 
-# TODO: Replace with Redis-backed store for distributed deployments
-_revoked_tokens: set[str] = set()
+# In-memory cache for fast revocation checks (populated from DB on startup)
+# This avoids a DB query on every authenticated request while still being persistent
+_revoked_tokens_cache: set[str] = set()
+
+
+async def revoke_token_db(db: AsyncSession, jti: str, expires_at: datetime) -> None:
+    """Persist a revoked token to the database and update the cache."""
+    record = RevokedToken(jti=jti, expires_at=expires_at)
+    db.add(record)
+    await db.commit()
+    _revoked_tokens_cache.add(jti)
 
 
 def revoke_token(jti: str) -> None:
-    """Add a token's jti to the revocation set."""
-    _revoked_tokens.add(jti)
+    """Add a token's jti to the in-memory revocation cache.
+
+    For backward compatibility. Prefer revoke_token_db() for persistence.
+    """
+    _revoked_tokens_cache.add(jti)
 
 
 def is_token_revoked(jti: str) -> bool:
     """Check if a token has been revoked by its jti."""
-    return jti in _revoked_tokens
+    return jti in _revoked_tokens_cache
+
+
+async def load_revoked_tokens(db: AsyncSession) -> None:
+    """Load non-expired revoked tokens from the database into the cache.
+
+    Call this at application startup to restore revocation state.
+    """
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(RevokedToken.jti).where(RevokedToken.expires_at > now)
+    )
+    jtis = result.scalars().all()
+    _revoked_tokens_cache.update(jtis)
+    logger.info(f"Loaded {len(jtis)} revoked tokens from database")
+
+
+async def cleanup_expired_tokens(db: AsyncSession) -> int:
+    """Remove expired revoked tokens from the database.
+
+    Returns the number of tokens cleaned up.
+    """
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        delete(RevokedToken).where(RevokedToken.expires_at <= now)
+    )
+    await db.commit()
+    count = result.rowcount
+    if count:
+        logger.info(f"Cleaned up {count} expired revoked tokens")
+    return count
 
 
 def create_access_token(user_id: str, github_username: str) -> str:

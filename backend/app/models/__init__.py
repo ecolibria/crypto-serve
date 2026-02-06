@@ -32,6 +32,7 @@ from app.models.approval import (
     ApprovalPriority,
 )
 from app.models.migration_history import MigrationHistory
+from app.models.revoked_token import RevokedToken
 
 __all__ = [
     # Multi-tenancy
@@ -81,4 +82,6 @@ __all__ = [
     "ApprovalPriority",
     # Migration History
     "MigrationHistory",
+    # Token Revocation
+    "RevokedToken",
 ]

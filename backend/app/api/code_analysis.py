@@ -156,15 +156,6 @@ class CodeScanResponse(BaseModel):
     scan_time_ms: float
 
 
-class DirectoryScanRequest(BaseModel):
-    """Directory scan request."""
-
-    path: str = Field(..., description="Directory path to scan")
-    recursive: bool = Field(default=True, description="Scan subdirectories")
-    exclude_patterns: list[str] | None = Field(
-        default=None, description="Glob patterns to exclude (e.g., '**/node_modules/**')"
-    )
-
 
 class QuickAnalysisRequest(BaseModel):
     """Quick analysis request."""
@@ -493,7 +484,7 @@ async def scan_file(
     Accepts any supported source file format.
     Automatically detects language from file extension.
     """
-    if not user:
+    if not identity:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     content = await file.read()

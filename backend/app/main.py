@@ -569,6 +569,13 @@ async def lifespan(app: FastAPI):
     await init_db()
     await seed_default_contexts()
 
+    # Load revoked tokens from database into memory cache
+    from app.auth.jwt import load_revoked_tokens, cleanup_expired_tokens
+    from app.database import get_session_maker
+    async with get_session_maker()() as db_session:
+        await cleanup_expired_tokens(db_session)
+        await load_revoked_tokens(db_session)
+
     logger = get_logger("cryptoserve")
     instance_id = os.getenv("HOSTNAME", os.getenv("INSTANCE_ID", "unknown"))
     logger.info(

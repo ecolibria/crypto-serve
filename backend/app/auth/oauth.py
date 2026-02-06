@@ -40,7 +40,7 @@ def generate_oauth_state(provider: str) -> str:
     timestamp = str(int(time.time()))
     nonce = secrets.token_hex(16)
     data = f"{provider}:{timestamp}:{nonce}"
-    signature = hmac.new(settings.oauth_state_secret.encode(), data.encode(), hashlib.sha256).hexdigest()[:16]
+    signature = hmac.new(settings.oauth_state_secret.encode(), data.encode(), hashlib.sha256).hexdigest()[:32]
     return f"{data}:{signature}"
 
 
@@ -63,7 +63,7 @@ def verify_oauth_state(state: str) -> tuple[bool, str | None]:
         # Verify signature
         data = f"{provider}:{timestamp}:{nonce}"
         expected_signature = hmac.new(settings.oauth_state_secret.encode(), data.encode(), hashlib.sha256).hexdigest()[
-            :16
+            :32
         ]
 
         if not hmac.compare_digest(signature, expected_signature):

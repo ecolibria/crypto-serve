@@ -21,6 +21,7 @@ Usage:
 """
 
 import hashlib
+import json
 import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
@@ -432,7 +433,7 @@ class CBOMService:
                 "annotationDate": cbom.created_at,
                 "annotationType": "OTHER",
                 "annotator": "Tool: CryptoServe crypto-inventory",
-                "comment": f"CBOM Data (JSON): {__import__('json').dumps(cbom.to_dict())}",
+                "comment": f"CBOM Data (JSON): {json.dumps(cbom.to_dict())}",
             }
         ]
 
