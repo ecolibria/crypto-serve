@@ -43,7 +43,6 @@ from app.core.policy_engine import (
 )
 from app.schemas.context import ContextConfig
 
-
 # =============================================================================
 # Terminal Colors (for non-CI output)
 # =============================================================================

@@ -25,7 +25,6 @@ from app.core.hybrid_crypto import (
     PQCError,
 )
 
-
 # Skip all tests if liboqs is not available
 pytestmark = pytest.mark.skipif(not is_pqc_available(), reason="liboqs not installed")
 

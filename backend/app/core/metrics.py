@@ -17,7 +17,6 @@ from typing import Callable
 
 from prometheus_client import Counter, Histogram, Gauge, Info, REGISTRY
 
-
 # ==================== Operation Counters ====================
 
 CRYPTO_OPERATIONS_TOTAL = Counter(

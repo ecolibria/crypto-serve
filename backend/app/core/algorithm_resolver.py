@@ -24,7 +24,6 @@ from app.schemas.context import (
     AlgorithmSuite,
 )
 
-
 # =============================================================================
 # Algorithm Registry with Mode & Key Size Information
 # =============================================================================

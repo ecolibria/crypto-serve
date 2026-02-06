@@ -24,7 +24,6 @@ from app.core.migration_advisor import (
 )
 from app.core.crypto_registry import crypto_registry
 
-
 router = APIRouter(prefix="/api/migration", tags=["migration"])
 
 

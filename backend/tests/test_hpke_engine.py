@@ -12,7 +12,6 @@ from app.core.hpke_engine import (
     HPKE_AVAILABLE,
 )
 
-
 # Skip all tests if pyhpke is not available
 pytestmark = pytest.mark.skipif(not HPKE_AVAILABLE, reason="pyhpke not installed")
 

@@ -54,7 +54,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install linters
-        run: pip install ruff black
+        run: pip install ruff 'black>=26'
 
       - name: Run Ruff
         run: ruff check backend/app backend/tests --config backend/ruff.toml

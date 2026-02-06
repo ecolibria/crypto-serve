@@ -24,7 +24,6 @@ from app.core.sct_validator import (
     sct_validator,
 )
 
-
 router = APIRouter(prefix="/api/v1/ct", tags=["certificate-transparency"])
 
 

@@ -16,7 +16,6 @@ from app.core.crypto_registry import (
     SecurityStatus,
 )
 
-
 router = APIRouter(prefix="/api/algorithms", tags=["algorithms"])
 
 

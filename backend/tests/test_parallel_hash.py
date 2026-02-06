@@ -17,7 +17,6 @@ from app.core.parallel_hash import (
     CSHAKE_AVAILABLE,
 )
 
-
 # Skip all tests if pycryptodome cSHAKE is not available
 pytestmark = pytest.mark.skipif(not CSHAKE_AVAILABLE, reason="pycryptodome cSHAKE not installed")
 

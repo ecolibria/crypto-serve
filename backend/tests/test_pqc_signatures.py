@@ -19,7 +19,6 @@ from app.core.hybrid_crypto import (
     LIBOQS_AVAILABLE,
 )
 
-
 # Skip all tests if liboqs is not available
 pytestmark = pytest.mark.skipif(not LIBOQS_AVAILABLE, reason="liboqs not installed")
 

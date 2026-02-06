@@ -18,7 +18,6 @@ from app.database import get_db
 from app.auth.jwt import get_current_user
 from app.models import User, Tenant, Identity, IdentityStatus, Context, AuditLog
 
-
 router = APIRouter(prefix="/api/tenants", tags=["tenants"])
 
 

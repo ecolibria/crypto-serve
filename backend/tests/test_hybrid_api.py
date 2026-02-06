@@ -4,7 +4,6 @@ import pytest
 from app.core.hybrid_crypto import is_pqc_available
 from app.schemas.context import AlgorithmOverride, CipherMode
 
-
 # Skip all tests if liboqs is not available
 pytestmark = pytest.mark.skipif(not is_pqc_available(), reason="liboqs not installed")
 
