@@ -50,11 +50,6 @@ logs/
 # MkDocs build output
 site/
 
-# Nextra/Next.js build output
-docs-site/.next/
-docs-site/out/
-docs-site/node_modules/
-
 # Local database
 cryptoserve.db
 *.db
