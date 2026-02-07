@@ -5,6 +5,7 @@ Provides built-in policies that work without server connection.
 Supports policy presets (strict, standard, permissive) and
 custom configuration via .cryptoserve.yml.
 """
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum

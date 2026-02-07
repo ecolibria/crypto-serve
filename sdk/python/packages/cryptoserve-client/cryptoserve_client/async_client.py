@@ -3,6 +3,7 @@ Asynchronous CryptoServe API client.
 
 Requires httpx: pip install cryptoserve-client[async]
 """
+from __future__ import annotations
 
 import base64
 from typing import Any

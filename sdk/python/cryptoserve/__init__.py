@@ -33,6 +33,7 @@ Package Architecture:
     cryptoserve-client  - API client only
     cryptoserve-auto    - Auto-protect for third-party libraries
 """
+from __future__ import annotations
 
 # Re-export from sub-packages for convenience
 from cryptoserve_client import CryptoClient

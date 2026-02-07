@@ -34,6 +34,7 @@ Usage with decorator:
         email: str
         ssn: str
 """
+from __future__ import annotations
 
 from typing import Any, Callable, Type, TypeVar, get_type_hints, TYPE_CHECKING
 from functools import wraps

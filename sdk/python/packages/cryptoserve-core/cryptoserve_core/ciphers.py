@@ -3,6 +3,7 @@ Cipher implementations for CryptoServe Core.
 
 Provides AES-256-GCM and ChaCha20-Poly1305 encryption.
 """
+from __future__ import annotations
 
 import os
 from typing import Tuple

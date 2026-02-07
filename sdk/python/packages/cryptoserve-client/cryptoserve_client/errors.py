@@ -1,6 +1,7 @@
 """
 Exception classes for CryptoServe Client.
 """
+from __future__ import annotations
 
 
 class CryptoServeError(Exception):

@@ -6,6 +6,7 @@ Provides production-grade reliability features:
 - Batch operations for bulk encryption/decryption
 - Request timeout handling
 """
+from __future__ import annotations
 
 import random
 import threading
