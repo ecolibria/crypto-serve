@@ -36,10 +36,12 @@ jobs:
 
       - name: Install SDK and run tests
         run: |
-          cd sdk/python
-          pip install -e .
+          pip install -e sdk/python/packages/cryptoserve-core
+          pip install -e sdk/python/packages/cryptoserve-client
+          pip install -e sdk/python/packages/cryptoserve-auto
+          pip install -e sdk/python
           pip install pytest
-          pytest tests/ -v --tb=short -x
+          cd sdk/python && pytest tests/ -v --tb=short -x
 
   build:
     needs: test
