@@ -30,6 +30,14 @@ CryptoServe is designed with security as a first-class concern. This section doc
 
     [:octicons-arrow-right-24: Compliance](compliance.md)
 
+-   :material-shield-check:{ .lg .middle } **CI/CD Security Pipeline**
+
+    ---
+
+    16+ automated checks across 4 workflows: testing, security scanning, AI code review, and release verification
+
+    [:octicons-arrow-right-24: CI/CD Security Pipeline](ci-security-pipeline.md)
+
 </div>
 
 ## Security Principles
