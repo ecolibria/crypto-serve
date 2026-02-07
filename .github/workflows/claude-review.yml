@@ -10,6 +10,7 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
+  id-token: write
 
 jobs:
   # Job 1: Semantic code review using claude-code-action
@@ -31,9 +32,50 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: claude-sonnet-4-5-20250929
-          review_prompt_path: .github/review-prompt.md
           trigger_phrase: "@claude"
           timeout_minutes: 10
+          custom_instructions: |
+            You are reviewing a pull request for CryptoServe, an open-source cryptographic inventory and post-quantum readiness platform. Apply these domain-specific criteria:
+
+            ## 1. Cryptographic Correctness (Critical)
+            - Key material must never be logged, serialized to JSON, or returned in API responses
+            - Algorithm identifiers must match IANA/NIST naming (e.g., ML-KEM-768, not kyber768)
+            - Nonces/IVs must never be reused — check for deterministic generation patterns
+            - Random values must use CSPRNG (secrets module, not random)
+            - Key derivation must use appropriate KDFs (HKDF, Argon2) with proper salt handling
+            - Certificate parsing must validate chain of trust, not just leaf cert
+
+            ## 2. Security
+            - No hardcoded secrets, API keys, or credentials
+            - No eval(), exec(), pickle.loads() on untrusted input
+            - SQL queries must use parameterized statements
+            - User input must be validated before use in file paths, shell commands, or queries
+            - Authentication/authorization checks must not be bypassable
+            - Error messages must not leak internal state or stack traces to clients
+
+            ## 3. SDK API Stability
+            - Public function signatures in cryptoserve_core, cryptoserve_client, cryptoserve_auto must not change without a deprecation path
+            - New required parameters on existing public functions are breaking changes — flag them
+            - Type hints on public APIs must be present and accurate
+            - __all__ exports must be updated when adding new public symbols
+
+            ## 4. Test Coverage
+            - New code paths should have corresponding tests
+            - Cryptographic operations need both positive and negative test cases
+            - Edge cases: empty input, maximum sizes, malformed data, expired certificates
+            - Mock external services, do not make real network calls in tests
+
+            ## 5. Code Quality
+            - Functions over 50 lines should be examined for decomposition opportunities
+            - Avoid deep nesting (>3 levels) — suggest early returns
+            - Error handling should be specific (no bare except:)
+            - Resource cleanup should use context managers (with statements)
+
+            ## What to Skip
+            - Style/formatting issues (ruff and black enforce these via CI)
+            - Import ordering (handled by ruff)
+            - Docstring style (not enforced in this project)
+            - Minor naming preferences that don't affect clarity
 
   # Job 2: Security-focused review
   security-review:
@@ -53,7 +95,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: claude-sonnet-4-5-20250929
-          review_prompt_path: .github/security-rules.txt
+          timeout_minutes: 8
           direct_prompt: |
             Perform a security-focused review of this PR. Focus on:
             1. Injection vulnerabilities (SQL, command, path traversal)
@@ -63,10 +105,13 @@ jobs:
             5. SSRF or open redirect risks
             6. Cryptographic misuse (weak algorithms, nonce reuse, key leakage)
 
-            Consult .github/security-rules.txt for false positive suppressions.
+            False positive suppressions:
+            - Policy/gate files (*_gate.py, *_policies.py) reference algorithm names for detection, not usage
+            - Test files may intentionally use weak cryptographic material as fixtures
+            - crypto_audit.py references algorithms in documentation
+            - Scanner output files contain algorithm names as scan results
 
             At the end, output a single line: FINDINGS_COUNT=N where N is the number of security issues found.
-          timeout_minutes: 8
 
   # Job 3: Auto-merge safe PRs
   auto-merge:
