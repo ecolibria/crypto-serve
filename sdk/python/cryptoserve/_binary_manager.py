@@ -5,6 +5,8 @@ Downloads, caches, and executes Go binaries from GitHub releases.
 Uses only stdlib (urllib.request) to avoid adding dependencies.
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import os

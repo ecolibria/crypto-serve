@@ -43,6 +43,8 @@ Examples:
     cryptoserve token --key my-key --payload '{}'  # Create JWT token
 """
 
+from __future__ import annotations
+
 import os
 import sys
 import json

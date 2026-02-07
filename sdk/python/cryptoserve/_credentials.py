@@ -5,6 +5,8 @@ Stores application credentials locally to avoid re-registration on every init.
 Credentials are stored per-app per-environment in ~/.cryptoserve/apps/
 """
 
+from __future__ import annotations
+
 import json
 import os
 from typing import Optional
