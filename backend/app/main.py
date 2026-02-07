@@ -633,7 +633,7 @@ CryptoServe provides a comprehensive cryptographic operations server with:
     lifespan=lifespan,
     contact={
         "name": "CryptoServe Support",
-        "url": "https://github.com/ecolibria/crypto-serve",
+        "url": "https://github.com/ecolibria/cryptoserve",
     },
     license_info={
         "name": "Apache 2.0",

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cryptoserve-core"
-version = "0.2.0"
+version = "0.3.0"
 description = "CryptoServe Core - Pure cryptographic primitives"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -23,15 +23,15 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Security :: Cryptography",
 ]
-keywords = ["cryptography", "encryption", "security", "aes", "chacha20"]
+keywords = ["cryptography", "encryption", "security", "aes", "chacha20", "password-hashing", "jwt", "file-encryption"]
 dependencies = [
     "cryptography>=41.0.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/ecolibria/crypto-serve"
+Homepage = "https://github.com/ecolibria/cryptoserve"
 Documentation = "https://docs.cryptoserve.dev"
-Repository = "https://github.com/ecolibria/crypto-serve"
+Repository = "https://github.com/ecolibria/cryptoserve"
 
 [project.optional-dependencies]
 dev = [

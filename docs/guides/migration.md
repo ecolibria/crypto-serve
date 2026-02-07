@@ -354,5 +354,5 @@ Via the dashboard or API, configure a context for post-quantum:
 ## Getting Help
 
 - **Documentation:** [https://ecolibria.github.io/crypto-serve/](https://ecolibria.github.io/crypto-serve/)
-- **GitHub Issues:** [https://github.com/ecolibria/crypto-serve/issues](https://github.com/ecolibria/crypto-serve/issues)
+- **GitHub Issues:** [https://github.com/ecolibria/cryptoserve/issues](https://github.com/ecolibria/cryptoserve/issues)
 - **Security Issues:** info@cryptoserve.dev

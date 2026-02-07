@@ -81,8 +81,8 @@ class Settings(BaseSettings):
     cookie_domain: str | None = None
 
     # URLs
-    frontend_url: str = "http://localhost:3000"
-    backend_url: str = "http://localhost:8000"
+    frontend_url: str = "http://localhost:3003"
+    backend_url: str = "http://localhost:8003"
 
     # Identity defaults
     default_identity_expiration_days: int = 90

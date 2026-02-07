@@ -437,7 +437,7 @@ For production deployments, verify the following:
 ### 11.1 Source Code
 
 The complete source code is available for audit at:
-`https://github.com/ecolibria/crypto-serve`
+`https://github.com/ecolibria/cryptoserve`
 
 ### 11.2 Key Files for Security Review
 
@@ -459,7 +459,7 @@ The complete source code is available for audit at:
 
 ```bash
 # Clone and verify
-git clone https://github.com/ecolibria/crypto-serve.git
+git clone https://github.com/ecolibria/cryptoserve.git
 cd crypto-serve/backend
 
 # Install dependencies
@@ -482,5 +482,5 @@ CryptoServe can generate a Cryptographic Bill of Materials (CBOM) for its own de
 ## 12. Contact
 
 **Security Issues:** See [SECURITY.md](../../SECURITY.md) for vulnerability reporting procedures.
-**Repository:** https://github.com/ecolibria/crypto-serve
+**Repository:** https://github.com/ecolibria/cryptoserve
 **License:** Apache 2.0

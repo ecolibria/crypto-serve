@@ -130,7 +130,7 @@ Test restore procedures quarterly.
 
 The compose file includes built-in health checks:
 - **PostgreSQL**: `pg_isready` every 5s
-- **Backend**: `curl http://localhost:8000/health` every 10s (30s start period)
+- **Backend**: `curl http://localhost:8003/health` every 10s (30s start period)
 
 Additional monitoring to configure:
 - Prometheus metrics at `/api/admin/metrics`

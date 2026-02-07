@@ -9,7 +9,7 @@ Configuration Priority:
 Environment Variables:
     CRYPTOSERVE_TOKEN          - Access token (required)
     CRYPTOSERVE_REFRESH_TOKEN  - Refresh token (optional, enables auto-refresh)
-    CRYPTOSERVE_SERVER_URL     - Server URL (default: http://localhost:8000)
+    CRYPTOSERVE_SERVER_URL     - Server URL (default: http://localhost:8003)
     CRYPTOSERVE_APP_ID         - Application ID
     CRYPTOSERVE_AUTO_REFRESH   - Enable auto-refresh (default: true)
 """
@@ -19,7 +19,7 @@ from typing import Optional
 
 # Embedded configuration (replaced when SDK is generated for a specific application)
 _EMBEDDED_CONFIG = {
-    "server_url": "http://localhost:8000",
+    "server_url": "http://localhost:8003",
     "token": None,
     "refresh_token": None,
     "identity_id": None,
@@ -85,7 +85,7 @@ def get_refresh_token() -> Optional[str]:
 
 def get_server_url() -> str:
     """Get the server URL."""
-    return IDENTITY.get("server_url", "http://localhost:8000")
+    return IDENTITY.get("server_url", "http://localhost:8003")
 
 
 def is_configured() -> bool:

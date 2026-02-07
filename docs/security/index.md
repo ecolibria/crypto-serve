@@ -75,7 +75,7 @@ When errors occur, the system defaults to denying access rather than potentially
 If you discover a security vulnerability, please report it responsibly:
 
 1. **Email**: security@cryptoserve.io
-2. **GitHub**: [Security Advisories](https://github.com/ecolibria/crypto-serve/security/advisories/new)
+2. **GitHub**: [Security Advisories](https://github.com/ecolibria/cryptoserve/security/advisories/new)
 
 Please include:
 

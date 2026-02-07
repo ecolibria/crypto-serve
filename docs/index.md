@@ -21,7 +21,7 @@ hide:
 Eliminate the complexity of implementing encryption correctly. Download a personalized SDK with your identity embedded, then encrypt and decrypt with a single line of code.
 
 [Get Started](getting-started/quickstart.md){ .md-button .md-button--primary }
-[View on GitHub](https://github.com/ecolibria/crypto-serve){ .md-button }
+[View on GitHub](https://github.com/ecolibria/cryptoserve){ .md-button }
 [API Docs :material-api:](http://localhost:8003/docs){ .md-button }
 
 </div>

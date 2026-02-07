@@ -11,9 +11,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ecolibria/crypto-serve/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/ecolibria/crypto-serve/ci.yml?branch=main&style=flat-square&label=build" alt="Build Status"></a>
-  <a href="https://github.com/ecolibria/crypto-serve/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/tests-1,380%20passed-brightgreen.svg?style=flat-square" alt="Tests"></a>
-  <a href="https://github.com/ecolibria/crypto-serve/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square" alt="License"></a>
+  <a href="https://github.com/ecolibria/cryptoserve/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/ecolibria/cryptoserve/ci.yml?branch=main&style=flat-square&label=build" alt="Build Status"></a>
+  <a href="https://github.com/ecolibria/cryptoserve/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/tests-1,380%20passed-brightgreen.svg?style=flat-square" alt="Tests"></a>
+  <a href="https://github.com/ecolibria/cryptoserve/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square" alt="License"></a>
   <a href="https://pypi.org/project/cryptoserve/"><img src="https://img.shields.io/pypi/v/cryptoserve.svg?style=flat-square" alt="PyPI"></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.9+-blue.svg?style=flat-square" alt="Python 3.9+"></a>
   <a href="https://cryptoserve.dev/docs/"><img src="https://img.shields.io/badge/docs-cryptoserve.dev-brightgreen.svg?style=flat-square" alt="Documentation"></a>
@@ -65,11 +65,13 @@ docker compose up -d
 
 Server: `http://localhost:8003` | Dashboard: `http://localhost:3003`
 
+> **Note:** The default `.env` runs in dev mode (`DEV_MODE=true`), which bypasses GitHub OAuth so you can start immediately. See [GitHub OAuth Setup](#github-oauth-setup) to enable real authentication.
+
 ### 2. Install SDK and Login
 
 ```bash
 pip install cryptoserve
-cryptoserve login  # Opens browser for GitHub auth
+cryptoserve login --server http://localhost:8003
 ```
 
 ### 3. Encrypt Data
@@ -661,18 +663,14 @@ class PatientService:
 ### Docker Compose (Recommended)
 
 ```bash
-git clone https://github.com/ecolibria/crypto-serve.git
-cd crypto-serve
+git clone https://github.com/ecolibria/cryptoserve.git
+cd cryptoserve
 cp .env.example .env
 ```
 
 Edit `.env`:
 
 ```bash
-# Required: GitHub OAuth (create at https://github.com/settings/developers)
-GITHUB_CLIENT_ID=your_client_id
-GITHUB_CLIENT_SECRET=your_client_secret
-
 # Required: Security keys (generate with: openssl rand -hex 32)
 CRYPTOSERVE_MASTER_KEY=$(openssl rand -hex 32)
 JWT_SECRET_KEY=$(openssl rand -hex 32)
@@ -690,12 +688,37 @@ Start services:
 docker compose up -d
 ```
 
+> The default config uses `DEV_MODE=true`, which bypasses OAuth for local development. Set `DEV_MODE=false` and configure GitHub OAuth (below) before deploying to production.
+
+### GitHub OAuth Setup
+
+To enable GitHub authentication (required for production, optional for local dev):
+
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click **New OAuth App**
+3. Fill in:
+   - **Application name:** CryptoServe (or your instance name)
+   - **Homepage URL:** `http://localhost:3003` (or your domain)
+   - **Authorization callback URL:** `http://localhost:8003/auth/callback/github`
+4. Click **Register application**
+5. Copy the **Client ID** and generate a **Client Secret**
+6. Add to your `.env`:
+
+```bash
+GITHUB_CLIENT_ID=your_client_id
+GITHUB_CLIENT_SECRET=your_client_secret
+DEV_MODE=false
+```
+
+7. Restart the server: `docker compose restart backend`
+
 ### Production Configuration
 
 For production deployments, see the [Production Guide](https://cryptoserve.dev/docs/configuration/).
 
 Key requirements:
 - Generate unique secrets (never use defaults)
+- Configure GitHub OAuth with your production domain
 - Use PostgreSQL for production
 - Enable TLS termination
 - Configure backup and recovery
@@ -832,7 +855,7 @@ ruff check app/ tests/
 
 ## Security
 
-**Report vulnerabilities** to [info@cryptoserve.dev](mailto:info@cryptoserve.dev) or via [GitHub Security Advisories](https://github.com/ecolibria/crypto-serve/security/advisories).
+**Report vulnerabilities** to [info@cryptoserve.dev](mailto:info@cryptoserve.dev) or via [GitHub Security Advisories](https://github.com/ecolibria/cryptoserve/security/advisories).
 
 See [SECURITY.md](SECURITY.md) and [Technical Reference](docs/security/technical-reference.md).
 
@@ -848,7 +871,7 @@ Apache License 2.0. See [LICENSE](LICENSE).
 
 - **Website:** [https://cryptoserve.dev](https://cryptoserve.dev)
 - **Email:** [info@cryptoserve.dev](mailto:info@cryptoserve.dev)
-- **GitHub:** [ecolibria/crypto-serve](https://github.com/ecolibria/crypto-serve)
+- **GitHub:** [ecolibria/cryptoserve](https://github.com/ecolibria/cryptoserve)
 
 ---
 

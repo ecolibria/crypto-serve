@@ -1,6 +1,11 @@
 """
 CryptoServe CLI - Run with: python -m cryptoserve
 
+Scanning Tools (no server required):
+    scan      - Deep cryptographic scan (downloads CryptoScan binary)
+    deps      - Cryptographic dependency analysis (downloads CryptoDeps binary)
+    push      - Upload scan results to CryptoServe dashboard
+
 Commands:
     login     - Login to CryptoServe (opens browser)
     promote   - Check promotion readiness or request promotion
@@ -9,14 +14,23 @@ Commands:
     verify    - Verify SDK is working correctly
     info      - Show current identity information
     contexts  - List and search encryption contexts
-    scan      - Scan for crypto libraries and show inventory
     cbom      - Generate Cryptographic Bill of Materials
     pqc       - Get PQC migration recommendations
     gate      - CI/CD policy gate check
     certs     - Certificate operations (generate-csr, self-signed, parse, verify)
     wizard    - Interactive context selection wizard
 
+Offline Tools (no server required):
+    encrypt       - Encrypt a string or file with a password
+    decrypt       - Decrypt a string or file with a password
+    hash-password - Hash a password (scrypt or PBKDF2)
+    token         - Create a JWT token
+
 Examples:
+    cryptoserve scan .                             # Deep crypto scan
+    cryptoserve scan . --push                      # Scan + upload to dashboard
+    cryptoserve deps .                             # Analyze crypto dependencies
+    cryptoserve push scan-results.json             # Upload results
     cryptoserve login                              # Login via browser
     cryptoserve contexts                           # List available contexts
     cryptoserve contexts "email"                   # Search for contexts
@@ -24,6 +38,9 @@ Examples:
     cryptoserve promote my-backend-app             # Check promotion readiness
     cryptoserve promote my-backend-app --confirm   # Promote to production
     cryptoserve promote my-backend-app --expedite  # Request expedited approval
+    cryptoserve encrypt "hello" --password secret  # Encrypt a string
+    cryptoserve hash-password                      # Hash a password (interactive)
+    cryptoserve token --key my-key --payload '{}'  # Create JWT token
 """
 
 import os
@@ -100,10 +117,52 @@ def _get_session_cookie():
     return creds.get("session_cookie")
 
 
+def _validate_server_url(url: str) -> str:
+    """Validate and normalize a server URL.
+
+    Prevents SSRF by restricting scheme and blocking known dangerous endpoints
+    (cloud metadata services). Localhost/private IPs are allowed since this is
+    a CLI tool that legitimately targets local dev servers.
+
+    Returns:
+        The validated URL (stripped of trailing slash).
+
+    Raises:
+        ValueError: If the URL is invalid or targets a dangerous endpoint.
+    """
+    from urllib.parse import urlparse
+    import ipaddress
+
+    parsed = urlparse(url)
+
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Invalid URL scheme '{parsed.scheme}' — only http/https allowed")
+
+    if not parsed.hostname:
+        raise ValueError(f"Invalid URL — no hostname: {url}")
+
+    hostname = parsed.hostname.lower()
+
+    # Block cloud metadata endpoints (AWS, GCP, Azure)
+    blocked = {"169.254.169.254", "metadata.google.internal", "100.100.100.200"}
+    if hostname in blocked:
+        raise ValueError(f"Blocked URL — cloud metadata endpoint: {hostname}")
+
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_link_local:
+            raise ValueError(f"Blocked URL — link-local address: {hostname}")
+    except ValueError:
+        pass  # Not an IP, hostname is fine
+
+    return url.rstrip("/")
+
+
 def _get_cli_server_url():
     """Get server URL for CLI commands."""
     creds = _load_credentials()
-    return creds.get("server_url", os.getenv("CRYPTOSERVE_SERVER_URL", "http://localhost:8000"))
+    url = creds.get("server_url", os.getenv("CRYPTOSERVE_SERVER_URL", "http://localhost:8003"))
+    return _validate_server_url(url)
 
 
 # Alias for convenience
@@ -119,7 +178,7 @@ def cmd_login():
     import requests
 
     # Parse arguments
-    server_url = "http://localhost:8000"
+    server_url = "http://localhost:8003"
     use_dev = False
     manual_cookie = None
 
@@ -138,6 +197,13 @@ def cmd_login():
         else:
             i += 1
 
+    # Validate server URL
+    try:
+        server_url = _validate_server_url(server_url)
+    except ValueError as e:
+        print(error(str(e)))
+        return 1
+
     # Handle manual cookie setting
     if manual_cookie:
         creds = _load_credentials()
@@ -150,21 +216,35 @@ def cmd_login():
     print(compact_header("LOGIN"))
     print(divider())
 
-    # Check if server is in dev mode
+    # Check server auth configuration
+    providers = []
     try:
         print(dim(f"  Connecting to {server_url}..."))
         status_resp = requests.get(f"{server_url}/auth/status", timeout=5)
         if status_resp.ok:
             auth_status = status_resp.json()
-            if auth_status.get("devMode"):
+            if auth_status.get("dev_mode"):
                 use_dev = True
                 print(info("Server is in development mode"))
+            providers = auth_status.get("providers", [])
     except requests.exceptions.ConnectionError:
         print(error(f"Cannot connect to server at {server_url}"))
         print(dim("  Make sure the server is running."))
         return 1
     except Exception:
         pass
+
+    # If no OAuth providers configured and not dev mode, can't login
+    if not use_dev and not providers:
+        print()
+        print(error("No authentication providers configured on this server"))
+        print()
+        print(dim("  Options:"))
+        print(dim("    1. Start server with DEV_MODE=true for development login"))
+        print(dim("    2. Configure OAuth (OAUTH_GITHUB_CLIENT_ID, etc.)"))
+        print(dim("    3. Set session manually: cryptoserve login --cookie <token>"))
+        print()
+        return 1
 
     print()
 
@@ -217,8 +297,10 @@ def cmd_login():
         login_url = f"{server_url}/auth/dev-login?cli_callback={callback_url}"
         print(info("Using development mode authentication"))
     else:
-        login_url = f"{server_url}/auth/github?cli_callback={callback_url}"
-        print(info("Opening browser for GitHub authentication"))
+        # Use the first available provider
+        provider = providers[0]
+        login_url = f"{server_url}/auth/login/{provider}?cli_callback={callback_url}"
+        print(info(f"Opening browser for {provider.title()} authentication"))
 
     print()
     print(dim(f"  URL: {login_url}"))
@@ -418,7 +500,7 @@ def cmd_configure():
         print()
         print(f"    export CRYPTOSERVE_TOKEN=\"your-access-token\"")
         print(f"    export CRYPTOSERVE_REFRESH_TOKEN=\"...\"  {dim('# Optional')}")
-        print(f"    export CRYPTOSERVE_SERVER_URL=\"http://localhost:8000\"")
+        print(f"    export CRYPTOSERVE_SERVER_URL=\"http://localhost:8003\"")
         print()
         print(f"  {bold('COMMAND LINE')}")
         print()
@@ -1861,12 +1943,12 @@ def cmd_contexts():
         return 1
 
 
-def cmd_scan():
-    """Scan for crypto libraries."""
+def cmd_scan_python():
+    """Scan for crypto libraries using the built-in Python import scanner."""
     from cryptoserve import init
 
-    print(compact_header("SCAN"))
-    print(dim("  Scanning for cryptographic libraries..."))
+    print(compact_header("SCAN (Python)"))
+    print(dim("  Scanning for cryptographic libraries (Python imports)..."))
     print()
 
     result = init(report_to_platform=False, async_reporting=False)
@@ -1944,6 +2026,329 @@ def cmd_scan():
 
     print()
     return 0
+
+
+def _prepend_subcommand(args: list[str], default_subcmd: str, known_subcmds: set[str]) -> list[str]:
+    """Prepend default subcommand if the user didn't specify one.
+
+    E.g., `cryptoserve scan .` becomes `cryptoscan scan .` and
+    `cryptoserve scan version` stays `cryptoscan version`.
+    """
+    # Find the first non-flag argument
+    for arg in args:
+        if not arg.startswith("-"):
+            if arg in known_subcmds:
+                return args  # User already specified a subcommand
+            break
+    # No known subcommand found — prepend the default
+    return [default_subcmd] + args
+
+
+# Known subcommands for each binary
+_CRYPTOSCAN_SUBCMDS = {"scan", "version", "help", "completion"}
+_CRYPTODEPS_SUBCMDS = {"analyze", "status", "update", "version", "help", "completion"}
+
+
+def cmd_scan():
+    """Scan for cryptographic usage using CryptoScan binary.
+
+    Delegates to the CryptoScan Go binary for deep file-level pattern matching
+    (90+ patterns, CBOM, SARIF, reachability analysis). Falls back to the
+    built-in Python import scanner with --python-only.
+    """
+    from cryptoserve._binary_manager import run_binary
+
+    args = sys.argv[2:]
+
+    # Intercept our flags before passing to binary
+    if "--python-only" in args:
+        return cmd_scan_python()
+
+    push = "--push" in args
+    update = "--update" in args
+    filtered_args = [a for a in args if a not in ("--push", "--update")]
+
+    if update:
+        from cryptoserve._binary_manager import download_binary
+        try:
+            download_binary("cryptoscan", force=True)
+        except RuntimeError as e:
+            print(f"  {error(str(e))}")
+            return 1
+
+    # Prepend 'scan' subcommand if user didn't specify one
+    filtered_args = _prepend_subcommand(filtered_args, "scan", _CRYPTOSCAN_SUBCMDS)
+
+    if push:
+        # Run scan with JSON output to a temp file, then push
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False, prefix="cryptoscan_")
+        tmp_path = tmp.name
+        tmp.close()
+
+        # Add --format json --output to args if not already specified
+        scan_args = list(filtered_args)
+        has_format = any(a in ("--format", "-f") for a in scan_args)
+        has_output = any(a in ("--output", "-o") for a in scan_args)
+
+        if not has_format:
+            scan_args.extend(["--format", "json"])
+        if not has_output:
+            scan_args.extend(["--output", tmp_path])
+
+        print(compact_header("CRYPTOSCAN"))
+        exit_code = run_binary("cryptoscan", scan_args)
+        if exit_code != 0:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            return exit_code
+
+        # Push the results
+        print()
+        print(divider())
+        result_path = tmp_path
+        # If user specified --output, use that path instead
+        if has_output:
+            for i, a in enumerate(filtered_args):
+                if a in ("--output", "-o") and i + 1 < len(filtered_args):
+                    result_path = filtered_args[i + 1]
+                    break
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+        return _push_results_file(result_path, cleanup=not has_output)
+
+    # Normal scan — pass through to binary
+    print(compact_header("CRYPTOSCAN"))
+    exit_code = run_binary("cryptoscan", filtered_args)
+
+    if exit_code == 0 and not any(a in ("--help", "-h") for a in filtered_args):
+        print()
+        print(dim("  Tip: Upload results to CryptoServe dashboard:"))
+        print(dim("    cryptoserve scan . --push"))
+        print(dim("    cryptoserve push scan-results.json"))
+        print()
+
+    return exit_code
+
+
+def cmd_deps():
+    """Analyze cryptographic dependencies using CryptoDeps binary.
+
+    Delegates to the CryptoDeps Go binary for dependency-level crypto analysis
+    including CBOM generation and reachability.
+    """
+    from cryptoserve._binary_manager import run_binary
+
+    args = sys.argv[2:]
+
+    push = "--push" in args
+    update = "--update" in args
+    filtered_args = [a for a in args if a not in ("--push", "--update")]
+
+    if update:
+        from cryptoserve._binary_manager import download_binary
+        try:
+            download_binary("cryptodeps", force=True)
+        except RuntimeError as e:
+            print(f"  {error(str(e))}")
+            return 1
+
+    # Prepend 'analyze' subcommand if user didn't specify one
+    filtered_args = _prepend_subcommand(filtered_args, "analyze", _CRYPTODEPS_SUBCMDS)
+
+    if push:
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False, prefix="cryptodeps_")
+        tmp_path = tmp.name
+        tmp.close()
+
+        scan_args = list(filtered_args)
+        has_format = any(a in ("--format", "-f") for a in scan_args)
+        has_output = any(a in ("--output", "-o") for a in scan_args)
+
+        if not has_format:
+            scan_args.extend(["--format", "json"])
+        if not has_output:
+            scan_args.extend(["--output", tmp_path])
+
+        print(compact_header("CRYPTODEPS"))
+        exit_code = run_binary("cryptodeps", scan_args)
+        if exit_code != 0:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            return exit_code
+
+        print()
+        print(divider())
+        result_path = tmp_path
+        if has_output:
+            for i, a in enumerate(filtered_args):
+                if a in ("--output", "-o") and i + 1 < len(filtered_args):
+                    result_path = filtered_args[i + 1]
+                    break
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+        return _push_results_file(result_path, cleanup=not has_output)
+
+    # Normal deps analysis — pass through to binary
+    print(compact_header("CRYPTODEPS"))
+    exit_code = run_binary("cryptodeps", filtered_args)
+
+    if exit_code == 0 and not any(a in ("--help", "-h") for a in filtered_args):
+        print()
+        print(dim("  Tip: Upload results to CryptoServe dashboard:"))
+        print(dim("    cryptoserve deps . --push"))
+        print(dim("    cryptoserve push deps-results.json"))
+        print()
+
+    return exit_code
+
+
+def _push_results_file(file_path: str, cleanup: bool = False) -> int:
+    """Upload a scan results file to the CryptoServe platform.
+
+    Args:
+        file_path: Path to the JSON results file.
+        cleanup: If True, delete the file after upload.
+
+    Returns:
+        Exit code (0 for success, 1 for failure).
+    """
+    import requests
+
+    if not os.path.exists(file_path):
+        print(f"  {error(f'Results file not found: {file_path}')}")
+        return 1
+
+    try:
+        with open(file_path, "r") as f:
+            content = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"  {error(f'Failed to read results file: {e}')}")
+        return 1
+
+    # Detect format
+    scan_format = _detect_scan_format(content)
+
+    # Get auth
+    from cryptoserve._identity import get_token, get_server_url, is_configured
+
+    token = get_token()
+    server_url = get_server_url()
+    git_info = _get_git_info()
+
+    payload = {
+        "format": scan_format,
+        "content": content,
+        "scan_path": os.getcwd(),
+        "scan_name": os.path.basename(os.getcwd()),
+        **git_info,
+    }
+
+    try:
+        if token and is_configured():
+            response = requests.post(
+                f"{server_url}/api/v1/cbom",
+                json=payload,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=30,
+            )
+        else:
+            session_cookie = _get_session_cookie()
+            cli_server_url = _get_cli_server_url()
+            if not session_cookie:
+                print(f"  {error('Not logged in. Run: cryptoserve login')}")
+                return 1
+            server_url = cli_server_url
+            response = requests.post(
+                f"{server_url}/api/v1/cbom",
+                json=payload,
+                cookies={"access_token": session_cookie},
+                timeout=30,
+            )
+
+        if response.status_code in [200, 201]:
+            data = response.json() if response.text else {}
+            scan_id = data.get("id", "")
+            print(f"  {success('Results uploaded to CryptoServe')}")
+            if scan_id:
+                print(f"  View in dashboard: {server_url}/dashboard/scans/{scan_id}")
+        else:
+            print(f"  {error(f'Upload failed: HTTP {response.status_code}')}")
+            return 1
+
+    except requests.exceptions.ConnectionError:
+        print(f"  {error(f'Cannot connect to server at {server_url}')}")
+        return 1
+    except requests.exceptions.RequestException as e:
+        print(f"  {error(f'Upload failed: {e}')}")
+        return 1
+    finally:
+        if cleanup:
+            try:
+                os.unlink(file_path)
+            except OSError:
+                pass
+
+    print()
+    return 0
+
+
+def _detect_scan_format(content: dict) -> str:
+    """Detect the format of scan results content.
+
+    Returns:
+        One of: 'cryptoscan', 'cryptodeps', 'cyclonedx', 'json'
+    """
+    # CycloneDX CBOM
+    if "bomFormat" in content and content.get("bomFormat") == "CycloneDX":
+        return "cyclonedx"
+    # CryptoScan output typically has a 'findings' key
+    if "findings" in content and "tool" in content:
+        tool_name = content.get("tool", {}).get("name", "")
+        if "cryptoscan" in tool_name.lower():
+            return "cryptoscan"
+        if "cryptodeps" in tool_name.lower():
+            return "cryptodeps"
+    # CryptoDeps output has 'dependencies' key
+    if "dependencies" in content:
+        return "cryptodeps"
+    return "json"
+
+
+def cmd_push():
+    """Upload scan results or CBOM files to the CryptoServe platform."""
+    if len(sys.argv) < 3:
+        print(compact_header("PUSH"))
+        print(f"  {error('No file specified')}")
+        print()
+        print(dim("  Usage: cryptoserve push <file>"))
+        print(dim("         cryptoserve push scan-results.json"))
+        print(dim("         cryptoserve push cbom.json"))
+        print()
+        return 1
+
+    file_path = sys.argv[2]
+
+    if not os.path.exists(file_path):
+        print(compact_header("PUSH"))
+        print(f"  {error(f'File not found: {file_path}')}")
+        return 1
+
+    print(compact_header("PUSH"))
+    print(dim(f"  Uploading {os.path.basename(file_path)} to CryptoServe..."))
+    print()
+    return _push_results_file(file_path)
 
 
 def cmd_cbom():
@@ -2388,6 +2793,227 @@ def cmd_gate():
         return 2
 
 
+# =============================================================================
+# OFFLINE TOOLS (no server required)
+# =============================================================================
+
+def cmd_encrypt():
+    """Encrypt a string or file with a password."""
+    import base64
+    from cryptoserve_core import encrypt_string, encrypt_file
+
+    # Parse arguments
+    text = None
+    password = None
+    file_path = None
+    output_path = None
+
+    i = 2
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg in ["--password", "-p"] and i + 1 < len(sys.argv):
+            password = sys.argv[i + 1]
+            i += 2
+        elif arg in ["--file", "-f"] and i + 1 < len(sys.argv):
+            file_path = sys.argv[i + 1]
+            i += 2
+        elif arg in ["--output", "-o"] and i + 1 < len(sys.argv):
+            output_path = sys.argv[i + 1]
+            i += 2
+        elif not arg.startswith("-") and text is None:
+            text = arg
+            i += 1
+        else:
+            i += 1
+
+    if not password:
+        print(error("Missing required option: --password"))
+        print(dim("  Usage: cryptoserve encrypt \"text\" --password <password>"))
+        print(dim("         cryptoserve encrypt --file <path> --output <path> --password <password>"))
+        return 1
+
+    if file_path:
+        # File mode
+        if not output_path:
+            output_path = file_path + ".enc"
+        try:
+            encrypt_file(file_path, output_path, password)
+            print(success(f"Encrypted: {file_path} -> {output_path}"))
+            return 0
+        except Exception as e:
+            print(error(str(e)))
+            return 1
+    elif text is not None:
+        # String mode
+        try:
+            result = encrypt_string(text, password)
+            print(result)
+            return 0
+        except Exception as e:
+            print(error(str(e)))
+            return 1
+    else:
+        print(error("Provide text to encrypt or use --file"))
+        print(dim("  Usage: cryptoserve encrypt \"text\" --password <password>"))
+        return 1
+
+
+def cmd_decrypt():
+    """Decrypt a string or file with a password."""
+    from cryptoserve_core import decrypt_string, decrypt_file
+
+    # Parse arguments
+    text = None
+    password = None
+    file_path = None
+    output_path = None
+
+    i = 2
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg in ["--password", "-p"] and i + 1 < len(sys.argv):
+            password = sys.argv[i + 1]
+            i += 2
+        elif arg in ["--file", "-f"] and i + 1 < len(sys.argv):
+            file_path = sys.argv[i + 1]
+            i += 2
+        elif arg in ["--output", "-o"] and i + 1 < len(sys.argv):
+            output_path = sys.argv[i + 1]
+            i += 2
+        elif not arg.startswith("-") and text is None:
+            text = arg
+            i += 1
+        else:
+            i += 1
+
+    if not password:
+        print(error("Missing required option: --password"))
+        print(dim("  Usage: cryptoserve decrypt \"<base64>\" --password <password>"))
+        print(dim("         cryptoserve decrypt --file <path> --output <path> --password <password>"))
+        return 1
+
+    if file_path:
+        # File mode
+        if not output_path:
+            print(error("Missing required option: --output for file decryption"))
+            return 1
+        try:
+            decrypt_file(file_path, output_path, password)
+            print(success(f"Decrypted: {file_path} -> {output_path}"))
+            return 0
+        except Exception as e:
+            print(error(str(e)))
+            return 1
+    elif text is not None:
+        # String mode
+        try:
+            result = decrypt_string(text, password)
+            print(result)
+            return 0
+        except Exception as e:
+            print(error(str(e)))
+            return 1
+    else:
+        print(error("Provide base64 ciphertext to decrypt or use --file"))
+        print(dim("  Usage: cryptoserve decrypt \"<base64>\" --password <password>"))
+        return 1
+
+
+def cmd_hash_password():
+    """Hash a password."""
+    import getpass
+    from cryptoserve_core import hash_password
+
+    # Parse arguments
+    password = None
+    algorithm = "scrypt"
+
+    i = 2
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg in ["--algo", "--algorithm", "-a"] and i + 1 < len(sys.argv):
+            algorithm = sys.argv[i + 1]
+            i += 2
+        elif not arg.startswith("-") and password is None:
+            password = arg
+            i += 1
+        else:
+            i += 1
+
+    if password is None:
+        try:
+            password = getpass.getpass("Password: ")
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return 1
+
+    if not password:
+        print(error("Password cannot be empty"))
+        return 1
+
+    try:
+        result = hash_password(password, algorithm=algorithm)
+        print(result)
+        return 0
+    except ValueError as e:
+        print(error(str(e)))
+        return 1
+    except Exception as e:
+        print(error(str(e)))
+        return 1
+
+
+def cmd_token():
+    """Create a JWT token."""
+    from cryptoserve_core import create_token
+
+    # Parse arguments
+    key = None
+    payload_str = None
+    expires = 3600
+
+    i = 2
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg in ["--key", "-k"] and i + 1 < len(sys.argv):
+            key = sys.argv[i + 1]
+            i += 2
+        elif arg in ["--payload"] and i + 1 < len(sys.argv):
+            payload_str = sys.argv[i + 1]
+            i += 2
+        elif arg in ["--expires", "--exp", "-e"] and i + 1 < len(sys.argv):
+            expires = int(sys.argv[i + 1])
+            i += 2
+        else:
+            i += 1
+
+    if not key:
+        print(error("Missing required option: --key"))
+        print(dim("  Usage: cryptoserve token --key <secret> [--payload '{...}'] [--expires N]"))
+        return 1
+
+    key_bytes = key.encode("utf-8")
+    if len(key_bytes) < 16:
+        print(error("Key must be at least 16 bytes"))
+        return 1
+
+    payload = {}
+    if payload_str:
+        try:
+            payload = json.loads(payload_str)
+        except json.JSONDecodeError as e:
+            print(error(f"Invalid JSON payload: {e}"))
+            return 1
+
+    try:
+        token = create_token(payload, key=key_bytes, expires_in=expires)
+        print(token)
+        return 0
+    except Exception as e:
+        print(error(str(e)))
+        return 1
+
+
 def cmd_help():
     """Show help."""
     print(compact_header("HELP"))
@@ -2434,9 +3060,26 @@ def cmd_help():
     print(dim("               cryptoserve contexts \"email\"     # Search"))
     print(dim("               cryptoserve contexts -e user-pii # Example"))
     print()
+    print(f"  {bold('SCANNING TOOLS')} {dim('(no server required)')}")
+    print()
+    print(f"    {bold('scan')}       Deep cryptographic scan (CryptoScan binary)")
+    print(dim("               cryptoserve scan .                # Scan directory"))
+    print(dim("               cryptoserve scan . --push         # Scan + upload"))
+    print(dim("               cryptoserve scan . --format sarif # SARIF output"))
+    print(dim("               --python-only  Use built-in Python scanner"))
+    print(dim("               --update       Force re-download of binary"))
+    print()
+    print(f"    {bold('deps')}       Cryptographic dependency analysis (CryptoDeps binary)")
+    print(dim("               cryptoserve deps .                # Analyze deps"))
+    print(dim("               cryptoserve deps . --push         # Analyze + upload"))
+    print(dim("               --update       Force re-download of binary"))
+    print()
+    print(f"    {bold('push')}       Upload scan results to CryptoServe dashboard")
+    print(dim("               cryptoserve push scan-results.json"))
+    print(dim("               Accepts: CryptoScan JSON, CryptoDeps JSON, CycloneDX CBOM"))
+    print()
     print(f"  {bold('SECURITY TOOLS')}")
     print()
-    print(f"    {bold('scan')}       Scan for crypto libraries")
     print(f"    {bold('cbom')}       Generate Cryptographic Bill of Materials")
     print(dim("               --format json|cyclonedx|spdx"))
     print(dim("               --output <file>"))
@@ -2469,6 +3112,22 @@ def cmd_help():
     print(dim("               --dry-run        Preview what would be restored"))
     print()
     print(f"    {bold('backups')}    List available backups")
+    print()
+    print(f"  {bold('OFFLINE TOOLS')} {dim('(no server required)')}")
+    print()
+    print(f"    {bold('encrypt')}    Encrypt a string or file with a password")
+    print(dim("               cryptoserve encrypt \"text\" --password <pw>"))
+    print(dim("               cryptoserve encrypt --file <in> --output <out> --password <pw>"))
+    print()
+    print(f"    {bold('decrypt')}    Decrypt a string or file with a password")
+    print(dim("               cryptoserve decrypt \"<base64>\" --password <pw>"))
+    print(dim("               cryptoserve decrypt --file <in> --output <out> --password <pw>"))
+    print()
+    print(f"    {bold('hash-password')} Hash a password (scrypt or PBKDF2)")
+    print(dim("               cryptoserve hash-password [password] [--algo scrypt|pbkdf2]"))
+    print()
+    print(f"    {bold('token')}      Create a JWT token (HS256)")
+    print(dim("               cryptoserve token --key <secret> [--payload '{{...}}'] [--expires N]"))
     print()
     print(f"  {bold('OTHER')}")
     print()
@@ -3392,6 +4051,8 @@ def main():
         "info": cmd_info,
         "promote": cmd_promote,
         "scan": cmd_scan,
+        "deps": cmd_deps,
+        "push": cmd_push,
         "cbom": cmd_cbom,
         "pqc": cmd_pqc,
         "gate": cmd_gate,
@@ -3400,6 +4061,11 @@ def main():
         "restore": cmd_restore,
         "backups": cmd_backups,
         "ceremony": cmd_ceremony,
+        # Offline tools
+        "encrypt": cmd_encrypt,
+        "decrypt": cmd_decrypt,
+        "hash-password": cmd_hash_password,
+        "token": cmd_token,
         "help": cmd_help,
         "--help": cmd_help,
         "-h": cmd_help,

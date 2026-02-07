@@ -239,7 +239,7 @@ Don't block immediately. Use `severity: warn` first to understand impact:
 Use the `/api/policies/evaluate` endpoint to test how policies behave:
 
 ```bash
-curl -X POST http://localhost:8000/api/policies/evaluate \
+curl -X POST http://localhost:8003/api/policies/evaluate \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
     "algorithm": "AES-256-GCM",
