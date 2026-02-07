@@ -117,10 +117,52 @@ def _get_session_cookie():
     return creds.get("session_cookie")
 
 
+def _validate_server_url(url: str) -> str:
+    """Validate and normalize a server URL.
+
+    Prevents SSRF by restricting scheme and blocking known dangerous endpoints
+    (cloud metadata services). Localhost/private IPs are allowed since this is
+    a CLI tool that legitimately targets local dev servers.
+
+    Returns:
+        The validated URL (stripped of trailing slash).
+
+    Raises:
+        ValueError: If the URL is invalid or targets a dangerous endpoint.
+    """
+    from urllib.parse import urlparse
+    import ipaddress
+
+    parsed = urlparse(url)
+
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Invalid URL scheme '{parsed.scheme}' — only http/https allowed")
+
+    if not parsed.hostname:
+        raise ValueError(f"Invalid URL — no hostname: {url}")
+
+    hostname = parsed.hostname.lower()
+
+    # Block cloud metadata endpoints (AWS, GCP, Azure)
+    blocked = {"169.254.169.254", "metadata.google.internal", "100.100.100.200"}
+    if hostname in blocked:
+        raise ValueError(f"Blocked URL — cloud metadata endpoint: {hostname}")
+
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_link_local:
+            raise ValueError(f"Blocked URL — link-local address: {hostname}")
+    except ValueError:
+        pass  # Not an IP, hostname is fine
+
+    return url.rstrip("/")
+
+
 def _get_cli_server_url():
     """Get server URL for CLI commands."""
     creds = _load_credentials()
-    return creds.get("server_url", os.getenv("CRYPTOSERVE_SERVER_URL", "http://localhost:8003"))
+    url = creds.get("server_url", os.getenv("CRYPTOSERVE_SERVER_URL", "http://localhost:8003"))
+    return _validate_server_url(url)
 
 
 # Alias for convenience
@@ -154,6 +196,13 @@ def cmd_login():
             i += 2
         else:
             i += 1
+
+    # Validate server URL
+    try:
+        server_url = _validate_server_url(server_url)
+    except ValueError as e:
+        print(error(str(e)))
+        return 1
 
     # Handle manual cookie setting
     if manual_cookie:
