@@ -4,6 +4,7 @@ Gate scanning logic for CryptoServe CI/CD integration.
 Scans source files for cryptographic usage and applies policies.
 Works offline without server connection.
 """
+from __future__ import annotations
 
 import os
 import re

@@ -1,6 +1,7 @@
 """
 Key derivation and management utilities.
 """
+from __future__ import annotations
 
 import os
 import hashlib

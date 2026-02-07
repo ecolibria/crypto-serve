@@ -11,6 +11,7 @@ Performance Features:
 - Automatic cache invalidation on key rotation
 - Local mode: full SDK API without server (no network required)
 """
+from __future__ import annotations
 
 import hashlib
 import hmac as hmac_mod
