@@ -1,0 +1,31 @@
+# CryptoServe Security Review Rules
+# Custom instructions for claude-code-security-review
+
+## False Positive Suppressions
+
+### Policy/gate files reference algorithm names for detection, not usage
+Files matching `*_gate.py`, `*_policies.py`, `**/policy/*.py`:
+- References to weak algorithms (MD5, SHA1, DES, RC4) are detection rules, not implementations
+- These files define what to scan FOR, they do not use these algorithms
+
+### Test files may intentionally use weak cryptographic material
+Files matching `tests/**`, `*_test.py`, `test_*.py`:
+- Weak keys, short passwords, and test certificates are intentional fixtures
+- Self-signed certificates in test data are expected
+- Hardcoded "secret" values in test assertions are test vectors, not credentials
+
+### Crypto audit module references algorithms in documentation
+Files matching `crypto_audit.py`, `**/audit/**`:
+- References to eval/exec in docstrings describe what the scanner detects
+- Algorithm name strings are inventory data, not cryptographic operations
+
+### Scanner output files contain algorithm references as scan results
+Files matching `**/reports/**`, `**/output/**`, `*.json` in scan result directories:
+- Algorithm names appear as discovered inventory items
+- These are scan findings, not code that uses weak algorithms
+
+## Focus Areas
+- Prioritize: authentication bypass, injection, insecure deserialization, SSRF
+- Flag: new dependencies that haven't been audited
+- Flag: changes to permission/authorization logic
+- Flag: modifications to cryptographic operations in `backend/app/core/crypto/`
