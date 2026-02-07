@@ -112,7 +112,7 @@ def _get_session_cookie():
 def _get_cli_server_url():
     """Get server URL for CLI commands."""
     creds = _load_credentials()
-    return creds.get("server_url", os.getenv("CRYPTOSERVE_SERVER_URL", "http://localhost:8000"))
+    return creds.get("server_url", os.getenv("CRYPTOSERVE_SERVER_URL", "http://localhost:8003"))
 
 
 # Alias for convenience
@@ -128,7 +128,7 @@ def cmd_login():
     import requests
 
     # Parse arguments
-    server_url = "http://localhost:8000"
+    server_url = "http://localhost:8003"
     use_dev = False
     manual_cookie = None
 
@@ -427,7 +427,7 @@ def cmd_configure():
         print()
         print(f"    export CRYPTOSERVE_TOKEN=\"your-access-token\"")
         print(f"    export CRYPTOSERVE_REFRESH_TOKEN=\"...\"  {dim('# Optional')}")
-        print(f"    export CRYPTOSERVE_SERVER_URL=\"http://localhost:8000\"")
+        print(f"    export CRYPTOSERVE_SERVER_URL=\"http://localhost:8003\"")
         print()
         print(f"  {bold('COMMAND LINE')}")
         print()

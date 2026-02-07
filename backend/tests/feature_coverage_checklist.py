@@ -45,7 +45,7 @@ from typing import Callable, Optional
 import requests
 
 # Configuration
-API_URL = os.environ.get("CRYPTOSERVE_URL", "http://localhost:8000")
+API_URL = os.environ.get("CRYPTOSERVE_URL", "http://localhost:8003")
 SDK_TOKEN_FILE = "/tmp/sdk_token_new.txt"
 ADMIN_TOKEN_FILE = "/tmp/admin_token.txt"
 

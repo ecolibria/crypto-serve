@@ -33,7 +33,7 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8003:8000"
+      - "8003:8003"
     environment:
       DATABASE_URL: postgresql+asyncpg://cryptoserve:${POSTGRES_PASSWORD}@postgres:5432/cryptoserve
       CRYPTOSERVE_MASTER_KEY: ${CRYPTOSERVE_MASTER_KEY}
@@ -52,7 +52,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
       interval: 10s
       timeout: 5s
       retries: 3

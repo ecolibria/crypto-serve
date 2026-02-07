@@ -732,7 +732,7 @@ def test_encryption(mock_crypto_class):
 crypto = CryptoServe(
     app_name="test-app",
     team="test",
-    server_url="http://localhost:8000"  # Test server
+    server_url="http://localhost:8003"  # Test server
 )
 ```
 

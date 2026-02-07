@@ -54,7 +54,7 @@ def get_session_cookie() -> Optional[str]:
 def get_server_url() -> str:
     """Get base server URL from user credentials or default."""
     creds = load_user_credentials()
-    return creds.get("server_url", os.getenv("CRYPTOSERVE_SERVER_URL", "http://localhost:8000"))
+    return creds.get("server_url", os.getenv("CRYPTOSERVE_SERVER_URL", "http://localhost:8003"))
 
 
 def get_api_url() -> str:

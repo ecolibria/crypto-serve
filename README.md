@@ -58,18 +58,20 @@ Cryptography is hard. Key management is harder. CryptoServe eliminates the compl
 
 ```bash
 git clone https://github.com/ecolibria/cryptoserve.git
-cd crypto-serve
+cd cryptoserve
 cp .env.example .env
 docker compose up -d
 ```
 
 Server: `http://localhost:8003` | Dashboard: `http://localhost:3003`
 
+> **Note:** The default `.env` runs in dev mode (`DEV_MODE=true`), which bypasses GitHub OAuth so you can start immediately. See [GitHub OAuth Setup](#github-oauth-setup) to enable real authentication.
+
 ### 2. Install SDK and Login
 
 ```bash
 pip install cryptoserve
-cryptoserve login  # Opens browser for GitHub auth
+cryptoserve login --server http://localhost:8003
 ```
 
 ### 3. Encrypt Data
@@ -662,17 +664,13 @@ class PatientService:
 
 ```bash
 git clone https://github.com/ecolibria/cryptoserve.git
-cd crypto-serve
+cd cryptoserve
 cp .env.example .env
 ```
 
 Edit `.env`:
 
 ```bash
-# Required: GitHub OAuth (create at https://github.com/settings/developers)
-GITHUB_CLIENT_ID=your_client_id
-GITHUB_CLIENT_SECRET=your_client_secret
-
 # Required: Security keys (generate with: openssl rand -hex 32)
 CRYPTOSERVE_MASTER_KEY=$(openssl rand -hex 32)
 JWT_SECRET_KEY=$(openssl rand -hex 32)
@@ -690,12 +688,37 @@ Start services:
 docker compose up -d
 ```
 
+> The default config uses `DEV_MODE=true`, which bypasses OAuth for local development. Set `DEV_MODE=false` and configure GitHub OAuth (below) before deploying to production.
+
+### GitHub OAuth Setup
+
+To enable GitHub authentication (required for production, optional for local dev):
+
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click **New OAuth App**
+3. Fill in:
+   - **Application name:** CryptoServe (or your instance name)
+   - **Homepage URL:** `http://localhost:3003` (or your domain)
+   - **Authorization callback URL:** `http://localhost:8003/auth/callback/github`
+4. Click **Register application**
+5. Copy the **Client ID** and generate a **Client Secret**
+6. Add to your `.env`:
+
+```bash
+GITHUB_CLIENT_ID=your_client_id
+GITHUB_CLIENT_SECRET=your_client_secret
+DEV_MODE=false
+```
+
+7. Restart the server: `docker compose restart backend`
+
 ### Production Configuration
 
 For production deployments, see the [Production Guide](https://cryptoserve.dev/docs/configuration/).
 
 Key requirements:
 - Generate unique secrets (never use defaults)
+- Configure GitHub OAuth with your production domain
 - Use PostgreSQL for production
 - Enable TLS termination
 - Configure backup and recovery
