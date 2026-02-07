@@ -1,6 +1,6 @@
 # CryptoServe SDK
 
-![Security Audit](https://github.com/ecolibria/crypto-serve/actions/workflows/security.yml/badge.svg)
+![Security Audit](https://github.com/ecolibria/cryptoserve/actions/workflows/security.yml/badge.svg)
 
 Zero-config cryptographic operations with managed keys and auto-registration.
 

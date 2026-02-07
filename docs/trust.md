@@ -8,7 +8,7 @@ This document is for engineering leaders, security teams, and procurement office
 
 CryptoServe is Apache 2.0 licensed. Every line of cryptographic code is publicly available for inspection. There is no "enterprise edition" with hidden security logic — the open-source version is the production version.
 
-**Verify:** `git clone https://github.com/ecolibria/crypto-serve.git`
+**Verify:** `git clone https://github.com/ecolibria/cryptoserve.git`
 
 ---
 

@@ -59,4 +59,4 @@ Before you begin, ensure you have:
 
 - Check the [API Reference](../api-reference/index.md) for endpoint details
 - Read the [Technical Reference](../security/technical-reference.md) for cryptographic details
-- Open an issue on [GitHub](https://github.com/ecolibria/crypto-serve/issues)
+- Open an issue on [GitHub](https://github.com/ecolibria/cryptoserve/issues)

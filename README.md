@@ -11,9 +11,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ecolibria/crypto-serve/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/ecolibria/crypto-serve/ci.yml?branch=main&style=flat-square&label=build" alt="Build Status"></a>
-  <a href="https://github.com/ecolibria/crypto-serve/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/tests-1,380%20passed-brightgreen.svg?style=flat-square" alt="Tests"></a>
-  <a href="https://github.com/ecolibria/crypto-serve/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square" alt="License"></a>
+  <a href="https://github.com/ecolibria/cryptoserve/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/ecolibria/cryptoserve/ci.yml?branch=main&style=flat-square&label=build" alt="Build Status"></a>
+  <a href="https://github.com/ecolibria/cryptoserve/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/tests-1,380%20passed-brightgreen.svg?style=flat-square" alt="Tests"></a>
+  <a href="https://github.com/ecolibria/cryptoserve/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square" alt="License"></a>
   <a href="https://pypi.org/project/cryptoserve/"><img src="https://img.shields.io/pypi/v/cryptoserve.svg?style=flat-square" alt="PyPI"></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.9+-blue.svg?style=flat-square" alt="Python 3.9+"></a>
   <a href="https://cryptoserve.dev/docs/"><img src="https://img.shields.io/badge/docs-cryptoserve.dev-brightgreen.svg?style=flat-square" alt="Documentation"></a>
@@ -57,7 +57,7 @@ Cryptography is hard. Key management is harder. CryptoServe eliminates the compl
 ### 1. Start the Server
 
 ```bash
-git clone https://github.com/ecolibria/crypto-serve.git
+git clone https://github.com/ecolibria/cryptoserve.git
 cd crypto-serve
 cp .env.example .env
 docker compose up -d
@@ -661,7 +661,7 @@ class PatientService:
 ### Docker Compose (Recommended)
 
 ```bash
-git clone https://github.com/ecolibria/crypto-serve.git
+git clone https://github.com/ecolibria/cryptoserve.git
 cd crypto-serve
 cp .env.example .env
 ```
@@ -832,7 +832,7 @@ ruff check app/ tests/
 
 ## Security
 
-**Report vulnerabilities** to [info@cryptoserve.dev](mailto:info@cryptoserve.dev) or via [GitHub Security Advisories](https://github.com/ecolibria/crypto-serve/security/advisories).
+**Report vulnerabilities** to [info@cryptoserve.dev](mailto:info@cryptoserve.dev) or via [GitHub Security Advisories](https://github.com/ecolibria/cryptoserve/security/advisories).
 
 See [SECURITY.md](SECURITY.md) and [Technical Reference](docs/security/technical-reference.md).
 
@@ -848,7 +848,7 @@ Apache License 2.0. See [LICENSE](LICENSE).
 
 - **Website:** [https://cryptoserve.dev](https://cryptoserve.dev)
 - **Email:** [info@cryptoserve.dev](mailto:info@cryptoserve.dev)
-- **GitHub:** [ecolibria/crypto-serve](https://github.com/ecolibria/crypto-serve)
+- **GitHub:** [ecolibria/cryptoserve](https://github.com/ecolibria/cryptoserve)
 
 ---
 

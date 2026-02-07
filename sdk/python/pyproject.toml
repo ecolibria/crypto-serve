@@ -32,9 +32,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ecolibria/crypto-serve"
+Homepage = "https://github.com/ecolibria/cryptoserve"
 Documentation = "https://docs.cryptoserve.dev"
-Repository = "https://github.com/ecolibria/crypto-serve"
+Repository = "https://github.com/ecolibria/cryptoserve"
 
 [project.optional-dependencies]
 fastapi = [

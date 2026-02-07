@@ -1,6 +1,6 @@
 # cryptoserve-core
 
-![Security Audit](https://github.com/ecolibria/crypto-serve/actions/workflows/security.yml/badge.svg)
+![Security Audit](https://github.com/ecolibria/cryptoserve/actions/workflows/security.yml/badge.svg)
 
 Pure cryptographic primitives for Python. Zero network dependencies, one `pip install`, production-ready defaults.
 
